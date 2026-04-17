@@ -9,9 +9,7 @@
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=sora:400,500,600,700,800|outfit:400,500,600,700" rel="stylesheet" />
 
-    @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @endif
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
         :root {
@@ -277,7 +275,7 @@
                         <a href="#assistant" class="transition hover:opacity-70">AI Assistant</a>
                     </nav>
                     <div class="flex items-center gap-3">
-                        <a href="#account" class="grid h-10 w-10 place-items-center rounded-full border transition hover:bg-white/60" style="border-color: var(--line);" aria-label="Account">
+                        <a href="{{ route('login') }}" class="grid h-10 w-10 place-items-center rounded-full border transition hover:bg-white/60" style="border-color: var(--line);" aria-label="Account">
                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                 <path d="M20 21a8 8 0 0 0-16 0"></path>
                                 <circle cx="12" cy="8" r="4"></circle>
@@ -640,5 +638,27 @@
             </div>
         </footer>
     </div>
+
+    <div id="toast" style="position: fixed; top: 2rem; right: 2rem; padding: 1rem 2rem; border-radius: 1rem; background: var(--ink); color: white; box-shadow: var(--shadow); transform: translateY(-100%); opacity: 0; transition: all 0.5s ease; z-index: 50;" class="font-display font-bold">
+        <span id="toast-message"></span>
+    </div>
+
+    <script>
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            toastMessage.textContent = message;
+            toast.style.transform = 'translateY(0)';
+            toast.style.opacity = '1';
+            setTimeout(() => {
+                toast.style.transform = 'translateY(-100%)';
+                toast.style.opacity = '0';
+            }, 3000);
+        }
+
+        @if(session('account_created'))
+            showToast('Account created successfully!');
+        @endif
+    </script>
 </body>
 </html>
