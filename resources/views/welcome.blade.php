@@ -270,7 +270,7 @@
                     </a>
                     <nav class="hidden items-center gap-5 text-sm font-medium md:flex" style="color: var(--ink-soft);">
                         <a href="#about" class="transition hover:opacity-70">About</a>
-                        <a href="#menu" class="transition hover:opacity-70">Menu</a>
+                        <a href="#menu" @guest data-requires-auth="true" @endguest class="transition hover:opacity-70">Menu</a>
                         <a href="#how-to-order" class="transition hover:opacity-70">How to Order</a>
                         <a href="#assistant" class="transition hover:opacity-70">AI Assistant</a>
                     </nav>
@@ -281,7 +281,7 @@
                                 <circle cx="12" cy="8" r="4"></circle>
                             </svg>
                         </a>
-                        <a href="#order-now" class="rounded-full px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5" style="background: var(--ink);">Order now</a>
+                        <a href="#order-now" @guest data-requires-auth="true" @endguest class="rounded-full px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5" style="background: var(--ink);">Order now</a>
                     </div>
                 </div>
             </div>
@@ -305,7 +305,7 @@
                     </p>
 
                     <div class="entrance entrance-delay-3 mt-8 flex flex-wrap items-center gap-4">
-                        <a href="#menu" class="rounded-full px-7 py-3.5 text-sm font-semibold uppercase tracking-[0.14em] text-white transition hover:-translate-y-0.5" style="background: linear-gradient(135deg, var(--brand-deep), var(--brand));">See full menu</a>
+                        <a href="#menu" @guest data-requires-auth="true" @endguest class="rounded-full px-7 py-3.5 text-sm font-semibold uppercase tracking-[0.14em] text-white transition hover:-translate-y-0.5" style="background: linear-gradient(135deg, var(--brand-deep), var(--brand));">See full menu</a>
                         <a href="#how-to-order" class="rounded-full border px-7 py-3.5 text-sm font-semibold uppercase tracking-[0.14em] transition hover:bg-white/60" style="border-color: rgba(38, 24, 15, 0.18);">How to order</a>
                     </div>
 
@@ -458,7 +458,7 @@
                     <div>
                         <h2 class="font-display mt-2 text-4xl font-extrabold sm:text-5xl">Menu</h2>
                     </div>
-                    <a href="#order-now" class="rounded-full border px-5 py-2.5 text-sm font-semibold transition hover:bg-white/60" style="border-color: var(--line);">Request catalog</a>
+                    <a href="#order-now" @guest data-requires-auth="true" @endguest class="rounded-full border px-5 py-2.5 text-sm font-semibold transition hover:bg-white/60" style="border-color: var(--line);">Request catalog</a>
                 </div>
 
                 <div class="grid gap-6 lg:grid-cols-3">
@@ -604,7 +604,7 @@
                             Fresh bread, pastries, and custom orders for homes, cafes, and events. Bringing warmth and quality to every bite.
                         <div class="mt-5 flex flex-wrap gap-3 text-sm font-medium" style="color: var(--ink-soft);">
                             <a href="#about">About</a>
-                            <a href="#menu">Menu</a>
+                            <a href="#menu" @guest data-requires-auth="true" @endguest>Menu</a>
                             <a href="#account">Account</a>
                             <a href="#how-to-order">How to Order</a>
                             <a href="#assistant">AI Assistant</a>
@@ -614,7 +614,7 @@
                     <div>
                         <p class="text-sm font-semibold uppercase tracking-[0.16em]" style="color: var(--ink-soft);">Quick links</p>
                         <div class="mt-4 grid gap-3 text-sm font-medium">
-                            <a href="#order-now" class="transition hover:opacity-70">Order now</a>
+                            <a href="#order-now" @guest data-requires-auth="true" @endguest class="transition hover:opacity-70">Order now</a>
                             <a href="#featured" class="transition hover:opacity-70">Featured item</a>
                             <a href="#gallery" class="transition hover:opacity-70">Gallery</a>
                             <a href="#reviews" class="transition hover:opacity-70">Customer reviews</a>
@@ -655,6 +655,29 @@
                 toast.style.opacity = '0';
             }, 3000);
         }
+
+        @guest
+        const loginUrl = @json(route('login'));
+        let authRedirectTimer = null;
+
+        document.addEventListener('click', (event) => {
+            const protectedLink = event.target.closest('a[data-requires-auth="true"]');
+            if (!protectedLink) {
+                return;
+            }
+
+            event.preventDefault();
+            showToast('Please sign in or create an account to continue.');
+
+            if (authRedirectTimer) {
+                clearTimeout(authRedirectTimer);
+            }
+
+            authRedirectTimer = setTimeout(() => {
+                window.location.href = loginUrl;
+            }, 1200);
+        });
+        @endguest
 
         @if(session('account_created'))
             showToast('Account created successfully!');
