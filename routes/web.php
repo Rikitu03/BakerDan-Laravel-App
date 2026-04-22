@@ -4,6 +4,17 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\ForgotPasswordController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\CartController;
+use App\Http\Controllers\Api\CustomOrderController;
+use App\Http\Controllers\Api\ProfileController;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes (Public Pages)
+|--------------------------------------------------------------------------
+*/
 
 Route::get('/', function () {
     return view('welcome');
@@ -36,16 +47,59 @@ Route::prefix('forgot-password')->group(function () {
     Route::post('/step-3', [ForgotPasswordController::class, 'handleStep3']);
 });
 
-Route::get('/admin', function() { return view('admin.dashboard'); })->name('admin.home');
+/*
+|--------------------------------------------------------------------------
+| Customer SPA Routes
+|--------------------------------------------------------------------------
+| All customer routes serve the same Vue SPA view
+| Vue Router handles client-side navigation
+*/
 
-// BAKERDAN customer SPA entry points.
-Route::view('/customer', 'customer.app')->name('customer.home');
-Route::view('/customer/cart', 'customer.app')->name('customer.cart');
-Route::view('/customer/customize', 'customer.app')->name('customer.customize');
-Route::view('/customer/notifications', 'customer.app')->name('customer.notifications');
-Route::view('/customer/settings', 'customer.app')->name('customer.settings');
+Route::middleware(['auth', 'role:customer'])->group(function () {
+    // All customer routes return the SPA
+    Route::get('/customer/{any?}', [CustomerController::class, 'spa'])
+        ->where('any', '.*')
+        ->name('customer.home');
+});
 
-// Catch-all route for any additional nested customer SPA paths.
-Route::get('/customer/{any?}', function () {
-    return view('customer.app');
-})->where('any', '.*')->name('customer.app');
+/*
+|--------------------------------------------------------------------------
+| API Routes for Vue SPA
+|--------------------------------------------------------------------------
+| These endpoints are called by the Vue frontend via Axios
+*/
+
+Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
+    
+    // Products
+    Route::get('/products', [ProductController::class, 'index']);
+    Route::get('/products/{id}', [ProductController::class, 'show']);
+    
+    // Categories
+    Route::get('/categories', [ProductController::class, 'categories']);
+    
+    // Cart
+    Route::get('/cart', [CartController::class, 'index']);
+    Route::post('/cart/add/{productId}', [CartController::class, 'add']);
+    Route::put('/cart/items/{itemId}', [CartController::class, 'update']);
+    Route::delete('/cart/items/{itemId}', [CartController::class, 'remove']);
+    Route::delete('/cart/clear', [CartController::class, 'clear']);
+    
+    // Custom Orders
+    Route::post('/custom-orders', [CustomOrderController::class, 'store']);
+    
+    // Profile
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::put('/profile', [ProfileController::class, 'update']);
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Admin Routes (placeholder)
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/admin', function() { 
+    return view('admin.dashboard'); 
+})->name('admin.home');

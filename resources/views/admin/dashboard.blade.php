@@ -6,7 +6,7 @@
     <title>BakerDan Admin Dashboard</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=sora:400,500,600,700,800|outfit:400,500,600,700" rel="stylesheet" />
-    @vite(['resources/css/app.css', 'resources/js/admin-dashboard.js'])
+    @vite(['resources/css/app.css', 'resources/js/main.js'])
     <style>
         :root {
             --paper: #fbf4e8;
