@@ -37,5 +37,5 @@ Route::prefix('forgot-password')->group(function () {
 });
 
 // Dummy pages for redirection
-Route::get('/admin', function() { return "Admin Page"; })->name('admin.home');
+Route::get('/admin', function() { return view('admin.dashboard'); })->name('admin.home');
 Route::get('/customer', function() { return "Customer Page"; })->name('customer.home');
