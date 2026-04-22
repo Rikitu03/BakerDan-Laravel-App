@@ -36,6 +36,16 @@ Route::prefix('forgot-password')->group(function () {
     Route::post('/step-3', [ForgotPasswordController::class, 'handleStep3']);
 });
 
-// Dummy pages for redirection
 Route::get('/admin', function() { return view('admin.dashboard'); })->name('admin.home');
-Route::get('/customer', function() { return "Customer Page"; })->name('customer.home');
+
+// BAKERDAN customer SPA entry points.
+Route::view('/customer', 'customer.app')->name('customer.home');
+Route::view('/customer/cart', 'customer.app')->name('customer.cart');
+Route::view('/customer/customize', 'customer.app')->name('customer.customize');
+Route::view('/customer/notifications', 'customer.app')->name('customer.notifications');
+Route::view('/customer/settings', 'customer.app')->name('customer.settings');
+
+// Catch-all route for any additional nested customer SPA paths.
+Route::get('/customer/{any?}', function () {
+    return view('customer.app');
+})->where('any', '.*')->name('customer.app');
