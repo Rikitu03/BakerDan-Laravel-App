@@ -333,10 +333,10 @@
     ];
 
     $products = [
-        ['id' => 1, 'name' => 'Classic Pandesal', 'description' => 'Soft everyday bread for retail and bulk pickup.', 'type' => 'bread', 'image' => 'images/bakerdan/Bread.png'],
-        ['id' => 2, 'name' => 'Chocolate Moist Cake', 'description' => 'Rich layered cake with smooth cocoa finish.', 'type' => 'cake', 'image' => 'images/bakerdan/Cake.png'],
-        ['id' => 3, 'name' => 'Cheese Roll', 'description' => 'Buttery roll with a savory cheese center.', 'type' => 'bread', 'image' => 'images/bakerdan/Creme_Puffs.png'],
-        ['id' => 4, 'name' => 'Brownies Tray', 'description' => 'Dense, fudgy brownies for special orders.', 'type' => 'cake', 'image' => 'images/bakerdan/Brownies.png'],
+        ['id' => 1, 'name' => 'Classic Pandesal', 'description' => 'Soft everyday bread for retail and bulk pickup.', 'type' => 'bread', 'price' => '₱8', 'image' => 'images/bakerdan/Bread.png'],
+        ['id' => 2, 'name' => 'Chocolate Moist Cake', 'description' => 'Rich layered cake with smooth cocoa finish.', 'type' => 'cake', 'price' => '₱850', 'image' => 'images/bakerdan/Cake.png'],
+        ['id' => 3, 'name' => 'Cheese Roll', 'description' => 'Buttery roll with a savory cheese center.', 'type' => 'bread', 'price' => '₱16', 'image' => 'images/bakerdan/Creme_Puffs.png'],
+        ['id' => 4, 'name' => 'Brownies Tray', 'description' => 'Dense, fudgy brownies for special orders.', 'type' => 'cake', 'price' => '₱420', 'image' => 'images/bakerdan/Brownies.png'],
     ];
 
     $orders = [
@@ -449,8 +449,7 @@
     <main class="relative z-10 flex-1 px-4 py-4 sm:px-6 lg:h-screen lg:overflow-y-auto lg:px-8 lg:py-6">
         <header class="glass-panel panel-lift mb-6 flex flex-col gap-4 rounded-[2rem] px-5 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
-                <p class="text-sm font-medium text-slate-500">Bakery management system</p>
-                <h1 class="font-display section-title mt-1 text-3xl font-bold text-slate-900 sm:text-4xl">Modern Admin Dashboard</h1>
+                <h1 class="font-display section-title mt-1 text-3xl font-bold text-slate-900 sm:text-4xl">Bakerdan Dashboard</h1>
             </div>
             <div class="flex flex-wrap items-center gap-3">
                 <div data-current-section-label class="rounded-full bg-white/70 px-4 py-2 text-sm font-semibold text-slate-600">Dashboard</div>
@@ -579,6 +578,7 @@
                             <tr>
                                 <th class="px-5 py-4 font-medium">Name</th>
                                 <th class="px-5 py-4 font-medium">Description</th>
+                                <th class="px-5 py-4 font-medium">Price</th>
                                 <th class="px-5 py-4 font-medium">Type</th>
                                 <th class="px-5 py-4 font-medium">Image</th>
                                 <th class="px-5 py-4 font-medium">Actions</th>
@@ -586,9 +586,10 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 bg-white">
                             @foreach ($products as $product)
-                                <tr data-product-row data-page-item="inventory" data-product-id="{{ $product['id'] }}" data-product-name="{{ $product['name'] }}" data-product-description="{{ $product['description'] }}" data-product-type="{{ $product['type'] }}" class="align-top">
+                                <tr data-product-row data-page-item="inventory" data-product-id="{{ $product['id'] }}" data-product-name="{{ $product['name'] }}" data-product-description="{{ $product['description'] }}" data-product-price="{{ $product['price'] }}" data-product-type="{{ $product['type'] }}" class="align-top">
                                     <td class="px-5 py-4 font-semibold text-slate-900">{{ $product['name'] }}</td>
                                     <td class="px-5 py-4 text-slate-600">{{ $product['description'] }}</td>
+                                    <td class="px-5 py-4 font-semibold text-slate-900">{{ $product['price'] }}</td>
                                     <td class="px-5 py-4"><span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">{{ $product['type'] }}</span></td>
                                     <td class="px-5 py-4">
                                         @if (file_exists(public_path($product['image'])))
@@ -879,6 +880,10 @@
                     <label class="grid gap-2 text-sm font-medium text-slate-700">
                         Description
                         <textarea data-inventory-description rows="4" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400" placeholder="Short product description"></textarea>
+                    </label>
+                    <label class="grid gap-2 text-sm font-medium text-slate-700">
+                        Price
+                        <input data-inventory-price type="text" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400" placeholder="e.g. ₱850 or ₱16 / pc">
                     </label>
                     <label class="grid gap-2 text-sm font-medium text-slate-700">
                         Image upload

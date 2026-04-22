@@ -19,6 +19,7 @@ if (dashboard) {
     const inventoryFeedback = dashboard.querySelector('[data-inventory-feedback]');
     const inventoryName = dashboard.querySelector('[data-inventory-name]');
     const inventoryDescription = dashboard.querySelector('[data-inventory-description]');
+    const inventoryPrice = dashboard.querySelector('[data-inventory-price]');
     const inventoryType = dashboard.querySelector('[data-inventory-type]');
     const inventoryId = dashboard.querySelector('[data-inventory-id]');
     const customerPanel = dashboard.querySelector('[data-customer-panel]');
@@ -308,6 +309,7 @@ if (dashboard) {
             inventoryId.value = product.id;
             inventoryName.value = product.name;
             inventoryDescription.value = product.description;
+            inventoryPrice.value = product.price;
             inventoryType.value = product.type;
         } else {
             inventoryForm.reset();
@@ -386,6 +388,7 @@ if (dashboard) {
                 id: row.dataset.productId,
                 name: row.dataset.productName,
                 description: row.dataset.productDescription,
+                price: row.dataset.productPrice,
                 type: row.dataset.productType,
             });
             return;
