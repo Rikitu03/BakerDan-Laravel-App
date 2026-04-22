@@ -37,7 +37,8 @@
 
         .page-shell {
             position: relative;
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: visible;
         }
 
         .page-shell::before,
@@ -83,6 +84,36 @@
             box-shadow: 0 18px 40px -34px rgba(38, 24, 15, 0.5);
         }
 
+        .panel-lift {
+            transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+        }
+
+        .panel-lift:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 28px 54px -38px rgba(38, 24, 15, 0.55);
+            border-color: rgba(200, 111, 56, 0.3);
+        }
+
+        .metric-card {
+            position: relative;
+            overflow: hidden;
+            isolation: isolate;
+        }
+
+        .metric-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(120deg, rgba(200, 111, 56, 0.1), transparent 55%);
+            opacity: 0;
+            transition: opacity 220ms ease;
+            z-index: -1;
+        }
+
+        .metric-card:hover::after {
+            opacity: 1;
+        }
+
         .section-title {
             letter-spacing: -0.03em;
         }
@@ -97,15 +128,162 @@
             color: #fff;
         }
 
+        .brand-logo-wrap {
+            height: 3.25rem;
+            width: 3.25rem;
+            border-radius: 1rem;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.32);
+            box-shadow: 0 12px 24px -16px rgba(38, 24, 15, 0.68);
+            background: rgba(255, 255, 255, 0.92);
+        }
+
+        .brand-logo-wrap img {
+            height: 100%;
+            width: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .logout-card {
+            border-radius: 1rem;
+            padding: 0.65rem;
+        }
+
+        .logout-button {
+            width: 100%;
+            border-radius: 0.9rem;
+            border: 1px solid rgba(143, 71, 35, 0.18);
+            background: linear-gradient(135deg, rgba(143, 71, 35, 0.08), rgba(200, 111, 56, 0.14));
+            color: var(--brand-deep);
+            padding: 0.72rem 0.95rem;
+            font-size: 0.9rem;
+            font-weight: 700;
+            transition: transform 170ms ease, box-shadow 170ms ease, background-color 170ms ease;
+        }
+
+        .logout-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 16px -12px rgba(38, 24, 15, 0.55);
+            background: linear-gradient(135deg, rgba(143, 71, 35, 0.12), rgba(200, 111, 56, 0.2));
+        }
+
         .nav-item[data-active="true"] {
             background: linear-gradient(135deg, rgba(200, 111, 56, 0.16), rgba(255, 255, 255, 0.9));
             color: var(--brand-deep);
             border-color: rgba(200, 111, 56, 0.24);
         }
 
+        .nav-item {
+            position: relative;
+            transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease;
+        }
+
+        @media (min-width: 1024px) {
+            [data-admin-dashboard].is-sidebar-compact [data-sidebar] {
+                width: 6.5rem;
+            }
+
+            [data-admin-dashboard].is-sidebar-compact [data-sidebar-text],
+            [data-admin-dashboard].is-sidebar-compact [data-sidebar-footer],
+            [data-admin-dashboard].is-sidebar-compact .nav-item span:first-child {
+                display: none;
+            }
+
+            [data-admin-dashboard].is-sidebar-compact .nav-item {
+                justify-content: center;
+                padding-left: 0.75rem;
+                padding-right: 0.75rem;
+            }
+
+            [data-admin-dashboard].is-sidebar-compact .nav-item::before {
+                left: 0.55rem;
+            }
+        }
+
+        .nav-item::before {
+            content: '';
+            width: 0.45rem;
+            height: 0.45rem;
+            border-radius: 999px;
+            background: rgba(109, 89, 73, 0.28);
+            position: absolute;
+            left: 0.9rem;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: background-color 180ms ease, box-shadow 180ms ease;
+        }
+
+        .nav-item[data-active="true"]::before {
+            background: var(--brand);
+            box-shadow: 0 0 0 6px rgba(200, 111, 56, 0.14);
+        }
+
+        .nav-item:hover {
+            transform: translateX(2px);
+        }
+
+        .nav-item span:first-child {
+            padding-left: 0.9rem;
+        }
+
         .tab-item[data-active="true"] {
             background: linear-gradient(135deg, var(--brand-deep), var(--brand));
             color: #fff;
+        }
+
+        [data-pagination-controls] button:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        [data-pagination-controls] button,
+        [data-pagination-controls] select {
+            transition: transform 160ms ease, box-shadow 160ms ease;
+        }
+
+        [data-pagination-controls] button:hover,
+        [data-pagination-controls] select:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 18px -12px rgba(38, 24, 15, 0.55);
+        }
+
+        [data-section="dashboard"] > .grid > .soft-panel {
+            border-top: 3px solid rgba(200, 111, 56, 0.38);
+        }
+
+        .chart-surface {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(251, 244, 232, 0.65));
+            border: 1px dashed rgba(200, 111, 56, 0.28);
+        }
+
+        .chart-grid-line {
+            stroke: rgba(109, 89, 73, 0.2);
+            stroke-width: 1;
+            stroke-dasharray: 3 5;
+        }
+
+        .chart-line {
+            fill: none;
+            stroke: var(--brand);
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .chart-point {
+            fill: #fff;
+            stroke: var(--brand-deep);
+            stroke-width: 2;
+        }
+
+        .export-button {
+            transition: transform 160ms ease, box-shadow 160ms ease;
+        }
+
+        .export-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 18px -12px rgba(38, 24, 15, 0.55);
         }
 
         [data-admin-dashboard] .text-slate-900 { color: var(--ink); }
@@ -183,45 +361,99 @@
         ['id' => 2, 'customer_name' => 'Mika Reyes', 'message' => 'Payment follow-up waiting for confirmation.', 'date' => '2026-04-21 16:45'],
         ['id' => 3, 'customer_name' => 'Jonah Cruz', 'message' => 'Requested pickup schedule changed to 3 PM.', 'date' => '2026-04-20 13:12'],
     ];
+
+    $weeklyCompletions = [
+        ['label' => 'Mon', 'value' => 9],
+        ['label' => 'Tue', 'value' => 11],
+        ['label' => 'Wed', 'value' => 13],
+        ['label' => 'Thu', 'value' => 10],
+        ['label' => 'Fri', 'value' => 15],
+        ['label' => 'Sat', 'value' => 12],
+        ['label' => 'Sun', 'value' => 6],
+    ];
+
+    $productTypeBreakdown = [
+        ['label' => 'Bread', 'value' => collect($products)->where('type', 'bread')->count()],
+        ['label' => 'Cake', 'value' => collect($products)->where('type', 'cake')->count()],
+    ];
+
+    $reportPayload = [
+        'metrics' => $metrics,
+        'products' => $products,
+        'orders' => $orders,
+        'customers' => $customers,
+        'admins' => $admins,
+        'notifications' => $notifications,
+        'weeklyCompletions' => $weeklyCompletions,
+        'productTypeBreakdown' => $productTypeBreakdown,
+    ];
+
+    $sidebarCounts = [
+        'dashboard' => '•',
+        'inventory' => count($products),
+        'orders' => count($orders),
+        'customers' => count($customers),
+        'notifications' => count($notifications),
+    ];
 @endphp
 
-<div data-admin-dashboard data-default-section="dashboard" class="page-shell min-h-screen lg:flex">
-    <aside class="glass-panel sticky top-0 z-20 flex w-full flex-col gap-6 border-b lg:h-screen lg:w-80 lg:border-b-0 lg:border-r">
+<script id="admin-report-data" type="application/json">@json($reportPayload)</script>
+
+<div data-admin-dashboard data-default-section="dashboard" class="page-shell min-h-screen lg:flex lg:h-screen lg:overflow-hidden">
+    <aside data-sidebar class="glass-panel sticky top-0 z-20 flex w-full flex-col gap-6 border-b lg:h-screen lg:w-80 lg:shrink-0 lg:self-start lg:border-b-0 lg:border-r">
         <div class="flex items-center justify-between px-6 pt-6 lg:block lg:px-7">
             <div class="flex items-center gap-3">
-                <div class="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-[#b35c35] to-[#7f4122] text-white shadow-lg shadow-orange-900/20">
-                    <span class="font-display text-lg font-bold">B</span>
+                <div class="brand-logo-wrap">
+                    <img src="{{ asset('images/logo/BAKERDAN LOGO.jpg') }}" alt="BakerDan logo">
                 </div>
-                <div>
+                <div data-sidebar-text>
                     <p class="font-display text-xl font-bold">BakerDan</p>
                     <p class="text-sm text-slate-500">Admin Control Center</p>
                 </div>
             </div>
+            <button type="button" data-sidebar-compact class="hidden lg:grid h-9 w-9 place-items-center rounded-full bg-white/70 text-slate-500" title="Toggle sidebar size" aria-label="Toggle sidebar size">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                    <path d="M9 5v14"></path>
+                </svg>
+            </button>
         </div>
 
         <nav class="grid gap-2 px-4 lg:px-5">
             @foreach ([['dashboard', 'Dashboard'], ['inventory', 'Inventory'], ['orders', 'Orders'], ['customers', 'Customers'], ['notifications', 'Notifications']] as [$key, $label])
                 <button type="button" data-nav="{{ $key }}" class="nav-item flex items-center justify-between rounded-2xl border border-transparent px-4 py-3 text-left text-sm font-semibold text-slate-600 transition hover:border-slate-200 hover:bg-white/70">
-                    <span>{{ $label }}</span>
-                    <span class="text-xs text-slate-400">View</span>
+                    <span data-sidebar-text>{{ $label }}</span>
+                    <span data-nav-count="{{ $key }}" class="rounded-full bg-white/70 px-2 py-1 text-xs font-semibold text-slate-500">{{ $sidebarCounts[$key] }}</span>
                 </button>
             @endforeach
         </nav>
 
-        <div class="mx-4 mt-auto rounded-3xl dark-pill px-5 py-5 lg:mx-5 lg:mb-5">
-            <p class="text-xs uppercase tracking-[0.24em] text-white/60">Today</p>
-            <p class="mt-2 font-display text-2xl font-bold">{{ now()->format('M d') }}</p>
-            <p class="mt-2 text-sm text-white/70">Bakery operations are live and ready for review.</p>
+        <div class="mx-4 mt-auto space-y-3 lg:mx-5 lg:mb-5" data-sidebar-footer>
+            <div class="rounded-3xl dark-pill px-5 py-5">
+                <p class="text-xs uppercase tracking-[0.24em] text-white/60">Today</p>
+                <p class="mt-2 font-display text-2xl font-bold">{{ now()->format('M d') }}</p>
+                <p class="mt-2 text-sm text-white/70">Bakery operations are live and ready for review.</p>
+            </div>
+
+            <div class="logout-card">
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="logout-button">
+                        Log Out
+                    </button>
+                </form>
+            </div>
         </div>
     </aside>
 
-    <main class="flex-1 px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
-        <header class="glass-panel mb-6 flex flex-col gap-4 rounded-[2rem] px-5 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+    <main class="relative z-10 flex-1 px-4 py-4 sm:px-6 lg:h-screen lg:overflow-y-auto lg:px-8 lg:py-6">
+        <header class="glass-panel panel-lift mb-6 flex flex-col gap-4 rounded-[2rem] px-5 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
                 <p class="text-sm font-medium text-slate-500">Bakery management system</p>
                 <h1 class="font-display section-title mt-1 text-3xl font-bold text-slate-900 sm:text-4xl">Modern Admin Dashboard</h1>
             </div>
             <div class="flex flex-wrap items-center gap-3">
+                <div data-current-section-label class="rounded-full bg-white/70 px-4 py-2 text-sm font-semibold text-slate-600">Dashboard</div>
                 <div class="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600">Active products: {{ count($products) }}</div>
                 <div class="rounded-full bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700">Open orders: {{ count($orders) }}</div>
             </div>
@@ -230,7 +462,7 @@
         <section data-section="dashboard" class="fade-in space-y-6">
             <div class="grid gap-4 xl:grid-cols-4">
                 @foreach ($metrics as $metric)
-                    <article class="soft-panel rounded-[1.75rem] p-5">
+                    <article class="soft-panel panel-lift metric-card rounded-[1.75rem] p-5">
                         <p class="text-sm font-medium text-slate-500">{{ $metric['label'] }}</p>
                         <p class="font-display mt-3 text-3xl font-bold text-slate-900">{{ $metric['value'] }}</p>
                         <p class="mt-2 text-sm text-slate-500">{{ $metric['detail'] }}</p>
@@ -239,7 +471,7 @@
             </div>
 
             <div class="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-                <article class="soft-panel rounded-[2rem] p-6">
+                <article class="soft-panel panel-lift rounded-[2rem] p-6">
                     <div class="flex items-center justify-between gap-4">
                         <div>
                             <p class="text-sm font-medium text-slate-500">Operations snapshot</p>
@@ -263,7 +495,7 @@
                     </div>
                 </article>
 
-                <article class="soft-panel rounded-[2rem] p-6">
+                <article class="soft-panel panel-lift rounded-[2rem] p-6">
                     <p class="text-sm font-medium text-slate-500">Quick actions</p>
                     <h2 class="font-display mt-1 text-2xl font-bold">Admin shortcuts</h2>
                     <div class="mt-5 grid gap-3">
@@ -273,6 +505,60 @@
                     </div>
                 </article>
             </div>
+
+            <div class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+                <article class="soft-panel panel-lift rounded-[2rem] p-6">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500">Weekly report graph</p>
+                            <h3 class="font-display mt-1 text-2xl font-bold">Completed orders trend</h3>
+                        </div>
+                        <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">7 days</span>
+                    </div>
+                    <div class="chart-surface mt-5 rounded-3xl p-4">
+                        <svg data-line-chart viewBox="0 0 680 240" class="h-56 w-full">
+                            <line x1="54" y1="190" x2="640" y2="190" class="chart-grid-line"></line>
+                            <line x1="54" y1="145" x2="640" y2="145" class="chart-grid-line"></line>
+                            <line x1="54" y1="100" x2="640" y2="100" class="chart-grid-line"></line>
+                            <line x1="54" y1="55" x2="640" y2="55" class="chart-grid-line"></line>
+                            <path data-line-path class="chart-line" d=""></path>
+                            <g data-line-points></g>
+                        </svg>
+                        <div data-line-labels class="mt-2 grid grid-cols-7 text-center text-xs font-semibold text-slate-500"></div>
+                    </div>
+                </article>
+
+                <article class="soft-panel panel-lift rounded-[2rem] p-6">
+                    <p class="text-sm font-medium text-slate-500">Product mix graph</p>
+                    <h3 class="font-display mt-1 text-2xl font-bold">Category distribution</h3>
+                    <div data-type-bars class="mt-5 space-y-4"></div>
+                </article>
+            </div>
+
+            <article class="soft-panel panel-lift rounded-[2rem] p-6">
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500">Report export center</p>
+                        <h3 class="font-display mt-1 text-2xl font-bold">Generate report data</h3>
+                        <p class="mt-2 max-w-2xl text-sm text-slate-500">Download bakery report data in CSV or JSON format for reporting, sharing, and archival.</p>
+                    </div>
+                </div>
+
+                <div class="mt-5 flex flex-wrap items-center gap-3">
+                    <label for="export-target" class="text-sm font-medium text-slate-600">Dataset</label>
+                    <select id="export-target" data-export-target class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+                        <option value="summary">Summary</option>
+                        <option value="products">Products</option>
+                        <option value="orders">Orders</option>
+                        <option value="customers">Customers</option>
+                        <option value="admins">Admins</option>
+                        <option value="notifications">Notifications</option>
+                    </select>
+                    <button type="button" data-export-format="csv" class="export-button rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white">Export CSV</button>
+                    <button type="button" data-export-format="json" class="export-button rounded-full bg-slate-100 px-5 py-2 text-sm font-semibold text-slate-700">Export JSON</button>
+                    <p data-export-feedback class="text-sm font-medium text-emerald-700"></p>
+                </div>
+            </article>
         </section>
 
         <section data-section="inventory" hidden class="fade-in space-y-6">
@@ -286,7 +572,7 @@
 
             <div data-inventory-feedback class="min-h-6 text-sm font-medium text-emerald-700"></div>
 
-            <article class="soft-panel overflow-hidden rounded-[2rem]">
+            <article class="soft-panel panel-lift overflow-hidden rounded-[2rem]">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
                         <thead class="bg-slate-50 text-slate-500">
@@ -300,7 +586,7 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 bg-white">
                             @foreach ($products as $product)
-                                <tr data-product-row data-product-id="{{ $product['id'] }}" data-product-name="{{ $product['name'] }}" data-product-description="{{ $product['description'] }}" data-product-type="{{ $product['type'] }}" class="align-top">
+                                <tr data-product-row data-page-item="inventory" data-product-id="{{ $product['id'] }}" data-product-name="{{ $product['name'] }}" data-product-description="{{ $product['description'] }}" data-product-type="{{ $product['type'] }}" class="align-top">
                                     <td class="px-5 py-4 font-semibold text-slate-900">{{ $product['name'] }}</td>
                                     <td class="px-5 py-4 text-slate-600">{{ $product['description'] }}</td>
                                     <td class="px-5 py-4"><span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">{{ $product['type'] }}</span></td>
@@ -324,6 +610,19 @@
                 </div>
                 <div data-inventory-empty hidden class="border-t border-dashed border-slate-200 px-5 py-10 text-center text-sm text-slate-500">No active products found.</div>
             </article>
+
+            <div class="flex flex-wrap items-center justify-between gap-3" data-pagination-controls="inventory">
+                <p class="text-sm text-slate-500" data-page-info="inventory"></p>
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-slate-500" for="page-size-inventory">Items</label>
+                    <select id="page-size-inventory" data-page-size="inventory" class="rounded-xl border border-slate-200 bg-white px-2 py-1 text-sm text-slate-600">
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                    </select>
+                    <button type="button" data-page-prev="inventory" class="rounded-xl bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">Prev</button>
+                    <button type="button" data-page-next="inventory" class="rounded-xl bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">Next</button>
+                </div>
+            </div>
         </section>
 
         <section data-section="orders" hidden class="fade-in space-y-6">
@@ -334,7 +633,7 @@
 
             <div class="grid gap-4 xl:grid-cols-2">
                 @foreach ($orders as $order)
-                    <article data-order-card data-order-id="{{ $order['id'] }}" data-order-status="{{ $order['status'] }}" data-payment-status="{{ $order['payment_status'] }}" class="soft-panel rounded-[1.75rem] p-5">
+                    <article data-order-card data-page-item="orders" data-order-id="{{ $order['id'] }}" data-order-status="{{ $order['status'] }}" data-payment-status="{{ $order['payment_status'] }}" class="soft-panel panel-lift rounded-[1.75rem] p-5">
                         <div class="flex flex-wrap items-start justify-between gap-4">
                             <div>
                                 <div class="flex items-center gap-3">
@@ -360,6 +659,19 @@
                     </article>
                 @endforeach
             </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3" data-pagination-controls="orders">
+                <p class="text-sm text-slate-500" data-page-info="orders"></p>
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-slate-500" for="page-size-orders">Items</label>
+                    <select id="page-size-orders" data-page-size="orders" class="rounded-xl border border-slate-200 bg-white px-2 py-1 text-sm text-slate-600">
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                    </select>
+                    <button type="button" data-page-prev="orders" class="rounded-xl bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">Prev</button>
+                    <button type="button" data-page-next="orders" class="rounded-xl bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">Next</button>
+                </div>
+            </div>
         </section>
 
         <section data-section="customers" hidden class="fade-in space-y-6">
@@ -375,7 +687,7 @@
             </div>
 
             <div class="grid gap-6 xl:grid-cols-[1fr_0.38fr]">
-                <article class="soft-panel rounded-[2rem] p-4 sm:p-5">
+                <article class="soft-panel panel-lift rounded-[2rem] p-4 sm:p-5">
                     <div data-person-panel="customers">
                         <div class="overflow-x-auto">
                             <table class="min-w-full text-left text-sm">
@@ -392,7 +704,7 @@
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
                                     @foreach ($customers as $person)
-                                        <tr data-person-card data-person-id="{{ $person['id'] }}" data-person-role="Customer" data-person-name="{{ $person['name'] }}" data-person-email="{{ $person['email'] }}" data-person-status="{{ $person['status'] }}" class="align-top">
+                                        <tr data-person-card data-page-item="customers" data-person-id="{{ $person['id'] }}" data-person-role="Customer" data-person-name="{{ $person['name'] }}" data-person-email="{{ $person['email'] }}" data-person-status="{{ $person['status'] }}" class="align-top">
                                             <td class="px-4 py-4 font-semibold text-slate-900">{{ $person['name'] }}</td>
                                             <td class="px-4 py-4 text-slate-600">{{ $person['username'] }}</td>
                                             <td class="px-4 py-4 text-slate-600">{{ $person['age'] }}</td>
@@ -421,6 +733,19 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        <div class="mt-4 flex flex-wrap items-center justify-between gap-3" data-pagination-controls="customers">
+                            <p class="text-sm text-slate-500" data-page-info="customers"></p>
+                            <div class="flex items-center gap-2">
+                                <label class="text-sm text-slate-500" for="page-size-customers">Items</label>
+                                <select id="page-size-customers" data-page-size="customers" class="rounded-xl border border-slate-200 bg-white px-2 py-1 text-sm text-slate-600">
+                                    <option value="10" selected>10</option>
+                                    <option value="20">20</option>
+                                </select>
+                                <button type="button" data-page-prev="customers" class="rounded-xl bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">Prev</button>
+                                <button type="button" data-page-next="customers" class="rounded-xl bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">Next</button>
+                            </div>
+                        </div>
                     </div>
 
                     <div data-person-panel="admins" hidden>
@@ -439,7 +764,7 @@
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
                                     @foreach ($admins as $person)
-                                        <tr data-person-card data-person-id="{{ $person['id'] }}" data-person-role="Admin" data-person-name="{{ $person['name'] }}" data-person-email="{{ $person['email'] }}" data-person-status="{{ $person['status'] }}" class="align-top">
+                                        <tr data-person-card data-page-item="admins" data-person-id="{{ $person['id'] }}" data-person-role="Admin" data-person-name="{{ $person['name'] }}" data-person-email="{{ $person['email'] }}" data-person-status="{{ $person['status'] }}" class="align-top">
                                             <td class="px-4 py-4 font-semibold text-slate-900">{{ $person['name'] }}</td>
                                             <td class="px-4 py-4 text-slate-600">{{ $person['username'] }}</td>
                                             <td class="px-4 py-4 text-slate-600">{{ $person['age'] }}</td>
@@ -468,10 +793,23 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        <div class="mt-4 flex flex-wrap items-center justify-between gap-3" data-pagination-controls="admins" hidden>
+                            <p class="text-sm text-slate-500" data-page-info="admins"></p>
+                            <div class="flex items-center gap-2">
+                                <label class="text-sm text-slate-500" for="page-size-admins">Items</label>
+                                <select id="page-size-admins" data-page-size="admins" class="rounded-xl border border-slate-200 bg-white px-2 py-1 text-sm text-slate-600">
+                                    <option value="10" selected>10</option>
+                                    <option value="20">20</option>
+                                </select>
+                                <button type="button" data-page-prev="admins" class="rounded-xl bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">Prev</button>
+                                <button type="button" data-page-next="admins" class="rounded-xl bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">Next</button>
+                            </div>
+                        </div>
                     </div>
                 </article>
 
-                <aside data-customer-panel hidden class="soft-panel rounded-[2rem] p-5">
+                <aside data-customer-panel hidden class="soft-panel panel-lift rounded-[2rem] p-5">
                     <p class="text-sm font-medium text-slate-500">Detail panel</p>
                     <h3 data-customer-panel-title class="font-display mt-1 text-2xl font-bold">Account details</h3>
                     <p data-customer-panel-meta class="mt-1 text-sm text-slate-500"></p>
@@ -494,7 +832,7 @@
 
             <div class="grid gap-4">
                 @foreach ($notifications as $notification)
-                    <article data-notification-item class="soft-panel flex flex-col gap-4 rounded-[1.5rem] p-5 sm:flex-row sm:items-center sm:justify-between">
+                    <article data-notification-item data-page-item="notifications" class="soft-panel panel-lift flex flex-col gap-4 rounded-[1.5rem] p-5 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <p class="text-sm font-medium text-slate-500">{{ $notification['customer_name'] }}</p>
                             <h3 class="mt-1 font-display text-xl font-bold">{{ $notification['message'] }}</h3>
@@ -504,12 +842,25 @@
                     </article>
                 @endforeach
             </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3" data-pagination-controls="notifications">
+                <p class="text-sm text-slate-500" data-page-info="notifications"></p>
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-slate-500" for="page-size-notifications">Items</label>
+                    <select id="page-size-notifications" data-page-size="notifications" class="rounded-xl border border-slate-200 bg-white px-2 py-1 text-sm text-slate-600">
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                    </select>
+                    <button type="button" data-page-prev="notifications" class="rounded-xl bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">Prev</button>
+                    <button type="button" data-page-next="notifications" class="rounded-xl bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">Next</button>
+                </div>
+            </div>
         </section>
     </main>
 
     <div data-inventory-drawer hidden class="fixed inset-0 z-40 bg-slate-950/35 p-4 backdrop-blur-sm">
         <div class="ml-auto flex h-full max-w-xl items-stretch">
-            <div class="soft-panel flex w-full flex-col rounded-[2rem] bg-white p-6">
+            <div class="soft-panel panel-lift flex w-full flex-col rounded-[2rem] bg-white p-6">
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <p class="text-sm font-medium text-slate-500">Product form</p>
@@ -547,7 +898,7 @@
     </div>
 
     <div data-modal-shell hidden class="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4 backdrop-blur-sm">
-        <div class="soft-panel w-full max-w-md rounded-[2rem] p-6">
+        <div class="soft-panel panel-lift w-full max-w-md rounded-[2rem] p-6">
             <p class="text-sm font-medium text-slate-500">Confirmation</p>
             <h3 data-modal-title class="font-display mt-1 text-2xl font-bold">Title</h3>
             <p data-modal-message class="mt-3 text-sm leading-6 text-slate-600">Message</p>
