@@ -1,0 +1,181 @@
+<template>
+  <div class="min-h-screen bg-[radial-gradient(circle_at_top,#fffdf8_0%,#f1ebe3_42%,#dec7b2_100%)] p-3 lg:p-5">
+    <div class="mx-auto max-w-[1720px]">
+      <div class="flex min-h-[95vh] flex-col overflow-hidden rounded-[2.2rem] border border-[#D79E72] bg-white shadow-[0_32px_80px_-42px_rgba(133,88,53,0.48)]">
+        <AppHeader
+          :user="user"
+          @toggle-user-menu="showUserMenu = !showUserMenu"
+        />
+
+        <div class="flex flex-1 overflow-hidden">
+          <AppSidebar
+            v-if="!layoutProps.hideSidebar"
+            :categories="categories"
+            :active-category="activeCategory"
+            @category-select="handleCategorySelect"
+          />
+
+          <main class="flex-1 overflow-y-auto" :class="layoutProps.mainClass">
+            <component
+              :is="pageComponent"
+              v-bind="pageProps"
+              :user="user"
+              :categories="categories"
+              :active-category="activeCategory"
+              @update-cart-count="updateCartCount"
+            />
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <transition
+      enter-active-class="transition ease-out duration-100"
+      enter-from-class="transform opacity-0 scale-95"
+      enter-to-class="transform opacity-100 scale-100"
+      leave-active-class="transition ease-in duration-75"
+      leave-from-class="transform opacity-100 scale-100"
+      leave-to-class="transform opacity-0 scale-95"
+    >
+      <div
+        v-if="showUserMenu"
+        class="fixed top-20 right-8 z-50 w-48 rounded-lg bg-white py-2 shadow-xl"
+        @click.stop
+      >
+        <a
+          href="/customer"
+          @click.prevent="push('/customer'); showUserMenu = false"
+          class="flex items-center gap-2 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-100"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+          </svg>
+          Purchase history
+        </a>
+        <a
+          href="/customer/settings"
+          @click.prevent="push('/customer/settings'); showUserMenu = false"
+          class="flex items-center gap-2 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-100"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          Settings
+        </a>
+        <div class="my-1 border-t"></div>
+        <button
+          @click="handleSignOut"
+          class="flex w-full items-center gap-2 px-4 py-2 text-left text-red-600 transition-colors hover:bg-red-50"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          Sign out
+        </button>
+      </div>
+    </transition>
+
+    <div
+      v-if="showUserMenu"
+      class="fixed inset-0 z-40"
+      @click="showUserMenu = false"
+    ></div>
+  </div>
+</template>
+
+<script setup>
+import { onMounted, onUnmounted, ref } from 'vue';
+import { useSpaRouter } from '../../router';
+import AppHeader from './AppHeader.vue';
+import AppSidebar from './AppSidebar.vue';
+
+defineProps({
+  pageComponent: {
+    type: Object,
+    required: true,
+  },
+  pageProps: {
+    type: Object,
+    default: () => ({}),
+  },
+  layoutProps: {
+    type: Object,
+    default: () => ({
+      hideSidebar: false,
+      mainClass: 'bg-[#F6F4F1]',
+    }),
+  },
+});
+
+const { push } = useSpaRouter();
+const rawUserName = window.Laravel?.user?.name || 'Guest Explorer';
+
+const user = ref({
+  name: rawUserName,
+  email: 'customer@bakerdan.local',
+  avatar: rawUserName
+    .split(' ')
+    .map((part) => part[0] || '')
+    .join('')
+    .slice(0, 2)
+    .toUpperCase(),
+});
+
+const categories = ref([
+  { name: 'Bread', active: true },
+  { name: 'Pastries', active: false },
+  { name: 'Cakes', active: false },
+  { name: 'Customize', active: false },
+]);
+
+const activeCategory = ref('Bread');
+const showUserMenu = ref(false);
+
+const handleCategorySelect = (categoryName) => {
+  activeCategory.value = categoryName;
+  categories.value.forEach((category) => {
+    category.active = category.name === categoryName;
+  });
+
+  if (categoryName === 'Customize') {
+    push('/customer/customize');
+    return;
+  }
+
+  push('/customer');
+};
+
+const updateCartCount = (count) => {
+  console.log('Cart count updated:', count);
+};
+
+const handleSignOut = async () => {
+  try {
+    await fetch('/logout', {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+      },
+    });
+
+    window.location.href = '/login';
+  } catch (error) {
+    console.error('Sign out failed:', error);
+  }
+};
+
+const handleClickOutside = (event) => {
+  if (showUserMenu.value && !event.target.closest('.user-menu')) {
+    showUserMenu.value = false;
+  }
+};
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+});
+</script>
