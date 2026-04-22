@@ -36,8 +36,7 @@ Route::prefix('forgot-password')->group(function () {
     Route::post('/step-3', [ForgotPasswordController::class, 'handleStep3']);
 });
 
-// Dummy pages for redirection
-Route::get('/admin', function() { return "Admin Page"; })->name('admin.home');
+Route::get('/admin', function() { return view('admin.dashboard'); })->name('admin.home');
 
 // BAKERDAN customer SPA entry points.
 Route::view('/customer', 'customer.app')->name('customer.home');
