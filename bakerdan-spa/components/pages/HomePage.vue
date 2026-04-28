@@ -130,13 +130,26 @@ const products = ref([
   }
 ])
 
-const handleAddToCart = async (productId) => {
+const handleAddToCart = (productId) => {
+  // Get cart from sessionStorage or initialize
+  let cart = [];
   try {
-    // await api.addToCart(productId, { quantity: 1 })
-    console.log('Added to cart:', productId)
-  } catch (error) {
-    console.error('Failed to add to cart:', error)
+    cart = JSON.parse(sessionStorage.getItem('cart')) || [];
+  } catch (e) {
+    cart = [];
   }
+  // Find product
+  const product = products.value.find(p => p.id === productId);
+  if (!product) return;
+  // Check if already in cart
+  const existing = cart.find(item => item.id === productId);
+  if (existing) {
+    existing.quantity += 1;
+  } else {
+    cart.push({ ...product, quantity: 1 });
+  }
+  sessionStorage.setItem('cart', JSON.stringify(cart));
+  console.log('Added to cart (session):', productId);
 }
 
 const handleToggleLike = (productId) => {

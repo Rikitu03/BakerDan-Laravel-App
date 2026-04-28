@@ -5,43 +5,63 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
-// Don't forget to import Inertia at the top of your controller:
-use Inertia\Inertia;
-use Inertia\Response;
 
 class CustomerController extends Controller
 {
-    public function home(): Response
+    /**
+     * Serve the Vue SPA for all customer routes
+     */
+    public function spa(): View
     {
-        return $this->storefront('catalog');
-    }
-
-    public function cart(): Response
-    {
-        return $this->storefront('detail');
-    }
-
-    private function storefront(string $initialView): Response
-    {   
         $customer = $this->customerProfile();
-        $categories = $this->storefrontCategories();
-        $sortOptions = [
-            ['label' => 'Popularity', 'active' => true],
-            ['label' => 'Price', 'active' => false],
-            ['label' => 'Low to High', 'active' => false],
-        ];
-        $products = $this->storefrontProducts();
-        $product = $this->featuredStorefrontProduct();
+        
+        return view('customer.app', compact('customer'));
+    }
 
-        // Change from view() to Inertia::render()
-        // Make sure 'Customer/home' exactly matches your file path: resources/js/Pages/Customer/home.vue
-        return Inertia::render('Customer/home', [
-            'customer' => $customer,
-            'categories' => $categories,
-            'sortOptions' => $sortOptions,
-            'products' => $products,
-            'product' => $product,
-            'initialView' => $initialView
-        ]);
+    /**
+     * Get customer profile data
+     */
+    private function customerProfile(array $overrides = []): array
+    {
+        $user = Auth::user();
+
+        if (!$user || $user->role !== 'customer') {
+            return array_merge([
+                'id' => 0,
+                'name' => 'Jason Jay Recto',
+                'first_name' => 'Jason',
+                'email' => 'preview@bakerdan.test',
+                'phone' => '+63 900 000 0000',
+                'address' => 'Metro Manila',
+                'total_orders' => 12,
+                'loyalty_points' => 850,
+                'member_since' => 'Preview mode',
+                'avatar' => 'JR',
+            ], $overrides);
+        }
+
+        $user->loadMissing('detail');
+        $detail = $user->detail;
+        $name = $detail?->name ?: 'Bakerdan Customer';
+        
+        // Generate initials for avatar
+        $initials = collect(preg_split('/\s+/', trim($name)) ?: [])
+            ->filter()
+            ->take(2)
+            ->map(fn(string $part) => Str::upper(Str::substr($part, 0, 1)))
+            ->join('');
+
+        return array_merge([
+            'id' => $user->user_id,
+            'name' => $name,
+            'first_name' => Str::of($name)->before(' ')->value() ?: $name,
+            'email' => $detail?->email ?: 'customer@bakerdan.com',
+            'phone' => $detail?->contact ?: '+63 900 000 0000',
+            'address' => $detail?->address ?: 'Metro Manila',
+            'total_orders' => 12, // TODO: Get from database
+            'loyalty_points' => 850, // TODO: Get from database
+            'member_since' => $user->created_at?->format('F Y') ?: 'New member',
+            'avatar' => $initials ?: 'BC',
+        ], $overrides);
     }
 }

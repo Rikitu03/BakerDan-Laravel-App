@@ -144,8 +144,9 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useSpaRouter } from '../../router';
+import api from '../../services/api';
 import { useCartStore } from '../../services/cartStore';
 import ProductCard from '../shared/ProductCard.vue';
 
@@ -173,7 +174,7 @@ const sortModes = [
   { id: 'low-to-high', label: 'Low to High' },
 ];
 
-const products = ref([
+const fallbackProducts = [
   {
     id: 1,
     category: 'Bread',
@@ -306,7 +307,9 @@ const products = ref([
     tag: 'Custom Gift',
     rating: '4.9/5',
   },
-]);
+];
+
+const products = ref([...fallbackProducts]);
 
 watch(
   () => props.activeCategory,
@@ -314,6 +317,35 @@ watch(
     currentPage.value = 1;
   },
 );
+
+const mapProduct = (product) => ({
+  id: product.id ?? product.product_id,
+  category: product.category ?? 'Bread',
+  name: product.name ?? product.product_name ?? 'Untitled Product',
+  description: product.description ?? '',
+  price: Number(product.price ?? 0),
+  image: product.image_url || product.image || '/images/bakerdan/Bread.png',
+  liked: false,
+  tag: product.is_active ? 'Available' : 'Inactive',
+  rating: '5.0/5',
+});
+
+const loadProducts = async () => {
+  try {
+    const response = await api.getProducts();
+    const catalog = response.data?.data || [];
+
+    if (catalog.length) {
+      products.value = catalog.map(mapProduct);
+    }
+  } catch (error) {
+    products.value = [...fallbackProducts];
+  }
+};
+
+onMounted(() => {
+  loadProducts();
+});
 
 const filteredProducts = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();

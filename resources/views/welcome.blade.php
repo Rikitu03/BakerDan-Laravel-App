@@ -275,6 +275,15 @@
                         <a href="#assistant" class="transition hover:opacity-70">AI Assistant</a>
                     </nav>
                     <div class="flex items-center gap-3">
+                        <!-- Cart Icon -->
+                        <a href="/cart" class="grid h-10 w-10 place-items-center rounded-full border transition hover:bg-white/60" style="border-color: var(--line);" aria-label="Cart">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <circle cx="9" cy="20" r="1.25"></circle>
+                                <circle cx="18" cy="20" r="1.25"></circle>
+                                <path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h8.5a2 2 0 0 0 1.9-1.4L22 7H7"></path>
+                            </svg>
+                        </a>
+                        <!-- Account Icon -->
                         <a href="{{ route('login') }}" class="grid h-10 w-10 place-items-center rounded-full border transition hover:bg-white/60" style="border-color: var(--line);" aria-label="Account">
                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                 <path d="M20 21a8 8 0 0 0-16 0"></path>
