@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>BakerDan Admin Dashboard</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=sora:400,500,600,700,800|outfit:400,500,600,700" rel="stylesheet" />
     @vite(['resources/css/app.css', 'resources/js/main.js'])
@@ -325,59 +326,15 @@
 </head>
 <body class="antialiased">
 @php
-    $metrics = [
-        ['label' => 'Total products ordered', 'value' => '1,284', 'detail' => 'Count from order items'],
-        ['label' => 'Completed orders', 'value' => '428', 'detail' => 'All time completed'],
-        ['label' => 'Orders completed this week', 'value' => '76', 'detail' => 'Current 7-day window'],
-        ['label' => 'Orders completed this month', 'value' => '214', 'detail' => 'Current month total'],
-    ];
-
-    $products = [
-        ['id' => 1, 'name' => 'Classic Pandesal', 'description' => 'Soft everyday bread for retail and bulk pickup.', 'type' => 'bread', 'price' => '₱8', 'image' => 'images/bakerdan/Bread.png'],
-        ['id' => 2, 'name' => 'Chocolate Moist Cake', 'description' => 'Rich layered cake with smooth cocoa finish.', 'type' => 'cake', 'price' => '₱850', 'image' => 'images/bakerdan/Cake.png'],
-        ['id' => 3, 'name' => 'Cheese Roll', 'description' => 'Buttery roll with a savory cheese center.', 'type' => 'bread', 'price' => '₱16', 'image' => 'images/bakerdan/Creme_Puffs.png'],
-        ['id' => 4, 'name' => 'Brownies Tray', 'description' => 'Dense, fudgy brownies for special orders.', 'type' => 'cake', 'price' => '₱420', 'image' => 'images/bakerdan/Brownies.png'],
-    ];
-
-    $orders = [
-        ['id' => 'ORD-1024', 'customer' => 'Lara Gomez', 'items' => '12 pcs pandesal, 2 cakes', 'status' => 'accepted', 'payment_status' => 'unpaid', 'amount' => '₱1,420'],
-        ['id' => 'ORD-1025', 'customer' => 'Mika Reyes', 'items' => '6 brownies trays, 1 loaf set', 'status' => 'preparing', 'payment_status' => 'unpaid', 'amount' => '₱2,980'],
-        ['id' => 'ORD-1026', 'customer' => 'Jonah Cruz', 'items' => '3 celebration cakes', 'status' => 'ready', 'payment_status' => 'paid', 'amount' => '₱4,500'],
-    ];
-
-    $customers = [
-        ['id' => 1, 'role' => 'customer', 'name' => 'Anika Santos', 'username' => 'anikabakes', 'age' => 27, 'email' => 'anika@example.com', 'contact' => '0917 111 2233', 'address' => 'Quezon City', 'status' => 'active'],
-        ['id' => 2, 'role' => 'customer', 'name' => 'Paolo Diaz', 'username' => 'paolod', 'age' => 33, 'email' => 'paolo@example.com', 'contact' => '0918 222 3344', 'address' => 'Makati City', 'status' => 'suspended'],
-        ['id' => 3, 'role' => 'customer', 'name' => 'Sarah Lim', 'username' => 'sarahlim', 'age' => 24, 'email' => 'sarah@example.com', 'contact' => '0920 333 4455', 'address' => 'Pasig City', 'status' => 'active'],
-    ];
-
-    $admins = [
-        ['id' => 11, 'role' => 'admin', 'name' => 'Admin Baker', 'username' => 'adminbaker', 'age' => 35, 'email' => 'admin@example.com', 'contact' => '0917 555 6677', 'address' => 'Main Branch', 'status' => 'active'],
-        ['id' => 12, 'role' => 'admin', 'name' => 'Supervisor May', 'username' => 'supermay', 'age' => 31, 'email' => 'may@example.com', 'contact' => '0918 666 7788', 'address' => 'Production Unit', 'status' => 'active'],
-    ];
-
-    $notifications = [
-        ['id' => 1, 'customer_name' => 'Lara Gomez', 'message' => 'New bulk order requested for birthday pastries.', 'date' => '2026-04-22 08:30'],
-        ['id' => 2, 'customer_name' => 'Mika Reyes', 'message' => 'Payment follow-up waiting for confirmation.', 'date' => '2026-04-21 16:45'],
-        ['id' => 3, 'customer_name' => 'Jonah Cruz', 'message' => 'Requested pickup schedule changed to 3 PM.', 'date' => '2026-04-20 13:12'],
-    ];
-
-    $weeklyCompletions = [
-        ['label' => 'Mon', 'value' => 9],
-        ['label' => 'Tue', 'value' => 11],
-        ['label' => 'Wed', 'value' => 13],
-        ['label' => 'Thu', 'value' => 10],
-        ['label' => 'Fri', 'value' => 15],
-        ['label' => 'Sat', 'value' => 12],
-        ['label' => 'Sun', 'value' => 6],
-    ];
-
-    $productTypeBreakdown = [
-        ['label' => 'Bread', 'value' => collect($products)->where('type', 'bread')->count()],
-        ['label' => 'Cake', 'value' => collect($products)->where('type', 'cake')->count()],
-    ];
-
-    $reportPayload = [
+    $metrics = $metrics ?? [];
+    $products = $products ?? [];
+    $orders = $orders ?? [];
+    $customers = $customers ?? [];
+    $admins = $admins ?? [];
+    $notifications = $notifications ?? [];
+    $weeklyCompletions = $weeklyCompletions ?? [];
+    $productTypeBreakdown = $productTypeBreakdown ?? [];
+    $reportPayload = $reportPayload ?? [
         'metrics' => $metrics,
         'products' => $products,
         'orders' => $orders,
@@ -387,8 +344,7 @@
         'weeklyCompletions' => $weeklyCompletions,
         'productTypeBreakdown' => $productTypeBreakdown,
     ];
-
-    $sidebarCounts = [
+    $sidebarCounts = $sidebarCounts ?? [
         'dashboard' => '•',
         'inventory' => count($products),
         'orders' => count($orders),
@@ -579,21 +535,21 @@
                                 <th class="px-5 py-4 font-medium">Name</th>
                                 <th class="px-5 py-4 font-medium">Description</th>
                                 <th class="px-5 py-4 font-medium">Price</th>
-                                <th class="px-5 py-4 font-medium">Type</th>
+                                <th class="px-5 py-4 font-medium">Category</th>
                                 <th class="px-5 py-4 font-medium">Image</th>
                                 <th class="px-5 py-4 font-medium">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 bg-white">
                             @foreach ($products as $product)
-                                <tr data-product-row data-page-item="inventory" data-product-id="{{ $product['id'] }}" data-product-name="{{ $product['name'] }}" data-product-description="{{ $product['description'] }}" data-product-price="{{ $product['price'] }}" data-product-type="{{ $product['type'] }}" class="align-top">
+                                <tr data-product-row data-page-item="inventory" data-product-id="{{ $product['id'] }}" data-product-name="{{ $product['name'] }}" data-product-description="{{ $product['description'] }}" data-product-price="{{ $product['price'] }}" data-product-category="{{ $product['category'] }}" data-product-image-url="{{ $product['image_url'] ?? '' }}" data-product-is-active="{{ !empty($product['is_active']) ? 1 : 0 }}" class="align-top">
                                     <td class="px-5 py-4 font-semibold text-slate-900">{{ $product['name'] }}</td>
                                     <td class="px-5 py-4 text-slate-600">{{ $product['description'] }}</td>
-                                    <td class="px-5 py-4 font-semibold text-slate-900">{{ $product['price'] }}</td>
-                                    <td class="px-5 py-4"><span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">{{ $product['type'] }}</span></td>
+                                    <td class="px-5 py-4 font-semibold text-slate-900">{{ $product['formatted_price'] ?? $product['price'] }}</td>
+                                    <td class="px-5 py-4"><span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">{{ $product['category'] }}</span></td>
                                     <td class="px-5 py-4">
-                                        @if (file_exists(public_path($product['image'])))
-                                            <img src="{{ asset($product['image']) }}" alt="{{ $product['name'] }}" class="h-14 w-14 rounded-2xl object-cover ring-1 ring-slate-200">
+                                        @if (!empty($product['image_url']))
+                                            <img src="{{ $product['image_url'] }}" alt="{{ $product['name'] }}" class="h-14 w-14 rounded-2xl object-cover ring-1 ring-slate-200">
                                         @else
                                             <div class="grid h-14 w-14 place-items-center rounded-2xl bg-slate-100 text-xs font-semibold text-slate-500">IMG</div>
                                         @endif
@@ -871,29 +827,40 @@
                     <button type="button" data-inventory-close class="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-600">✕</button>
                 </div>
 
-                <form data-inventory-form class="mt-6 flex flex-1 flex-col gap-4" data-mode="add">
-                    <input data-inventory-id type="hidden" value="">
+                <form data-inventory-form class="mt-6 flex flex-1 flex-col gap-4" data-mode="add" action="{{ route('admin.inventory.store') }}" method="POST" enctype="multipart/form-data" data-store-url="{{ route('admin.inventory.store') }}" data-update-url-base="{{ url('/admin/inventory') }}">
+                    @csrf
+                    <input data-inventory-id name="product_id" type="hidden" value="">
+                    <input data-inventory-method type="hidden" name="_method" value="" disabled>
                     <label class="grid gap-2 text-sm font-medium text-slate-700">
                         Name
-                        <input data-inventory-name type="text" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400" placeholder="Product name">
+                        <input data-inventory-name name="product_name" type="text" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400" placeholder="Product name">
                     </label>
                     <label class="grid gap-2 text-sm font-medium text-slate-700">
                         Description
-                        <textarea data-inventory-description rows="4" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400" placeholder="Short product description"></textarea>
+                        <textarea data-inventory-description name="description" rows="4" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400" placeholder="Short product description"></textarea>
                     </label>
                     <label class="grid gap-2 text-sm font-medium text-slate-700">
                         Price
-                        <input data-inventory-price type="text" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400" placeholder="e.g. ₱850 or ₱16 / pc">
+                        <input data-inventory-price name="price" type="number" step="0.01" min="0" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400" placeholder="e.g. 850 or 16">
                     </label>
                     <label class="grid gap-2 text-sm font-medium text-slate-700">
                         Image upload
-                        <input type="file" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400">
+                        <input name="image" type="file" accept="image/*" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400">
                     </label>
                     <label class="grid gap-2 text-sm font-medium text-slate-700">
-                        Type
-                        <select data-inventory-type class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400">
-                            <option value="bread">Bread</option>
-                            <option value="cake">Cake</option>
+                        Category
+                        <select data-inventory-type name="category" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400">
+                            <option value="Bread">Bread</option>
+                            <option value="Pastries">Pastries</option>
+                            <option value="Cakes">Cakes</option>
+                            <option value="Customize">Customize</option>
+                        </select>
+                    </label>
+                    <label class="grid gap-2 text-sm font-medium text-slate-700">
+                        Status
+                        <select data-inventory-is-active name="is_active" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400">
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
                         </select>
                     </label>
                     <button type="submit" class="mt-auto rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white">Save Product</button>

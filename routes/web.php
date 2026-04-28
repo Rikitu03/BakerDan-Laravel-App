@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\ForgotPasswordController;
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CartController;
@@ -100,6 +101,9 @@ Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::get('/admin', function() { 
-    return view('admin.dashboard'); 
-})->name('admin.home');
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
+    Route::get('/', [AdminController::class, 'index'])->name('admin.home');
+    Route::post('/inventory', [AdminController::class, 'storeInventory'])->name('admin.inventory.store');
+    Route::put('/inventory/{product}', [AdminController::class, 'updateInventory'])->name('admin.inventory.update');
+    Route::delete('/inventory/{product}', [AdminController::class, 'destroyInventory'])->name('admin.inventory.destroy');
+});

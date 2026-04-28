@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -13,26 +14,35 @@ class ProductController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        // TODO: Replace with actual database query
-        // Example: $products = Product::query()
-        //     ->when($request->category, fn($q) => $q->where('category', $request->category))
-        //     ->when($request->min_price, fn($q) => $q->where('price', '>=', $request->min_price))
-        //     ->when($request->max_price, fn($q) => $q->where('price', '<=', $request->max_price))
-        //     ->when($request->search, fn($q) => $q->where('name', 'like', "%{$request->search}%"))
-        //     ->orderBy($request->sort_by ?? 'created_at', $request->sort_order ?? 'desc')
-        //     ->paginate($request->per_page ?? 15);
+        $query = Product::query()->where('is_active', true);
 
-        // Mock data for now
-        $products = collect(range(1, 15))->map(function ($id) {
+        $query->when($request->filled('category'), fn ($builder) => $builder->where('category', $request->string('category')));
+        $query->when($request->filled('min_price'), fn ($builder) => $builder->where('price', '>=', (float) $request->input('min_price')));
+        $query->when($request->filled('max_price'), fn ($builder) => $builder->where('price', '<=', (float) $request->input('max_price')));
+        $query->when($request->filled('search'), function ($builder) use ($request): void {
+            $search = $request->string('search');
+            $builder->where(function ($nested) use ($search): void {
+                $nested->where('product_name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('category', 'like', "%{$search}%");
+            });
+        });
+
+        $products = $query->orderByDesc('id')->get()->map(function (Product $product): array {
+            $imageUrl = $product->image_url ? asset('storage/' . ltrim($product->image_url, '/')) : null;
             return [
-                'id' => $id,
-                'name' => 'Korean Garlic Cream Cheese Bun',
-                'description' => 'Soft enriched dough with a rich cream cheese filling and glossy golden top.',
-                'price' => 499.00,
-                'category' => 'Bread',
-                'image' => 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop',
+                'id' => $product->id,
+                'product_id' => $product->product_id ?? $product->id,
+                'name' => $product->product_name,
+                'product_name' => $product->product_name,
+                'description' => $product->description,
+                'price' => (float) $product->price,
+                'category' => $product->category,
+                'image' => $imageUrl,
+                'image_url' => $imageUrl,
                 'in_stock' => true,
-                'liked' => rand(0, 1) === 1,
+                'is_active' => (bool) $product->is_active,
+                'liked' => false,
             ];
         });
 
@@ -40,8 +50,8 @@ class ProductController extends Controller
             'success' => true,
             'data' => $products,
             'pagination' => [
-                'total' => 15,
-                'per_page' => 15,
+                'total' => $products->count(),
+                'per_page' => $products->count() ?: 1,
                 'current_page' => 1,
                 'last_page' => 1,
             ]
@@ -53,25 +63,24 @@ class ProductController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        // TODO: Replace with actual database query
-        // Example: $product = Product::findOrFail($id);
+        $product = Product::query()->whereKey($id)->where('is_active', true)->firstOrFail();
 
-        $product = [
-            'id' => $id,
-            'name' => 'Korean Garlic Cream Cheese Bun',
-            'description' => 'Soft enriched dough with a rich cream cheese filling and glossy golden top.',
-            'price' => 499.00,
-            'category' => 'Bread',
-            'image' => 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop',
-            'in_stock' => true,
-            'ingredients' => ['Flour', 'Cream Cheese', 'Garlic', 'Butter'],
-            'allergens' => ['Dairy', 'Gluten'],
-            'sizes' => ['Small', 'Medium', 'Large'],
-        ];
-
+        $imageUrl = $product->image_url ? asset('storage/' . ltrim($product->image_url, '/')) : null;
         return response()->json([
             'success' => true,
-            'data' => $product
+            'data' => [
+                'id' => $product->id,
+                'product_id' => $product->product_id ?? $product->id,
+                'name' => $product->product_name,
+                'product_name' => $product->product_name,
+                'description' => $product->description,
+                'price' => (float) $product->price,
+                'category' => $product->category,
+                'image' => $imageUrl,
+                'image_url' => $imageUrl,
+                'in_stock' => true,
+                'is_active' => (bool) $product->is_active,
+            ]
         ]);
     }
 
@@ -80,15 +89,18 @@ class ProductController extends Controller
      */
     public function categories(): JsonResponse
     {
-        // TODO: Replace with actual database query
-        // Example: $categories = Category::all();
-
-        $categories = [
-            ['id' => 1, 'name' => 'Bread', 'icon' => '🍞'],
-            ['id' => 2, 'name' => 'Patries', 'icon' => '🥐'],
-            ['id' => 3, 'name' => 'Cakes', 'icon' => '🎂'],
-            ['id' => 4, 'name' => 'Customize', 'icon' => '✨'],
-        ];
+        $categories = Product::query()
+            ->where('is_active', true)
+            ->select('category')
+            ->distinct()
+            ->orderBy('category')
+            ->pluck('category')
+            ->values()
+            ->map(fn (string $category, int $index): array => [
+                'id' => $index + 1,
+                'name' => $category,
+                'icon' => '🍞',
+            ]);
 
         return response()->json([
             'success' => true,

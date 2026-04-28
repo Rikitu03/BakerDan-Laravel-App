@@ -21,6 +21,8 @@ if (dashboard) {
     const inventoryDescription = dashboard.querySelector('[data-inventory-description]');
     const inventoryPrice = dashboard.querySelector('[data-inventory-price]');
     const inventoryType = dashboard.querySelector('[data-inventory-type]');
+    const inventoryIsActive = dashboard.querySelector('[data-inventory-is-active]');
+    const inventoryMethod = dashboard.querySelector('[data-inventory-method]');
     const inventoryId = dashboard.querySelector('[data-inventory-id]');
     const customerPanel = dashboard.querySelector('[data-customer-panel]');
     const customerPanelTitle = dashboard.querySelector('[data-customer-panel-title]');
@@ -41,6 +43,7 @@ if (dashboard) {
 
     const reportDataElement = document.getElementById('admin-report-data');
     const reportData = reportDataElement ? JSON.parse(reportDataElement.textContent) : null;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
     const paginationKeys = ['inventory', 'orders', 'customers', 'admins', 'notifications'];
     const paginations = {
@@ -310,10 +313,27 @@ if (dashboard) {
             inventoryName.value = product.name;
             inventoryDescription.value = product.description;
             inventoryPrice.value = product.price;
-            inventoryType.value = product.type;
+            inventoryType.value = product.category || 'Bread';
+            if (inventoryIsActive) {
+                inventoryIsActive.value = product.is_active ? '1' : '0';
+            }
+            if (inventoryMethod) {
+                inventoryMethod.disabled = false;
+                inventoryMethod.value = 'PUT';
+            }
         } else {
             inventoryForm.reset();
             inventoryId.value = '';
+            if (inventoryType) {
+                inventoryType.value = 'Bread';
+            }
+            if (inventoryIsActive) {
+                inventoryIsActive.value = '1';
+            }
+            if (inventoryMethod) {
+                inventoryMethod.disabled = true;
+                inventoryMethod.value = '';
+            }
         }
     };
 
@@ -389,7 +409,8 @@ if (dashboard) {
                 name: row.dataset.productName,
                 description: row.dataset.productDescription,
                 price: row.dataset.productPrice,
-                type: row.dataset.productType,
+                category: row.dataset.productCategory,
+                is_active: row.dataset.productIsActive === '1',
             });
             return;
         }
@@ -496,19 +517,43 @@ if (dashboard) {
 
     inventoryForm?.addEventListener('submit', (event) => {
         event.preventDefault();
-        inventoryFeedback.textContent = inventoryForm.dataset.mode === 'edit' ? 'Product updated' : 'Product added';
-        closeInventoryDrawer();
+
+        const mode = inventoryForm.dataset.mode || 'add';
+        const productId = inventoryId.value;
+        const baseUrl = inventoryForm.dataset.updateUrlBase;
+
+        if (mode === 'edit' && productId) {
+            inventoryForm.action = `${baseUrl}/${productId}`;
+            if (inventoryMethod) {
+                inventoryMethod.disabled = false;
+                inventoryMethod.value = 'PUT';
+            }
+        } else {
+            inventoryForm.action = inventoryForm.dataset.storeUrl || inventoryForm.action;
+            if (inventoryMethod) {
+                inventoryMethod.disabled = true;
+                inventoryMethod.value = '';
+            }
+        }
+
+        inventoryForm.submit();
     });
 
     modalConfirm?.addEventListener('click', () => {
         if (!modalAction) return;
 
         if (modalAction.productId) {
-            const productRow = dashboard.querySelector(`[data-product-row][data-product-id="${modalAction.productId}"]`);
-            if (productRow) {
-                productRow.dataset.removed = '1';
-                renderPagination('inventory');
-            }
+            fetch(`/admin/inventory/${modalAction.productId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                },
+            }).then(() => {
+                window.location.reload();
+            });
+            closeModal();
+            return;
         }
 
         if (modalAction.orderId) {
