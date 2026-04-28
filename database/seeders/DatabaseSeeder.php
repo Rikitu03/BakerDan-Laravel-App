@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Models\UserDetail;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -15,11 +16,29 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $this->call(ProductCatalogSeeder::class);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        $existingDetail = UserDetail::query()->where('email', 'test@example.com')->first();
+        $user = $existingDetail?->user;
+
+        if (!$user) {
+            $user = User::query()->create([
+                'role' => 'customer',
+                'is_active' => true,
+            ]);
+        }
+
+        UserDetail::query()->updateOrCreate(
+            ['email' => 'test@example.com'],
+            [
+                'name' => 'Test User',
+                'username' => 'testuser',
+                'age' => 25,
+                'user_id' => $user->user_id,
+                'contact' => '09123456789',
+                'address' => 'Bakerdan Demo Address',
+                'password' => 'password123',
+            ],
+        );
     }
 }

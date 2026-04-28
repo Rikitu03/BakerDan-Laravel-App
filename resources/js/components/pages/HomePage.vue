@@ -113,7 +113,7 @@
     </section>
 
     <section class="mt-6">
-      <div class="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
+      <div v-if="paginatedProducts.length" class="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
         <ProductCard
           v-for="product in paginatedProducts"
           :key="product.id"
@@ -122,9 +122,14 @@
           @toggle-like="handleToggleLike"
         />
       </div>
+
+      <div v-else class="rounded-[28px] border border-dashed border-[#E1D4C8] bg-[#FCF8F4] px-6 py-12 text-center text-[#756A63]">
+        <h2 class="text-2xl font-bold text-[#4C4641]" style="font-family: 'Urbanist', sans-serif;">No products available</h2>
+        <p class="mt-2 text-sm">The catalog is waiting for products from the database.</p>
+      </div>
     </section>
 
-    <nav class="mt-10 flex items-center justify-center gap-3" aria-label="Product pagination">
+    <nav v-if="filteredProducts.length" class="mt-10 flex items-center justify-center gap-3" aria-label="Product pagination">
       <button
         type="button"
         class="flex h-10 w-10 items-center justify-center rounded-full border border-[#E1D6CC] bg-white text-[#71675F]"
@@ -158,7 +163,7 @@ const props = defineProps({
 });
 
 const { push } = useSpaRouter();
-const { addCartItem } = useCartStore();
+const { addCatalogItem } = useCartStore();
 
 const attachmentInput = ref(null);
 const attachmentName = ref('');
@@ -174,142 +179,7 @@ const sortModes = [
   { id: 'low-to-high', label: 'Low to High' },
 ];
 
-const fallbackProducts = [
-  {
-    id: 1,
-    category: 'Bread',
-    name: 'Korean Garlic Cream Cheese Bun',
-    description: 'Soft enriched dough with a rich cream cheese center and a glossy garlic finish.',
-    price: 499.0,
-    image: '/images/bakerdan/Creme_Cheese_Garlic.png',
-    liked: true,
-    tag: 'Best Seller',
-    rating: '4.9/5',
-  },
-  {
-    id: 2,
-    category: 'Pastries',
-    name: 'Classic Cream Puffs',
-    description: 'Airy pastry shells filled with silky vanilla cream and a light sugar dusting.',
-    price: 299.0,
-    image: '/images/bakerdan/Creme_Puffs.png',
-    liked: false,
-    tag: 'Fresh Batch',
-    rating: '4.8/5',
-  },
-  {
-    id: 3,
-    category: 'Cakes',
-    name: 'Celebration Butter Cake',
-    description: 'A soft layered cake made for birthdays, milestones, and everyday sweet cravings.',
-    price: 899.0,
-    image: '/images/bakerdan/Cake_Celebration.png',
-    liked: true,
-    tag: 'Party Pick',
-    rating: '4.9/5',
-  },
-  {
-    id: 4,
-    category: 'Pastries',
-    name: 'Fudgy Brownie Squares',
-    description: 'Rich chocolate brownie bars with a chewy middle and delicate crackly top.',
-    price: 240.0,
-    image: '/images/bakerdan/Brownies.png',
-    liked: false,
-    tag: 'Chocolate',
-    rating: '4.7/5',
-  },
-  {
-    id: 5,
-    category: 'Customize',
-    name: 'Customized Cookies Box',
-    description: 'Personalized cookies prepared with your chosen colors, message, and event theme.',
-    price: 650.0,
-    image: '/images/bakerdan/Customized_Cookies.png',
-    liked: true,
-    tag: 'Made to Order',
-    rating: '4.9/5',
-  },
-  {
-    id: 6,
-    category: 'Bread',
-    name: 'Daily Artisan Bread Loaf',
-    description: 'Golden crust outside, fluffy crumb inside, and baked fresh each morning.',
-    price: 180.0,
-    image: '/images/bakerdan/Bread.png',
-    liked: false,
-    tag: 'Daily Fresh',
-    rating: '4.8/5',
-  },
-  {
-    id: 7,
-    category: 'Bread',
-    name: 'Garlic Cream Cheese Bun Trio',
-    description: 'A trio of creamy garlic buns for sharing with the whole table.',
-    price: 760.0,
-    image: '/images/bakerdan/Creme_Cheese_Garlic.png',
-    liked: true,
-    tag: 'Bundle',
-    rating: '4.9/5',
-  },
-  {
-    id: 8,
-    category: 'Pastries',
-    name: 'Vanilla Puff Treats',
-    description: 'A bakery favorite with airy pastry and a balanced vanilla filling.',
-    price: 315.0,
-    image: '/images/bakerdan/Creme_Puffs.png',
-    liked: false,
-    tag: 'Customer Pick',
-    rating: '4.7/5',
-  },
-  {
-    id: 9,
-    category: 'Cakes',
-    name: 'Buttercream Celebration Cake',
-    description: 'Smooth buttercream edges with a rich sponge and a festive presentation.',
-    price: 990.0,
-    image: '/images/bakerdan/Cake_Celebration.png',
-    liked: true,
-    tag: 'Signature',
-    rating: '5.0/5',
-  },
-  {
-    id: 10,
-    category: 'Bread',
-    name: 'Bakerdan House Loaf',
-    description: 'Lightly crisp, deeply comforting, and ideal for sandwiches or breakfast toast.',
-    price: 165.0,
-    image: '/images/bakerdan/Bread.png',
-    liked: false,
-    tag: 'House Favorite',
-    rating: '4.8/5',
-  },
-  {
-    id: 11,
-    category: 'Pastries',
-    name: 'Chocolate Brownie Bites',
-    description: 'Compact brownie pieces with intense cocoa flavor and a tender crumb.',
-    price: 210.0,
-    image: '/images/bakerdan/Brownies.png',
-    liked: false,
-    tag: 'Snack Box',
-    rating: '4.6/5',
-  },
-  {
-    id: 12,
-    category: 'Customize',
-    name: 'Celebration Cookie Set',
-    description: 'Color-coordinated sugar cookies that can match birthdays, weddings, and gifts.',
-    price: 720.0,
-    image: '/images/bakerdan/Customized_Cookies.png',
-    liked: true,
-    tag: 'Custom Gift',
-    rating: '4.9/5',
-  },
-];
-
-const products = ref([...fallbackProducts]);
+const products = ref([]);
 
 watch(
   () => props.activeCategory,
@@ -324,6 +194,7 @@ const mapProduct = (product) => ({
   name: product.name ?? product.product_name ?? 'Untitled Product',
   description: product.description ?? '',
   price: Number(product.price ?? 0),
+  priceLabel: product.price_label ?? '',
   image: product.image_url || product.image || '/images/bakerdan/Bread.png',
   liked: false,
   tag: product.is_active ? 'Available' : 'Inactive',
@@ -334,12 +205,9 @@ const loadProducts = async () => {
   try {
     const response = await api.getProducts();
     const catalog = response.data?.data || [];
-
-    if (catalog.length) {
-      products.value = catalog.map(mapProduct);
-    }
+    products.value = catalog.map(mapProduct);
   } catch (error) {
-    products.value = [...fallbackProducts];
+    products.value = [];
   }
 };
 
@@ -406,21 +274,24 @@ const submitSearch = () => {
   currentPage.value = 1;
 };
 
-const handleAddToCart = (productId) => {
+const handleAddToCart = async (productId) => {
   const product = products.value.find((item) => item.id === productId);
 
   if (!product) {
     return;
   }
 
-  const addedId = addCartItem({
-    ...product,
-    productKey: `catalog-${product.id}`,
-    source: 'catalog',
-    quantity: 1,
-  });
+  try {
+    const addedItem = await addCatalogItem(product.id, {
+      quantity: 1,
+    });
 
-  push(`/customer/cart?added=${addedId}`);
+    if (addedItem?.id) {
+      push(`/customer/cart?added=${addedItem.id}`);
+    }
+  } catch (error) {
+    window.alert('Unable to add this item to the cart right now.');
+  }
 };
 
 const handleToggleLike = (productId) => {

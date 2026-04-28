@@ -9,7 +9,9 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CustomOrderController;
+use App\Http\Controllers\Api\OrderPaymentController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\PayMongoWebhookController;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,6 +22,8 @@ use App\Http\Controllers\Api\ProfileController;
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::post('/webhooks/paymongo', [PayMongoWebhookController::class, 'handle']);
 
 Route::get('/login', [LoginController::class, 'show'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
@@ -82,9 +86,12 @@ Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
     // Cart
     Route::get('/cart', [CartController::class, 'index']);
     Route::post('/cart/add/{productId}', [CartController::class, 'add']);
+    Route::post('/cart/custom', [CartController::class, 'addCustom']);
     Route::put('/cart/items/{itemId}', [CartController::class, 'update']);
     Route::delete('/cart/items/{itemId}', [CartController::class, 'remove']);
     Route::delete('/cart/clear', [CartController::class, 'clear']);
+    Route::post('/checkout', [CartController::class, 'checkout']);
+    Route::get('/orders/{order}/payment-status', [OrderPaymentController::class, 'show']);
     
     // Custom Orders
     Route::post('/custom-orders', [CustomOrderController::class, 'store']);
@@ -106,4 +113,6 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('/inventory', [AdminController::class, 'storeInventory'])->name('admin.inventory.store');
     Route::put('/inventory/{product}', [AdminController::class, 'updateInventory'])->name('admin.inventory.update');
     Route::delete('/inventory/{product}', [AdminController::class, 'destroyInventory'])->name('admin.inventory.destroy');
+    Route::patch('/orders/{order}/status', [AdminController::class, 'updateOrderStatus'])->name('admin.orders.status');
+    Route::patch('/orders/{order}/payment-status', [AdminController::class, 'updateOrderPaymentStatus'])->name('admin.orders.payment-status');
 });

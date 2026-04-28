@@ -447,30 +447,54 @@ if (dashboard) {
             const orderCard = orderAction.closest('[data-order-card]');
             const action = orderAction.dataset.orderAction;
 
-            if (action === 'ready') {
-                openModal({
-                    title: 'Mark as Complete',
-                    message: 'Mark this order as complete?',
-                    confirmLabel: 'Complete',
-                    orderId: orderCard.dataset.orderId,
-                });
+            const orderId = orderCard?.dataset.orderId;
+            const requestConfig = {
+                method: 'PATCH',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+            };
+
+            const submitWorkflowUpdate = async (url, payload) => {
+                orderAction.disabled = true;
+
+                try {
+                    const response = await fetch(url, {
+                        ...requestConfig,
+                        body: JSON.stringify(payload),
+                    });
+
+                    const responsePayload = await response.json().catch(() => null);
+
+                    if (!response.ok) {
+                        throw new Error(responsePayload?.message || 'Unable to update the order right now.');
+                    }
+
+                    window.location.reload();
+                } catch (error) {
+                    window.alert(error.message || 'Unable to update the order right now.');
+                    orderAction.disabled = false;
+                }
+            };
+
+            if (action === 'mark-paid' && orderId) {
+                submitWorkflowUpdate(`/admin/orders/${orderId}/payment-status`, { payment_status: 'paid' });
                 return;
             }
 
-            if (action === 'mark-paid') {
-                orderCard.dataset.paymentStatus = 'paid';
-                orderCard.querySelector('[data-payment-status]').textContent = 'Paid';
-                orderAction.hidden = true;
+            if (action === 'advance' && orderId) {
+                const nextStatus = orderAction.dataset.nextStatus;
+
+                if (!nextStatus) {
+                    return;
+                }
+
+                submitWorkflowUpdate(`/admin/orders/${orderId}/status`, { status: nextStatus });
                 return;
             }
 
-            const nextStatus = action === 'accept' ? 'preparing' : action === 'preparing' ? 'ready' : null;
-            if (nextStatus) {
-                orderCard.dataset.orderStatus = nextStatus;
-                orderAction.hidden = true;
-                const nextButton = orderCard.querySelector(`[data-order-action="${nextStatus}"]`);
-                if (nextButton) nextButton.hidden = false;
-            }
             return;
         }
 
@@ -479,7 +503,7 @@ if (dashboard) {
             const row = viewCustomer.closest('[data-person-card]');
             customerPanel.hidden = false;
             customerPanelTitle.textContent = row.dataset.personName;
-            customerPanelMeta.textContent = `${row.dataset.personRole} · ${row.dataset.personEmail}`;
+            customerPanelMeta.textContent = `${row.dataset.personRole} | ${row.dataset.personEmail}`;
             customerPanel.querySelector('[data-customer-panel-body]').innerHTML = row.querySelector('[data-person-details]').innerHTML;
             return;
         }

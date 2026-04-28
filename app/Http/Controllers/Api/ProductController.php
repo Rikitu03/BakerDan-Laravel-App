@@ -29,7 +29,7 @@ class ProductController extends Controller
         });
 
         $products = $query->orderByDesc('id')->get()->map(function (Product $product): array {
-            $imageUrl = $product->image_url ? asset('storage/' . ltrim($product->image_url, '/')) : null;
+            $imageUrl = $this->resolveImageUrl($product->image_url);
             return [
                 'id' => $product->id,
                 'product_id' => $product->product_id ?? $product->id,
@@ -37,9 +37,13 @@ class ProductController extends Controller
                 'product_name' => $product->product_name,
                 'description' => $product->description,
                 'price' => (float) $product->price,
+                'price_label' => $product->price_label ?: null,
                 'category' => $product->category,
+                'sizes_available' => $product->sizes_available,
+                'flavors_available' => $product->flavors_available,
                 'image' => $imageUrl,
                 'image_url' => $imageUrl,
+                'image_source' => $product->image_source,
                 'in_stock' => true,
                 'is_active' => (bool) $product->is_active,
                 'liked' => false,
@@ -65,7 +69,7 @@ class ProductController extends Controller
     {
         $product = Product::query()->whereKey($id)->where('is_active', true)->firstOrFail();
 
-        $imageUrl = $product->image_url ? asset('storage/' . ltrim($product->image_url, '/')) : null;
+        $imageUrl = $this->resolveImageUrl($product->image_url);
         return response()->json([
             'success' => true,
             'data' => [
@@ -106,5 +110,18 @@ class ProductController extends Controller
             'success' => true,
             'data' => $categories
         ]);
+    }
+
+    private function resolveImageUrl(?string $imagePath): ?string
+    {
+        if (!$imagePath) {
+            return null;
+        }
+
+        if (str_starts_with($imagePath, 'http://') || str_starts_with($imagePath, 'https://') || str_starts_with($imagePath, '/')) {
+            return $imagePath;
+        }
+
+        return asset('storage/' . ltrim($imagePath, '/'));
     }
 }

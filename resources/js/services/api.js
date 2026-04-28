@@ -51,6 +51,24 @@ export default {
     return api.post(`/cart/add/${productId}`, data)
   },
 
+  addCustomToCart(data) {
+    const formData = new FormData()
+
+    Object.entries(data || {}).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') {
+        return
+      }
+
+      formData.append(key, value)
+    })
+
+    return api.post('/cart/custom', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+  },
+
   updateCartItem(itemId, data) {
     return api.put(`/cart/items/${itemId}`, data)
   },
@@ -63,9 +81,31 @@ export default {
     return api.delete('/cart/clear')
   },
 
+  checkout(data) {
+    return api.post('/checkout', data)
+  },
+
+  getOrderPaymentStatus(orderId) {
+    return api.get(`/orders/${orderId}/payment-status`)
+  },
+
   // Custom Orders
   createCustomOrder(data) {
-    return api.post('/custom-orders', data)
+    const formData = new FormData()
+
+    Object.entries(data || {}).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '') {
+        return
+      }
+
+      formData.append(key, value)
+    })
+
+    return api.post('/custom-orders', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
   },
 
   // User Profile

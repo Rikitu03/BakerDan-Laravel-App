@@ -6,9 +6,11 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class AdminController extends Controller
@@ -58,6 +60,61 @@ class AdminController extends Controller
         return redirect()->route('admin.home')->with('status', 'Product removed successfully.');
     }
 
+    public function updateOrderStatus(Request $request, Order $order): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'string', Rule::in(array_keys($this->allowedOrderStatusTransitions()))],
+        ]);
+
+        $currentStatus = $order->status;
+        $nextStatus = $validated['status'];
+        $allowedTransitions = $this->allowedOrderStatusTransitions()[$currentStatus] ?? [];
+
+        if (! in_array($nextStatus, $allowedTransitions, true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'That order update is not allowed from the current workflow state.',
+            ], 422);
+        }
+
+        $order->update([
+            'status' => $nextStatus,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Order workflow updated successfully.',
+            'data' => [
+                'order' => $this->orderCard($order->fresh(['user.detail', 'items.product'])),
+            ],
+        ]);
+    }
+
+    public function updateOrderPaymentStatus(Request $request, Order $order): JsonResponse
+    {
+        $validated = $request->validate([
+            'payment_status' => ['required', 'string', Rule::in(['pending', 'paid', 'failed', 'expired', 'unpaid'])],
+        ]);
+
+        $payload = [
+            'payment_status' => $validated['payment_status'],
+        ];
+
+        if ($validated['payment_status'] === 'paid' && ! $order->payment_paid_at) {
+            $payload['payment_paid_at'] = now();
+        }
+
+        $order->update($payload);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Payment status updated successfully.',
+            'data' => [
+                'order' => $this->orderCard($order->fresh(['user.detail', 'items.product'])),
+            ],
+        ]);
+    }
+
     private function dashboardData(): array
     {
         $products = Product::query()->latest('id')->get();
@@ -100,7 +157,7 @@ class AdminController extends Controller
                 'productTypeBreakdown' => $productTypeBreakdown,
             ],
             'sidebarCounts' => [
-                'dashboard' => '•',
+                'dashboard' => '*',
                 'inventory' => $products->count(),
                 'orders' => $orders->count(),
                 'customers' => $customers->count(),
@@ -131,8 +188,8 @@ class AdminController extends Controller
             'category' => $product->category,
             'description' => $product->description,
             'price' => $product->price,
-            'formatted_price' => '₱' . number_format((float) $product->price, 2),
-            'image_url' => $product->image_url ? asset('storage/' . ltrim($product->image_url, '/')) : null,
+            'formatted_price' => 'PHP ' . number_format((float) $product->price, 2),
+            'image_url' => $this->resolveImageUrl($product->image_url),
             'is_active' => (bool) $product->is_active,
             'status' => $product->is_active ? 'active' : 'inactive',
         ];
@@ -141,14 +198,58 @@ class AdminController extends Controller
     private function orderCard(Order $order): array
     {
         $customerName = $order->user?->detail?->name ?? 'Unknown customer';
+        $containsCustom = $order->items->contains(fn (OrderItem $item) => $item->item_type === 'custom');
+        $nextWorkflowStep = $this->nextWorkflowStep($order, $containsCustom);
+        $itemLines = $order->items->map(function (OrderItem $item): array {
+            $detailParts = array_filter([
+                $item->size ? 'Size ' . $item->size : null,
+                $item->flavor ? 'Flavor ' . $item->flavor : null,
+                $item->item_type === 'custom' ? 'Custom brief included' : null,
+            ]);
+
+            return [
+                'detail' => implode(' | ', $detailParts),
+                'summary' => $item->quantity . ' x ' . ($item->product?->product_name ?? $item->product_name ?? 'Product'),
+            ];
+        })->values();
+
+        $customItems = $order->items
+            ->filter(fn (OrderItem $item) => $item->item_type === 'custom')
+            ->map(function (OrderItem $item): array {
+                return [
+                    'dedication_message' => $item->dedication_message,
+                    'design_description' => $item->design_description,
+                    'flavor' => $item->flavor,
+                    'image_url' => $this->resolveImageUrl($item->image_url) ?: asset('images/bakerdan/Cake_Celebration.png'),
+                    'name' => $item->product_name ?: 'Custom Celebration Order',
+                    'quantity' => $item->quantity,
+                    'size' => $item->size,
+                ];
+            })
+            ->values();
 
         return [
-            'id' => $order->id,
+            'amount' => 'PHP ' . number_format((float) $order->total_amount, 2),
+            'contains_custom' => $containsCustom,
+            'custom_items' => $customItems->all(),
             'customer' => $customerName,
-            'items' => $order->items->map(fn ($item) => $item->quantity . ' x ' . ($item->product?->product_name ?? 'Product'))->join(', '),
-            'status' => $order->status,
+            'id' => $order->id,
+            'item_lines' => $itemLines->all(),
+            'items' => $itemLines->pluck('summary')->join(', '),
+            'next_status' => $nextWorkflowStep['status'] ?? null,
+            'next_status_label' => $nextWorkflowStep['label'] ?? null,
+            'payment_method_label' => $this->paymentMethodLabel($order->payment_method),
+            'payment_reference' => $order->payment_reference,
             'payment_status' => $order->payment_status,
-            'amount' => '₱' . number_format((float) $order->total_amount, 2),
+            'payment_status_label' => $this->paymentStatusLabel($order->payment_status),
+            'placed_at' => $order->created_at?->format('M d, Y h:i A'),
+            'status' => $order->status,
+            'status_label' => $this->orderStatusLabel($order->status, $containsCustom),
+            'workflow_note' => $containsCustom
+                ? ($order->payment_status === 'paid'
+                    ? 'Review the custom brief before moving this order into production.'
+                    : 'Wait for payment confirmation, then review the custom brief before baking.')
+                : 'Move the order through the normal bakery production flow.',
         ];
     }
 
@@ -232,5 +333,80 @@ class AdminController extends Controller
         return $orders->filter(function (Order $order) use ($threshold): bool {
             return $order->status === 'delivered' && $order->updated_at && $order->updated_at->greaterThanOrEqualTo($threshold);
         })->count();
+    }
+
+    private function allowedOrderStatusTransitions(): array
+    {
+        return [
+            'pending' => ['processing', 'cancelled'],
+            'processing' => ['shipped', 'cancelled'],
+            'shipped' => ['delivered'],
+            'delivered' => [],
+            'cancelled' => [],
+        ];
+    }
+
+    private function nextWorkflowStep(Order $order, bool $containsCustom): ?array
+    {
+        return match ($order->status) {
+            'pending' => [
+                'status' => 'processing',
+                'label' => $containsCustom ? 'Review and Start' : 'Start Processing',
+            ],
+            'processing' => [
+                'status' => 'shipped',
+                'label' => $containsCustom ? 'Mark Ready' : 'Mark Shipped',
+            ],
+            'shipped' => [
+                'status' => 'delivered',
+                'label' => 'Mark Delivered',
+            ],
+            default => null,
+        };
+    }
+
+    private function orderStatusLabel(string $status, bool $containsCustom): string
+    {
+        return match ($status) {
+            'pending' => $containsCustom ? 'Pending Review' : 'Pending',
+            'processing' => $containsCustom ? 'In Production' : 'Processing',
+            'shipped' => $containsCustom ? 'Ready for Release' : 'Shipped',
+            'delivered' => 'Delivered',
+            'cancelled' => 'Cancelled',
+            default => ucfirst($status),
+        };
+    }
+
+    private function paymentStatusLabel(?string $status): string
+    {
+        return match ($status) {
+            'paid' => 'Paid',
+            'failed' => 'Failed',
+            'expired' => 'Expired',
+            'unpaid' => 'Unpaid',
+            default => 'Pending',
+        };
+    }
+
+    private function paymentMethodLabel(?string $paymentMethod): string
+    {
+        return match (strtolower((string) $paymentMethod)) {
+            'gcash' => 'GCash',
+            'maya', 'paymaya' => 'Maya',
+            default => 'Payment pending',
+        };
+    }
+
+    private function resolveImageUrl(?string $imagePath): ?string
+    {
+        if (! $imagePath) {
+            return null;
+        }
+
+        if (str_starts_with($imagePath, 'http://') || str_starts_with($imagePath, 'https://') || str_starts_with($imagePath, '/')) {
+            return $imagePath;
+        }
+
+        return asset('storage/' . ltrim($imagePath, '/'));
     }
 }

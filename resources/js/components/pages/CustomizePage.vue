@@ -143,20 +143,116 @@
         </div>
       </section>
 
+      <section class="mt-7 rounded-[32px] border border-[#E8DDD3] bg-white p-6 shadow-[0_18px_40px_-34px_rgba(118,79,49,0.25)] md:p-8">
+        <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 class="text-2xl font-bold text-[#4B4743]">Checkout Flow</h2>
+            <p class="mt-2 max-w-2xl text-sm leading-6 text-[#766C65]">
+              Choose whether this custom order should stay in your cart for a combined checkout later, or go straight to payment by itself.
+            </p>
+          </div>
+        </div>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <button
+            v-for="option in checkoutFlowOptions"
+            :key="option.value"
+            type="button"
+            @click="selectedCheckoutFlow = option.value"
+            class="rounded-[26px] border px-5 py-5 text-left transition-all"
+            :class="selectedCheckoutFlow === option.value
+              ? 'border-[#C9876C] bg-[#FFF4EB] shadow-[0_18px_35px_-28px_rgba(201,135,108,0.65)]'
+              : 'border-[#E7D9CB] bg-[#FCFAF8] hover:border-[#D9B8A4]'"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="text-lg font-bold text-[#4B4743]">{{ option.label }}</p>
+                <p class="mt-1 text-sm text-[#766C65]">{{ option.description }}</p>
+                <p class="mt-2 text-xs font-medium uppercase tracking-[0.14em] text-[#A07A62]">{{ option.helper }}</p>
+              </div>
+              <span
+                class="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full border"
+                :class="selectedCheckoutFlow === option.value
+                  ? 'border-[#C9876C] bg-[#C9876C] text-white'
+                  : 'border-[#D8CCC2] bg-white text-transparent'"
+              >
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M5 13l4 4L19 7" />
+                </svg>
+              </span>
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <section v-if="selectedCheckoutFlow === 'direct_checkout'" class="mt-7 rounded-[32px] border border-[#E8DDD3] bg-white p-6 shadow-[0_18px_40px_-34px_rgba(118,79,49,0.25)] md:p-8">
+        <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 class="text-2xl font-bold text-[#4B4743]">Payment Method</h2>
+            <p class="mt-2 max-w-2xl text-sm leading-6 text-[#766C65]">
+              PayMongo will handle the secure checkout. Choose the wallet you want to use for this custom order only.
+            </p>
+            <p class="mt-2 max-w-2xl text-xs leading-5 text-[#8A7E76]">
+              Existing products already in your cart will stay there and will not be included in this direct checkout.
+            </p>
+          </div>
+          <span class="inline-flex w-fit rounded-full bg-[#F6EFE7] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#9B6A48]">
+            PayMongo Checkout
+          </span>
+        </div>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <button
+            v-for="option in paymentMethodOptions"
+            :key="option.value"
+            type="button"
+            @click="selectedPaymentMethod = option.value"
+            class="rounded-[26px] border px-5 py-5 text-left transition-all"
+            :class="selectedPaymentMethod === option.value
+              ? 'border-[#C9876C] bg-[#FFF4EB] shadow-[0_18px_35px_-28px_rgba(201,135,108,0.65)]'
+              : 'border-[#E7D9CB] bg-[#FCFAF8] hover:border-[#D9B8A4]'"
+          >
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="text-lg font-bold text-[#4B4743]">{{ option.label }}</p>
+                <p class="mt-1 text-sm text-[#766C65]">{{ option.description }}</p>
+              </div>
+              <span
+                class="flex h-6 w-6 items-center justify-center rounded-full border"
+                :class="selectedPaymentMethod === option.value
+                  ? 'border-[#C9876C] bg-[#C9876C] text-white'
+                  : 'border-[#D8CCC2] bg-white text-transparent'"
+              >
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M5 13l4 4L19 7" />
+                </svg>
+              </span>
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <section v-else class="mt-7 rounded-[32px] border border-[#E8DDD3] bg-[#FFF9F4] p-6 shadow-[0_18px_40px_-34px_rgba(118,79,49,0.18)] md:p-8">
+        <h2 class="text-2xl font-bold text-[#4B4743]">Checkout Later With Other Products</h2>
+        <p class="mt-3 max-w-2xl text-sm leading-6 text-[#766C65]">
+          This custom order will be saved to your cart first. You can continue shopping, then choose this item together with breads, pastries, or other products when you are ready to checkout.
+        </p>
+      </section>
+
       <div class="mt-8 flex flex-wrap gap-4">
         <button
           type="button"
-          @click="directCheckout"
+          @click="submitCustomOrder"
           class="rounded-full bg-[#C9876C] px-8 py-3.5 font-semibold text-white shadow-md transition-colors hover:bg-[#B8765B]"
         >
-          Direct Checkout
+          {{ primaryActionLabel }}
         </button>
         <button
           type="button"
-          @click="addToCart"
+          @click="viewCart"
           class="rounded-full border border-[#CFC5BC] bg-white px-8 py-3.5 font-semibold text-[#4E4742] transition-colors hover:bg-[#FAF6F1]"
         >
-          Add to Cart
+          View Cart
         </button>
       </div>
     </div>
@@ -164,12 +260,38 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useSpaRouter } from '../../router';
 import { useCartStore } from '../../services/cartStore';
 
 const { push } = useSpaRouter();
-const { addCartItem } = useCartStore();
+const { addCustomItem, checkout } = useCartStore();
+const checkoutFlowOptions = [
+  {
+    value: 'cart_first',
+    label: 'Add to Cart First',
+    description: 'Save this custom order in your cart, then checkout it later together with other products.',
+    helper: 'Best if you are still shopping',
+  },
+  {
+    value: 'direct_checkout',
+    label: 'Direct Checkout',
+    description: 'Checkout only this custom order right away without including the products already in your cart.',
+    helper: 'Best if this order is ready now',
+  },
+];
+const paymentMethodOptions = [
+  {
+    value: 'gcash',
+    label: 'GCash',
+    description: 'Redirect to PayMongo and complete the payment in GCash.',
+  },
+  {
+    value: 'maya',
+    label: 'Maya',
+    description: 'Redirect to PayMongo and continue the payment in Maya.',
+  },
+];
 
 const formData = ref({
   size: 'Medium',
@@ -183,6 +305,8 @@ const formData = ref({
 const imagePreview = ref(null);
 const isDragging = ref(false);
 const fileInput = ref(null);
+const selectedCheckoutFlow = ref('cart_first');
+const selectedPaymentMethod = ref('gcash');
 
 const triggerFileUpload = () => {
   fileInput.value?.click();
@@ -235,27 +359,97 @@ const decrementQuantity = () => {
   }
 };
 
-const directCheckout = () => {
-  console.log('Direct checkout:', formData.value);
+const buildCustomPayload = () => ({
+  size: formData.value.size,
+  quantity: formData.value.quantity,
+  flavor: formData.value.flavor,
+  designDescription: formData.value.designDescription,
+  dedicationMessage: formData.value.dedicationMessage,
+  imageFile: formData.value.imageFile,
+});
+
+const ensureCustomRequestIsReady = () => {
+  const hasDesignReference = Boolean(formData.value.imageFile) || formData.value.designDescription.trim().length > 0;
+
+  if (!hasDesignReference) {
+    window.alert('Add a reference image or describe the custom design before submitting your order.');
+    return false;
+  }
+
+  return true;
 };
 
-const addToCart = () => {
-  const addedId = addCartItem({
-    id: undefined,
-    productKey: `custom-${Date.now()}`,
-    source: 'custom',
-    name: 'Custom Celebration Order',
-    description: `A ${formData.value.flavor.toLowerCase()} custom bake with ${formData.value.size.toLowerCase()} sizing and personalized finishing touches.`,
-    price: 899,
-    image: imagePreview.value || '/images/bakerdan/Customized_Cookies.png',
-    quantity: formData.value.quantity,
-    size: formData.value.size,
-    flavor: formData.value.flavor,
-    tag: 'Custom Order',
-    designDescription: formData.value.designDescription,
-    dedicationMessage: formData.value.dedicationMessage,
-  });
+const primaryActionLabel = computed(() => (
+  selectedCheckoutFlow.value === 'direct_checkout'
+    ? 'Direct Checkout This Custom Order'
+    : 'Add to Cart for Combined Checkout'
+));
 
-  push(`/customer/cart?added=${addedId}`);
+const directCheckout = async () => {
+  if (!ensureCustomRequestIsReady()) {
+    return;
+  }
+
+  let addedItem = null;
+
+  try {
+    addedItem = await addCustomItem(buildCustomPayload());
+
+    if (!addedItem?.id) {
+      return;
+    }
+
+    const order = await checkout([addedItem.id], {
+      paymentMethod: selectedPaymentMethod.value,
+    });
+
+    if (order?.checkout_url) {
+      window.location.href = order.checkout_url;
+      return;
+    }
+
+    if (order?.id) {
+      push(`/customer/cart?ordered=${order.id}`);
+    }
+  } catch (error) {
+    const message = error.response?.data?.message || 'Unable to complete checkout right now.';
+
+    if (addedItem?.id) {
+      window.alert(`${message} Your custom order was saved in the cart so you can checkout it later with your other products.`);
+      push(`/customer/cart?added=${addedItem.id}`);
+      return;
+    }
+
+    window.alert(message);
+  }
+};
+
+const addToCart = async () => {
+  if (!ensureCustomRequestIsReady()) {
+    return;
+  }
+
+  try {
+    const addedItem = await addCustomItem(buildCustomPayload());
+
+    if (addedItem?.id) {
+      push(`/customer/cart?added=${addedItem.id}`);
+    }
+  } catch (error) {
+    window.alert('Unable to add this custom item to the cart right now.');
+  }
+};
+
+const submitCustomOrder = async () => {
+  if (selectedCheckoutFlow.value === 'direct_checkout') {
+    await directCheckout();
+    return;
+  }
+
+  await addToCart();
+};
+
+const viewCart = () => {
+  push('/customer/cart');
 };
 </script>

@@ -30,10 +30,17 @@
         </button>
 
         <!-- Messages -->
-        <button class="relative hover:scale-110 transition-transform">
-          <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button
+          type="button"
+          aria-label="Open messages"
+          @click="navigateTo('/customer/messages')"
+          class="relative rounded-full p-1 transition-transform hover:scale-110"
+          :class="isMessagesRoute ? 'bg-[#FFF2E8] text-[#B76539]' : 'text-gray-600'"
+        >
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
           </svg>
+          <span class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#D96D45]"></span>
         </button>
 
         <!-- Cart -->
@@ -74,8 +81,9 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 import { navigate, useSpaRouter } from '../../router'
+import { useCartStore } from '../../services/cartStore'
 
 defineProps({
   user: {
@@ -87,8 +95,13 @@ defineProps({
 defineEmits(['toggle-user-menu'])
 
 const logoSrc = '/images/logo/BAKERDAN%20LOGO.jpg'
-const cartCount = ref(5)
 const { currentRoute } = useSpaRouter()
+const { cartCount, loadCart } = useCartStore()
 const isNotificationsRoute = computed(() => currentRoute.value.name === 'customer.notifications')
+const isMessagesRoute = computed(() => currentRoute.value.name === 'customer.messages')
 const navigateTo = (path) => navigate(path)
+
+onMounted(() => {
+  loadCart().catch(() => {})
+})
 </script>

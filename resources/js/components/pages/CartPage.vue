@@ -2,6 +2,27 @@
   <div class="flex h-full flex-col xl:flex-row">
     <div class="w-full border-b border-[#ECE1D8] bg-white p-8 xl:w-[39%] xl:border-r xl:border-b-0">
       <div v-if="featuredProduct" class="sticky top-8">
+        <div
+          v-if="checkoutNotice.visible"
+          class="mb-5 rounded-[22px] border px-5 py-4 shadow-sm"
+          :class="checkoutNotice.wrapperClass"
+        >
+          <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.18em]" :class="checkoutNotice.eyebrowClass">{{ checkoutNotice.title }}</p>
+              <p class="mt-1 text-sm font-medium">{{ checkoutNotice.message }}</p>
+            </div>
+            <button
+              v-if="canContinuePayment"
+              type="button"
+              @click="continuePayment"
+              class="rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#6D4A35] transition-colors hover:bg-[#FFF7F1]"
+            >
+              Continue payment
+            </button>
+          </div>
+        </div>
+
         <div v-if="addedItem" class="mb-5 rounded-[22px] border border-[#F0DCCC] bg-[#FFF4EB] px-5 py-4 text-[#8E5632] shadow-sm">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#C9876C]">Added to cart</p>
           <p class="mt-1 text-sm font-medium">{{ addedItem.name }} is now in your cart.</p>
@@ -60,7 +81,7 @@
                 type="number"
                 min="1"
                 class="flex-1 bg-transparent py-3 text-center outline-none"
-                @input="setQuantity($event.target.value)"
+                @change="setQuantity($event.target.value)"
               />
               <button
                 type="button"
@@ -85,6 +106,44 @@
           <p class="mt-2 text-sm leading-6 text-[#695F57]">{{ featuredProduct.dedicationMessage }}</p>
         </div>
 
+        <div class="mt-6 rounded-[24px] border border-[#EFE5DC] bg-[#FCFAF8] p-5">
+          <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#B59884]">Payment Method</p>
+              <p class="mt-2 text-sm text-[#695F57]">Use PayMongo to pay with your preferred wallet.</p>
+            </div>
+            <span class="inline-flex w-fit rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9B6A48]">
+              PayMongo
+            </span>
+          </div>
+
+          <div class="mt-4 grid gap-3 sm:grid-cols-2">
+            <button
+              v-for="option in paymentMethodOptions"
+              :key="`featured-${option.value}`"
+              type="button"
+              @click="selectedPaymentMethod = option.value"
+              class="rounded-[22px] border px-4 py-4 text-left transition-all"
+              :class="paymentMethodButtonClass(option.value)"
+            >
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <p class="font-semibold text-[#4D4742]">{{ option.label }}</p>
+                  <p class="mt-1 text-xs text-[#766D67]">{{ option.description }}</p>
+                </div>
+                <span
+                  class="flex h-6 w-6 items-center justify-center rounded-full border"
+                  :class="paymentMethodIndicatorClass(option.value)"
+                >
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M5 13l4 4L19 7" />
+                  </svg>
+                </span>
+              </div>
+            </button>
+          </div>
+        </div>
+
         <div class="mt-6 space-y-3">
           <button
             type="button"
@@ -98,7 +157,7 @@
             @click="checkout"
             class="w-full rounded-full bg-[#8B6F47] py-4 font-semibold text-white shadow-md transition-colors hover:bg-[#7A5F3A]"
           >
-            Checkout
+            Checkout with {{ selectedPaymentMethodLabel }}
           </button>
           <button
             type="button"
@@ -112,6 +171,26 @@
 
       <div v-else class="flex h-full min-h-[420px] items-center justify-center rounded-[28px] border border-dashed border-[#E5D8CC] bg-[#FBF8F4] p-8 text-center">
         <div>
+          <div
+            v-if="checkoutNotice.visible"
+            class="mb-5 rounded-[22px] border px-5 py-4 text-left shadow-sm"
+            :class="checkoutNotice.wrapperClass"
+          >
+            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.18em]" :class="checkoutNotice.eyebrowClass">{{ checkoutNotice.title }}</p>
+                <p class="mt-1 text-sm font-medium">{{ checkoutNotice.message }}</p>
+              </div>
+              <button
+                v-if="canContinuePayment"
+                type="button"
+                @click="continuePayment"
+                class="rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#6D4A35] transition-colors hover:bg-[#FFF7F1]"
+              >
+                Continue payment
+              </button>
+            </div>
+          </div>
           <h2 class="text-2xl font-bold text-[#4D4742]" style="font-family: 'Urbanist', sans-serif;">Your cart is empty</h2>
           <p class="mt-2 text-sm text-[#766D67]">Start browsing and add your favorite breads, pastries, and custom orders.</p>
           <button
@@ -196,19 +275,39 @@
           </div>
 
           <div class="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
-            <div class="text-right">
-              <p class="text-sm text-gray-600">Total ({{ selectedItems.length }} item)</p>
-              <p class="text-3xl font-bold text-gray-800">PHP {{ formatPrice(cartTotal) }}</p>
-            </div>
+            <div class="flex flex-col gap-5 xl:items-end">
+              <div class="rounded-[24px] border border-[#EAE0D8] bg-[#FCFAF8] p-4">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#B59884]">Payment Method</p>
+                <div class="mt-3 flex flex-wrap gap-3">
+                  <button
+                    v-for="option in paymentMethodOptions"
+                    :key="`summary-${option.value}`"
+                    type="button"
+                    @click="selectedPaymentMethod = option.value"
+                    class="rounded-full border px-4 py-2 text-sm font-semibold transition-all"
+                    :class="paymentMethodButtonClass(option.value)"
+                  >
+                    {{ option.label }}
+                  </button>
+                </div>
+              </div>
 
-            <button
-              type="button"
-              @click="proceedToCheckout"
-              :disabled="selectedItems.length === 0"
-              class="rounded-full bg-[#C9876C] px-8 py-4 font-semibold text-white shadow-md transition-colors hover:bg-[#B8765B] disabled:cursor-not-allowed disabled:bg-gray-300"
-            >
-              Checkout
-            </button>
+              <div class="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
+                <div class="text-right">
+                  <p class="text-sm text-gray-600">Total ({{ selectedItems.length }} item)</p>
+                  <p class="text-3xl font-bold text-gray-800">PHP {{ formatPrice(cartTotal) }}</p>
+                </div>
+
+                <button
+                  type="button"
+                  @click="proceedToCheckout"
+                  :disabled="selectedItems.length === 0"
+                  class="rounded-full bg-[#C9876C] px-8 py-4 font-semibold text-white shadow-md transition-colors hover:bg-[#B8765B] disabled:cursor-not-allowed disabled:bg-gray-300"
+                >
+                  Checkout with {{ selectedPaymentMethodLabel }}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -217,7 +316,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useSpaRouter } from '../../router';
 import { useCartStore } from '../../services/cartStore';
 import CartItem from '../shared/CartItem.vue';
@@ -227,22 +326,66 @@ const props = defineProps({
     type: [String, Number],
     default: null,
   },
+  ordered: {
+    type: [String, Number],
+    default: null,
+  },
+  paymentReturn: {
+    type: String,
+    default: null,
+  },
 });
 
 const { push } = useSpaRouter();
-const { cartItems, lastAddedId, addCartItem, updateCartItemQuantity, removeCartItem } = useCartStore();
+const {
+  cartItems,
+  lastAddedId,
+  lastCheckoutOrderId,
+  loadCart,
+  addCatalogItem,
+  addCustomItem,
+  updateCartItemQuantity,
+  removeCartItem,
+  checkout: checkoutCartItems,
+  syncOrderPaymentStatus,
+} = useCartStore();
 
 const selectedItems = ref([]);
 const cartSearch = ref('');
 const cartSort = ref('recent');
 const activeFeaturedId = ref(null);
+const selectedPaymentMethod = ref('gcash');
+const paymentStatusDetails = ref(null);
+const isSyncingPayment = ref(false);
+const paymentSyncError = ref('');
+const paymentMethodOptions = [
+  {
+    value: 'gcash',
+    label: 'GCash',
+    description: 'Pay through the GCash wallet.',
+  },
+  {
+    value: 'maya',
+    label: 'Maya',
+    description: 'Pay through the Maya wallet.',
+  },
+];
 
 const addedItemId = computed(() => Number(props.added) || Number(lastAddedId.value) || null);
+const checkoutOrderId = computed(() => Number(props.ordered) || Number(lastCheckoutOrderId.value) || null);
+
+watch(
+  cartItems,
+  (items) => {
+    selectedItems.value = selectedItems.value.filter((itemId) => items.some((item) => item.id === itemId));
+  },
+  { deep: true },
+);
 
 watch(
   [addedItemId, cartItems],
   () => {
-    if (addedItemId.value) {
+    if (addedItemId.value && cartItems.value.some((item) => item.id === addedItemId.value)) {
       activeFeaturedId.value = addedItemId.value;
       return;
     }
@@ -280,59 +423,232 @@ const featuredProduct = computed(() =>
 );
 
 const addedItem = computed(() => cartItems.value.find((item) => item.id === addedItemId.value) || null);
-
 const allSelected = computed(() => selectedItems.value.length === cartItems.value.length && cartItems.value.length > 0);
 const cartTotal = computed(() =>
   cartItems.value
     .filter((item) => selectedItems.value.includes(item.id))
-    .reduce((total, item) => total + item.price * item.quantity, 0),
+    .reduce((total, item) => total + Number(item.price) * Number(item.quantity), 0),
 );
+const syncedOrder = computed(() => paymentStatusDetails.value?.order || null);
+const paymentCheckoutUrl = computed(() => paymentStatusDetails.value?.payment?.checkout_url || syncedOrder.value?.checkout_url || null);
+const resolvedPaymentMethod = computed(() => syncedOrder.value?.payment_method || selectedPaymentMethod.value);
+const containsCustomOrder = computed(() => Boolean(syncedOrder.value?.contains_custom));
+const resolvedPaymentStatus = computed(() => {
+  if (syncedOrder.value?.payment_status) {
+    return syncedOrder.value.payment_status;
+  }
+
+  return checkoutOrderId.value ? 'pending' : null;
+});
+const selectedPaymentMethodLabel = computed(() => formatPaymentMethod(selectedPaymentMethod.value));
+const canContinuePayment = computed(() => Boolean(paymentCheckoutUrl.value) && resolvedPaymentStatus.value === 'pending');
+const checkoutNotice = computed(() => {
+  if (!checkoutOrderId.value) {
+    return { visible: false };
+  }
+
+  if (isSyncingPayment.value && !syncedOrder.value) {
+    return {
+      visible: true,
+      title: 'Checking payment',
+      message: `We're verifying Order #${checkoutOrderId.value} with PayMongo right now.`,
+      wrapperClass: 'border-[#D8E8F6] bg-[#F4FAFF] text-[#2F5F87]',
+      eyebrowClass: 'text-[#5E94C2]',
+    };
+  }
+
+  if (resolvedPaymentStatus.value === 'paid') {
+    return {
+      visible: true,
+      title: 'Payment confirmed',
+      message: containsCustomOrder.value
+        ? `Order #${checkoutOrderId.value} was paid successfully via ${formatPaymentMethod(resolvedPaymentMethod.value)}. The bakery will review your custom brief before production starts.`
+        : `Order #${checkoutOrderId.value} was paid successfully via ${formatPaymentMethod(resolvedPaymentMethod.value)}.`,
+      wrapperClass: 'border-[#DDEED8] bg-[#F4FFF0] text-[#3E6B35]',
+      eyebrowClass: 'text-[#6EAA57]',
+    };
+  }
+
+  if (resolvedPaymentStatus.value === 'failed' || resolvedPaymentStatus.value === 'expired') {
+    return {
+      visible: true,
+      title: 'Payment incomplete',
+      message: resolvedPaymentStatus.value === 'expired'
+        ? `Order #${checkoutOrderId.value} expired before the payment was completed.`
+        : `Order #${checkoutOrderId.value} was not paid successfully.`,
+      wrapperClass: 'border-[#F0DCCC] bg-[#FFF4EB] text-[#8E5632]',
+      eyebrowClass: 'text-[#C9876C]',
+    };
+  }
+
+  if (props.paymentReturn === 'cancelled') {
+    return {
+      visible: true,
+      title: 'Payment pending',
+      message: `Order #${checkoutOrderId.value} is still waiting for payment. You can continue the PayMongo checkout anytime.`,
+      wrapperClass: 'border-[#F0DCCC] bg-[#FFF4EB] text-[#8E5632]',
+      eyebrowClass: 'text-[#C9876C]',
+    };
+  }
+
+  if (props.paymentReturn === 'success' && paymentSyncError.value) {
+    return {
+      visible: true,
+      title: 'Verification pending',
+      message: paymentSyncError.value,
+      wrapperClass: 'border-[#D8E8F6] bg-[#F4FAFF] text-[#2F5F87]',
+      eyebrowClass: 'text-[#5E94C2]',
+    };
+  }
+
+  return {
+    visible: true,
+    title: 'Order created',
+    message: containsCustomOrder.value
+      ? `Order #${checkoutOrderId.value} is awaiting payment via ${formatPaymentMethod(resolvedPaymentMethod.value)}. Once paid, the bakery will review your custom design details.`
+      : `Order #${checkoutOrderId.value} is awaiting payment via ${formatPaymentMethod(resolvedPaymentMethod.value)}.`,
+    wrapperClass: 'border-[#D8E8F6] bg-[#F4FAFF] text-[#2F5F87]',
+    eyebrowClass: 'text-[#5E94C2]',
+  };
+});
 
 const formatPrice = (price) => Number(price).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+const formatPaymentMethod = (value) => (value === 'maya' ? 'Maya' : 'GCash');
+const paymentMethodButtonClass = (value) => (
+  selectedPaymentMethod.value === value
+    ? 'border-[#C9876C] bg-[#FFF4EB] text-[#7E4E32] shadow-[0_12px_30px_-26px_rgba(201,135,108,0.7)]'
+    : 'border-[#E5D8CC] bg-white text-[#5C5651] hover:border-[#D6B9A5]'
+);
+const paymentMethodIndicatorClass = (value) => (
+  selectedPaymentMethod.value === value
+    ? 'border-[#C9876C] bg-[#C9876C] text-white'
+    : 'border-[#D8CCC2] bg-white text-transparent'
+);
 
-const incrementQuantity = () => {
+const refreshCart = async () => {
+  try {
+    await loadCart({ force: true });
+  } catch (error) {
+    window.alert('Unable to load your cart right now.');
+  }
+};
+
+const refreshOrderPaymentStatus = async () => {
+  if (!checkoutOrderId.value) {
+    paymentStatusDetails.value = null;
+    paymentSyncError.value = '';
+    return;
+  }
+
+  isSyncingPayment.value = true;
+  paymentSyncError.value = '';
+
+  try {
+    paymentStatusDetails.value = await syncOrderPaymentStatus(checkoutOrderId.value);
+  } catch (error) {
+    paymentSyncError.value = error.response?.data?.message || 'We returned from PayMongo, but payment confirmation is still pending.';
+  } finally {
+    isSyncingPayment.value = false;
+  }
+};
+
+const incrementQuantity = async () => {
   if (!featuredProduct.value) {
     return;
   }
 
-  updateCartItemQuantity(featuredProduct.value.id, featuredProduct.value.quantity + 1);
+  try {
+    await updateCartItemQuantity(featuredProduct.value.id, featuredProduct.value.quantity + 1);
+  } catch (error) {
+    window.alert('Unable to update the cart quantity right now.');
+  }
 };
 
-const decrementQuantity = () => {
+const decrementQuantity = async () => {
   if (!featuredProduct.value) {
     return;
   }
 
-  updateCartItemQuantity(featuredProduct.value.id, Math.max(1, featuredProduct.value.quantity - 1));
+  try {
+    await updateCartItemQuantity(featuredProduct.value.id, Math.max(1, featuredProduct.value.quantity - 1));
+  } catch (error) {
+    window.alert('Unable to update the cart quantity right now.');
+  }
 };
 
-const setQuantity = (value) => {
+const setQuantity = async (value) => {
   if (!featuredProduct.value) {
     return;
   }
 
-  updateCartItemQuantity(featuredProduct.value.id, value);
+  const normalizedQuantity = Math.max(1, Number(value) || 1);
+  try {
+    await updateCartItemQuantity(featuredProduct.value.id, normalizedQuantity);
+  } catch (error) {
+    window.alert('Unable to update the cart quantity right now.');
+  }
 };
 
-const addFeaturedToCart = () => {
+const addFeaturedToCart = async () => {
   if (!featuredProduct.value) {
     return;
   }
 
-  const addedId = addCartItem({
-    ...featuredProduct.value,
-    productKey: featuredProduct.value.source === 'custom'
-      ? `custom-copy-${featuredProduct.value.id}-${Date.now()}`
-      : featuredProduct.value.productKey,
-    id: featuredProduct.value.source === 'custom' ? undefined : featuredProduct.value.id,
-    quantity: 1,
-  });
+  try {
+    if (featuredProduct.value.source === 'custom') {
+      const addedItem = await addCustomItem({
+        size: featuredProduct.value.size,
+        quantity: 1,
+        flavor: featuredProduct.value.flavor,
+        designDescription: featuredProduct.value.designDescription,
+        dedicationMessage: featuredProduct.value.dedicationMessage,
+        imageUrl: featuredProduct.value.image,
+      });
 
-  push(`/customer/cart?added=${addedId}`);
+      if (addedItem?.id) {
+        push(`/customer/cart?added=${addedItem.id}`);
+      }
+
+      return;
+    }
+
+    const addedItem = await addCatalogItem(featuredProduct.value.product_id, {
+      quantity: 1,
+      size: featuredProduct.value.size,
+      flavor: featuredProduct.value.flavor,
+    });
+
+    if (addedItem?.id) {
+      push(`/customer/cart?added=${addedItem.id}`);
+    }
+  } catch (error) {
+    window.alert('Unable to add this item to the cart right now.');
+  }
 };
 
-const checkout = () => {
-  console.log('Checkout featured product');
+const checkout = async () => {
+  if (!featuredProduct.value) {
+    return;
+  }
+
+  try {
+    const featuredItemId = featuredProduct.value.id;
+    const order = await checkoutCartItems([featuredItemId], {
+      paymentMethod: selectedPaymentMethod.value,
+    });
+    selectedItems.value = selectedItems.value.filter((itemId) => itemId !== featuredItemId);
+
+    if (order?.checkout_url) {
+      window.location.href = order.checkout_url;
+      return;
+    }
+
+    if (order?.id) {
+      push(`/customer/cart?ordered=${order.id}`);
+    }
+  } catch (error) {
+    window.alert(error.response?.data?.message || 'Unable to complete checkout right now.');
+  }
 };
 
 const continueBrowsing = () => {
@@ -363,25 +679,73 @@ const toggleSelectAll = () => {
   selectedItems.value = cartItems.value.map((item) => item.id);
 };
 
-const removeItem = (itemId) => {
-  removeCartItem(itemId);
-  selectedItems.value = selectedItems.value.filter((selectedId) => selectedId !== itemId);
+const removeItem = async (itemId) => {
+  try {
+    await removeCartItem(itemId);
+    selectedItems.value = selectedItems.value.filter((selectedId) => selectedId !== itemId);
 
-  if (activeFeaturedId.value === itemId) {
-    activeFeaturedId.value = cartItems.value[0]?.id || null;
+    if (activeFeaturedId.value === itemId) {
+      activeFeaturedId.value = cartItems.value[0]?.id || null;
+    }
+  } catch (error) {
+    window.alert('Unable to remove this item right now.');
   }
 };
 
-const deleteSelected = () => {
-  selectedItems.value.forEach((itemId) => {
-    removeCartItem(itemId);
-  });
+const deleteSelected = async () => {
+  const itemsToDelete = [...selectedItems.value];
 
-  selectedItems.value = [];
-  activeFeaturedId.value = cartItems.value[0]?.id || null;
+  try {
+    for (const itemId of itemsToDelete) {
+      await removeCartItem(itemId);
+    }
+
+    selectedItems.value = [];
+    activeFeaturedId.value = cartItems.value[0]?.id || null;
+  } catch (error) {
+    window.alert('Unable to remove the selected items right now.');
+  }
 };
 
-const proceedToCheckout = () => {
-  console.log('Proceeding to checkout with items:', selectedItems.value);
+const proceedToCheckout = async () => {
+  if (!selectedItems.value.length) {
+    return;
+  }
+
+  try {
+    const order = await checkoutCartItems(selectedItems.value, {
+      paymentMethod: selectedPaymentMethod.value,
+    });
+    selectedItems.value = [];
+
+    if (order?.checkout_url) {
+      window.location.href = order.checkout_url;
+      return;
+    }
+
+    if (order?.id) {
+      push(`/customer/cart?ordered=${order.id}`);
+    }
+  } catch (error) {
+    window.alert(error.response?.data?.message || 'Unable to complete checkout right now.');
+  }
 };
+
+const continuePayment = () => {
+  if (paymentCheckoutUrl.value) {
+    window.location.href = paymentCheckoutUrl.value;
+  }
+};
+
+watch(
+  checkoutOrderId,
+  () => {
+    refreshOrderPaymentStatus();
+  },
+  { immediate: true },
+);
+
+onMounted(() => {
+  refreshCart();
+});
 </script>

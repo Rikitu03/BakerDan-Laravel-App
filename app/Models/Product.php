@@ -16,7 +16,11 @@ class Product extends Model
         'category',
         'product_name',
         'description',
+        'price_label',
+        'sizes_available',
+        'flavors_available',
         'image_url',
+        'image_source',
         'is_active',
         'price',
     ];

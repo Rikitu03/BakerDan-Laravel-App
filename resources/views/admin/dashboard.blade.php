@@ -590,27 +590,90 @@
 
             <div class="grid gap-4 xl:grid-cols-2">
                 @foreach ($orders as $order)
-                    <article data-order-card data-page-item="orders" data-order-id="{{ $order['id'] }}" data-order-status="{{ $order['status'] }}" data-payment-status="{{ $order['payment_status'] }}" class="soft-panel panel-lift rounded-[1.75rem] p-5">
+                    <article data-order-card data-page-item="orders" data-order-id="{{ $order['id'] }}" data-order-status="{{ $order['status'] }}" data-payment-status="{{ $order['payment_status'] }}" data-next-status="{{ $order['next_status'] ?? '' }}" class="soft-panel panel-lift rounded-[1.75rem] p-5">
                         <div class="flex flex-wrap items-start justify-between gap-4">
                             <div>
-                                <div class="flex items-center gap-3">
-                                    <h3 class="font-display text-2xl font-bold text-slate-900">{{ $order['id'] }}</h3>
-                                    <span data-payment-status class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{{ ucfirst($order['payment_status']) }}</span>
+                                <div class="flex flex-wrap items-center gap-3">
+                                    <h3 class="font-display text-2xl font-bold text-slate-900">Order #{{ $order['id'] }}</h3>
+                                    <span data-payment-status class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{{ $order['payment_status_label'] }}</span>
+                                    @if (!empty($order['contains_custom']))
+                                        <span class="rounded-full bg-[#FFF4EB] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#C9876C]">Custom order</span>
+                                    @endif
                                 </div>
                                 <p class="mt-1 text-sm text-slate-500">Customer: {{ $order['customer'] }}</p>
+                                <p class="mt-1 text-xs text-slate-500">
+                                    @if (!empty($order['placed_at']))
+                                        Placed {{ $order['placed_at'] }}
+                                    @endif
+                                    @if (!empty($order['payment_method_label']))
+                                        | Payment {{ $order['payment_method_label'] }}
+                                    @endif
+                                    @if (!empty($order['payment_reference']))
+                                        | Ref {{ $order['payment_reference'] }}
+                                    @endif
+                                </p>
                             </div>
-                            <div class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">{{ $order['status'] }}</div>
+                            <div data-order-status-label class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">{{ $order['status_label'] }}</div>
                         </div>
 
-                        <div class="mt-4 rounded-3xl bg-slate-50 p-4 text-sm text-slate-600" data-order-body>
-                            <p>{{ $order['items'] }}</p>
-                            <p class="mt-2 font-semibold text-slate-900">{{ $order['amount'] }}</p>
+                        <div class="mt-4 space-y-3 text-sm text-slate-600" data-order-body>
+                            @foreach ($order['item_lines'] as $line)
+                                <div class="rounded-3xl bg-slate-50 p-4">
+                                    <p class="font-semibold text-slate-900">{{ $line['summary'] }}</p>
+                                    @if (!empty($line['detail']))
+                                        <p class="mt-1 text-xs text-slate-500">{{ $line['detail'] }}</p>
+                                    @endif
+                                </div>
+                            @endforeach
+
+                            @if (!empty($order['contains_custom']))
+                                <div class="rounded-3xl border border-[#F0DCCC] bg-[#FFF8F1] p-4">
+                                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#C9876C]">Customization Brief</p>
+                                    @foreach ($order['custom_items'] as $customItem)
+                                        <div class="mt-3 flex gap-4">
+                                            <img src="{{ $customItem['image_url'] }}" alt="{{ $customItem['name'] }}" class="h-20 w-20 rounded-[1.25rem] object-cover ring-1 ring-[#EACFBC]">
+                                            <div class="min-w-0 flex-1">
+                                                <p class="font-semibold text-slate-900">{{ $customItem['name'] }}</p>
+                                                <p class="mt-1 text-xs text-slate-500">
+                                                    Qty {{ $customItem['quantity'] }}
+                                                    @if (!empty($customItem['size']))
+                                                        | Size {{ $customItem['size'] }}
+                                                    @endif
+                                                    @if (!empty($customItem['flavor']))
+                                                        | Flavor {{ $customItem['flavor'] }}
+                                                    @endif
+                                                </p>
+                                                @if (!empty($customItem['design_description']))
+                                                    <p class="mt-2 text-sm leading-6 text-slate-700">{{ $customItem['design_description'] }}</p>
+                                                @endif
+                                                @if (!empty($customItem['dedication_message']))
+                                                    <p class="mt-2 text-xs font-medium text-[#8E5632]">Dedication: {{ $customItem['dedication_message'] }}</p>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                    <p class="mt-3 text-xs text-[#8E5632]">{{ $order['workflow_note'] }}</p>
+                                </div>
+                            @endif
+
+                            <div class="rounded-3xl bg-white p-4 ring-1 ring-slate-100">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <p class="font-semibold text-slate-900">{{ $order['amount'] }}</p>
+                                    <p class="text-xs text-slate-500">Payment {{ $order['payment_method_label'] }}</p>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="mt-5 flex flex-wrap gap-2">
-                            <button data-order-action="accept" @if ($order['status'] !== 'accepted') hidden @endif type="button" class="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white">Accept</button>
-                            <button data-order-action="preparing" @if ($order['status'] !== 'preparing') hidden @endif type="button" class="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white">Preparing</button>
-                            <button data-order-action="ready" @if ($order['status'] !== 'ready') hidden @endif type="button" class="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white">Ready</button>
+                            <button
+                                data-order-action="advance"
+                                data-next-status="{{ $order['next_status'] ?? '' }}"
+                                @if (empty($order['next_status'])) hidden @endif
+                                type="button"
+                                class="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white"
+                            >
+                                {{ $order['next_status_label'] ?? 'Advance Workflow' }}
+                            </button>
                             <button data-order-action="mark-paid" @if ($order['payment_status'] === 'paid') hidden @endif type="button" class="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">Mark as Paid</button>
                         </div>
                     </article>
