@@ -199,48 +199,16 @@ const featuredProduct = ref({
   quantity: 5
 })
 
-const cartItems = ref([
-  {
-    id: 1,
-    name: 'Korean Garlic Cream Cheese Bun',
-    description: 'Soft enriched dough with a rich cream cheese filling and glossy golden top.',
-    price: 499.00,
-    image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop',
-    quantity: 1
-  },
-  {
-    id: 2,
-    name: 'Korean Garlic Cream Cheese Bun',
-    description: 'Soft enriched dough with a rich cream cheese filling and glossy golden top.',
-    price: 499.00,
-    image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop',
-    quantity: 1
-  },
-  {
-    id: 3,
-    name: 'Korean Garlic Cream Cheese Bun',
-    description: 'Soft enriched dough with a rich cream cheese filling and glossy golden top.',
-    price: 499.00,
-    image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop',
-    quantity: 1
-  },
-  {
-    id: 4,
-    name: 'Korean Garlic Cream Cheese Bun',
-    description: 'Soft enriched dough with a rich cream cheese filling and glossy golden top.',
-    price: 499.00,
-    image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop',
-    quantity: 1
-  },
-  {
-    id: 5,
-    name: 'Korean Garlic Cream Cheese Bun',
-    description: 'Soft enriched dough with a rich cream cheese filling and glossy golden top.',
-    price: 499.00,
-    image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop',
-    quantity: 1
+const cartItems = ref([])
+
+// Load cart from sessionStorage on mount
+onMounted(() => {
+  try {
+    cartItems.value = JSON.parse(sessionStorage.getItem('cart')) || [];
+  } catch (e) {
+    cartItems.value = [];
   }
-])
+})
 
 const selectedItems = ref([])
 const cartSearch = ref('')
@@ -270,11 +238,21 @@ const decrementQuantity = () => {
   }
 }
 
+
 const addToCart = () => {
+  // Optionally update sessionStorage if needed
   console.log('Added to cart:', featuredProduct.value)
 }
 
+
 const checkout = () => {
+  // Check if user is logged in (example: check localStorage token or user prop)
+  const isLoggedIn = !!localStorage.getItem('user_token');
+  if (!isLoggedIn) {
+    // Redirect to login or show login modal
+    router.push('/login');
+    return;
+  }
   console.log('Checkout featured product')
 }
 
@@ -316,6 +294,12 @@ const deleteSelected = () => {
 }
 
 const proceedToCheckout = () => {
+  // Check if user is logged in (example: check localStorage token or user prop)
+  const isLoggedIn = !!localStorage.getItem('user_token');
+  if (!isLoggedIn) {
+    router.push('/login');
+    return;
+  }
   console.log('Proceeding to checkout with items:', selectedItems.value)
 }
 </script>
