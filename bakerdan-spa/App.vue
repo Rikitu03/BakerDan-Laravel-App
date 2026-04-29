@@ -1,11 +1,13 @@
 <template>
   <div id="app" class="min-h-screen bg-gradient-to-br from-[#C9A582] via-[#D4B193] to-[#C9A582]">
     <router-view />
+    <ChatAssistant />
   </div>
 </template>
 
 <script setup>
 import { onMounted } from 'vue'
+import ChatAssistant from './components/shared/ChatAssistant.vue'
 
 onMounted(() => {
   // Initialize app

@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CustomOrderController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\GeminiChatController;
 
 /*
 |--------------------------------------------------------------------------
@@ -68,6 +69,12 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
 |--------------------------------------------------------------------------
 | These endpoints are called by the Vue frontend via Axios
 */
+
+// Public API Routes
+Route::prefix('api')->group(function () {
+    // AI Chat
+    Route::post('/chat', [GeminiChatController::class, 'chat']);
+});
 
 Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
     
