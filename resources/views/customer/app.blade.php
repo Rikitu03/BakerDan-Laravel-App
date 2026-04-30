@@ -17,8 +17,9 @@
     
     <script>
         window.Laravel = {
-            csrfToken: '{{ csrf_token() }}',
-            user: { id: 1, name: 'Guest Explorer', role: 'customer' } // Mock user to bypass auth
+            csrfToken: @json(csrf_token()),
+            user: @json(array_merge($customer, ['role' => 'customer'])),
+            customer: @json($customer),
         };
     </script>
 </body>

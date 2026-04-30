@@ -30,6 +30,7 @@ class ProductController extends Controller
 
         $products = $query->orderByDesc('id')->get()->map(function (Product $product): array {
             $imageUrl = $this->resolveImageUrl($product->image_url);
+            $isCustomOnly = $product->category === 'Cakes';
             return [
                 'id' => $product->id,
                 'product_id' => $product->product_id ?? $product->id,
@@ -46,7 +47,10 @@ class ProductController extends Controller
                 'image_source' => $product->image_source,
                 'in_stock' => true,
                 'is_active' => (bool) $product->is_active,
+                'is_custom_only' => $isCustomOnly,
                 'liked' => false,
+                'order_mode' => $isCustomOnly ? 'custom' : 'catalog',
+                'ordering_guide' => $isCustomOnly ? 'cakes' : null,
             ];
         });
 
@@ -84,6 +88,9 @@ class ProductController extends Controller
                 'image_url' => $imageUrl,
                 'in_stock' => true,
                 'is_active' => (bool) $product->is_active,
+                'is_custom_only' => $product->category === 'Cakes',
+                'order_mode' => $product->category === 'Cakes' ? 'custom' : 'catalog',
+                'ordering_guide' => $product->category === 'Cakes' ? 'cakes' : null,
             ]
         ]);
     }

@@ -43,14 +43,14 @@
         @click.stop
       >
         <a
-          href="/customer"
-          @click.prevent="push('/customer'); showUserMenu = false"
+          href="/customer/orders"
+          @click.prevent="push('/customer/orders'); showUserMenu = false"
           class="flex items-center gap-2 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-100"
         >
           <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5h6m-7 4h8m-9 4h10m-1 6H8a2 2 0 01-2-2V7a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2z" />
           </svg>
-          Purchase history
+          Orders
         </a>
         <a
           href="/customer/settings"
@@ -109,12 +109,13 @@ defineProps({
 });
 
 const { push } = useSpaRouter();
-const rawUserName = window.Laravel?.user?.name || 'Guest Explorer';
+const bootUser = window.Laravel?.customer || window.Laravel?.user || {};
+const rawUserName = bootUser.name || 'Guest Explorer';
 
 const user = ref({
   name: rawUserName,
-  email: 'customer@bakerdan.local',
-  avatar: rawUserName
+  email: bootUser.email || 'customer@bakerdan.local',
+  avatar: bootUser.avatar || rawUserName
     .split(' ')
     .map((part) => part[0] || '')
     .join('')
