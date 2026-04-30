@@ -25,9 +25,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   response => response,
   error => {
-    if (error.response?.status === 401) {
-      window.location.href = '/login'
-    }
+    // Don't auto-redirect for API errors - let the callers handle them
+    // This allows guests to gracefully handle 401 errors for cart operations
     return Promise.reject(error)
   }
 )
@@ -119,6 +118,19 @@ export default {
 
   updatePassword(data) {
     return api.put('/profile/password', data)
+  },
+
+  // Notifications
+  getNotifications() {
+    return api.get('/notifications')
+  },
+
+  markNotificationRead(notificationId) {
+    return api.post(`/notifications/${notificationId}/read`)
+  },
+
+  markAllNotificationsRead() {
+    return api.post('/notifications/read-all')
   },
 
   // Categories

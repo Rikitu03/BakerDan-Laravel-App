@@ -26,7 +26,12 @@
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
           </svg>
-          <span class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+          <span
+            v-if="unreadCount > 0"
+            class="absolute -top-2 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white"
+          >
+            {{ unreadCount > 9 ? '9+' : unreadCount }}
+          </span>
         </button>
 
         <!-- Messages -->
@@ -84,6 +89,7 @@
 import { computed, onMounted } from 'vue'
 import { navigate, useSpaRouter } from '../../router'
 import { useCartStore } from '../../services/cartStore'
+import { useNotificationStore } from '../../services/notificationStore'
 
 defineProps({
   user: {
@@ -97,11 +103,13 @@ defineEmits(['toggle-user-menu'])
 const logoSrc = '/images/logo/BAKERDAN%20LOGO.jpg'
 const { currentRoute } = useSpaRouter()
 const { cartCount, loadCart } = useCartStore()
+const { unreadCount, loadNotifications } = useNotificationStore()
 const isNotificationsRoute = computed(() => currentRoute.value.name === 'customer.notifications')
 const isMessagesRoute = computed(() => currentRoute.value.name === 'customer.messages')
 const navigateTo = (path) => navigate(path)
 
 onMounted(() => {
   loadCart().catch(() => {})
+  loadNotifications().catch(() => {})
 })
 </script>

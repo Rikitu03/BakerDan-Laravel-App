@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\CustomerNotification;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -305,6 +306,7 @@ class CartController extends Controller
         });
 
         $order = $order->fresh('items');
+        $this->notifyCustomerOrderSentToAdmin($order);
 
         return response()->json([
             'success' => true,
@@ -438,11 +440,16 @@ class CartController extends Controller
             return $imagePath;
         }
 
+        $publicRelativePath = ltrim($imagePath, '/');
+        if (file_exists(public_path($publicRelativePath))) {
+            return asset($publicRelativePath);
+        }
+
         if (Storage::disk('public')->exists($imagePath)) {
             return Storage::disk('public')->url($imagePath);
         }
 
-        return asset('storage/' . ltrim($imagePath, '/'));
+        return asset('storage/' . $publicRelativePath);
     }
 
     private function cartItemImageUrl(CartItem $item): string
@@ -481,5 +488,36 @@ class CartController extends Controller
     private function defaultCustomOrderImageUrl(): string
     {
         return asset('images/bakerdan/Cake_Celebration.png');
+    }
+
+    private function notifyCustomerOrderSentToAdmin(Order $order): void
+    {
+        if (! $order->user_id) {
+            return;
+        }
+
+        $itemCount = (int) $order->items->sum('quantity');
+        $containsCustom = $order->items->contains(fn (OrderItem $item) => $item->item_type === 'custom');
+        $paymentMethod = match (strtolower((string) $order->payment_method)) {
+            'maya', 'paymaya' => 'Maya',
+            default => 'GCash',
+        };
+
+        CustomerNotification::query()->create([
+            'user_id' => $order->user_id,
+            'type' => 'order',
+            'title' => 'Order sent to admin',
+            'message' => $containsCustom
+                ? "Order #{$order->id} with {$itemCount} item(s) was sent to BakerDan admin for review and custom order processing."
+                : "Order #{$order->id} with {$itemCount} item(s) was sent to BakerDan admin. Please complete your {$paymentMethod} checkout to confirm it.",
+            'payload' => [
+                'action' => 'open_order',
+                'order_id' => $order->id,
+                'payment_method' => $order->payment_method,
+                'payment_status' => $order->payment_status,
+                'source' => 'customer_checkout',
+            ],
+            'image_url' => null,
+        ]);
     }
 }

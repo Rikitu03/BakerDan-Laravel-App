@@ -270,7 +270,7 @@
                     </a>
                     <nav class="hidden items-center gap-5 text-sm font-medium md:flex" style="color: var(--ink-soft);">
                         <a href="#about" class="transition hover:opacity-70">About</a>
-                        <a href="#menu" @guest data-requires-auth="true" @endguest class="transition hover:opacity-70">Menu</a>
+                        <a href="#menu" class="transition hover:opacity-70">Menu</a>
                         <a href="#how-to-order" class="transition hover:opacity-70">How to Order</a>
                         <a href="#assistant" class="transition hover:opacity-70">AI Assistant</a>
                     </nav>
@@ -314,7 +314,7 @@
                     </p>
 
                     <div class="entrance entrance-delay-3 mt-8 flex flex-wrap items-center gap-4">
-                        <a href="#menu" @guest data-requires-auth="true" @endguest class="rounded-full px-7 py-3.5 text-sm font-semibold uppercase tracking-[0.14em] text-white transition hover:-translate-y-0.5" style="background: linear-gradient(135deg, var(--brand-deep), var(--brand));">See full menu</a>
+                        <a href="#menu" class="rounded-full px-7 py-3.5 text-sm font-semibold uppercase tracking-[0.14em] text-white transition hover:-translate-y-0.5" style="background: linear-gradient(135deg, var(--brand-deep), var(--brand));">See full menu</a>
                         <a href="#how-to-order" class="rounded-full border px-7 py-3.5 text-sm font-semibold uppercase tracking-[0.14em] transition hover:bg-white/60" style="border-color: rgba(38, 24, 15, 0.18);">How to order</a>
                     </div>
 
@@ -467,7 +467,7 @@
                     <div>
                         <h2 class="font-display mt-2 text-4xl font-extrabold sm:text-5xl">Menu</h2>
                     </div>
-                    <a href="#order-now" @guest data-requires-auth="true" @endguest class="rounded-full border px-5 py-2.5 text-sm font-semibold transition hover:bg-white/60" style="border-color: var(--line);">Request catalog</a>
+                        <a href="#order-now" data-requires-auth="{{ auth()->guest() ? 'true' : 'false' }}" class="rounded-full border px-5 py-2.5 text-sm font-semibold transition hover:bg-white/60 {{ auth()->guest() ? '' : 'cursor-pointer' }}" style="border-color: var(--line);">Request catalog</a>
                 </div>
 
                 <div class="grid gap-6 lg:grid-cols-3">
@@ -613,7 +613,7 @@
                             Fresh bread, pastries, and custom orders for homes, cafes, and events. Bringing warmth and quality to every bite.
                         <div class="mt-5 flex flex-wrap gap-3 text-sm font-medium" style="color: var(--ink-soft);">
                             <a href="#about">About</a>
-                            <a href="#menu" @guest data-requires-auth="true" @endguest>Menu</a>
+                            <a href="#menu">Menu</a>
                             <a href="#account">Account</a>
                             <a href="#how-to-order">How to Order</a>
                             <a href="#assistant">AI Assistant</a>
@@ -652,6 +652,14 @@
         <span id="toast-message"></span>
     </div>
 
+    <div
+        id="welcome-page-config"
+        data-is-guest="{{ auth()->guest() ? '1' : '0' }}"
+        data-login-url="{{ route('login') }}"
+        data-account-created="{{ session('account_created') ? '1' : '0' }}"
+        hidden
+    ></div>
+
     <script>
         function showToast(message) {
             const toast = document.getElementById('toast');
@@ -665,32 +673,34 @@
             }, 3000);
         }
 
-        @guest
-        const loginUrl = @json(route('login'));
+        const config = document.getElementById('welcome-page-config');
+        const isGuest = config?.dataset.isGuest === '1';
+        const loginUrl = config?.dataset.loginUrl || '/login';
         let authRedirectTimer = null;
 
-        document.addEventListener('click', (event) => {
-            const protectedLink = event.target.closest('a[data-requires-auth="true"]');
-            if (!protectedLink) {
-                return;
-            }
+        if (isGuest) {
+            document.addEventListener('click', (event) => {
+                const protectedLink = event.target.closest('a[data-requires-auth="true"]');
+                if (!protectedLink) {
+                    return;
+                }
 
-            event.preventDefault();
-            showToast('Please sign in or create an account to continue.');
+                event.preventDefault();
+                showToast('Please sign in or create an account to continue.');
 
-            if (authRedirectTimer) {
-                clearTimeout(authRedirectTimer);
-            }
+                if (authRedirectTimer) {
+                    clearTimeout(authRedirectTimer);
+                }
 
-            authRedirectTimer = setTimeout(() => {
-                window.location.href = loginUrl;
-            }, 1200);
-        });
-        @endguest
+                authRedirectTimer = setTimeout(() => {
+                    window.location.href = loginUrl;
+                }, 1200);
+            });
+        }
 
-        @if(session('account_created'))
+        if (config?.dataset.accountCreated === '1') {
             showToast('Account created successfully!');
-        @endif
+        }
     </script>
 </body>
 </html>
