@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <title>BakerDan | Bread and Pastries</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=sora:400,500,600,700,800|outfit:400,500,600,700" rel="stylesheet" />
@@ -702,5 +703,6 @@
             showToast('Account created successfully!');
         }
     </script>
+    <x-chat-assistant />
 </body>
 </html>

@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\CustomerOrderController;
 use App\Http\Controllers\Api\OrderPaymentController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\GeminiChatController;
 use App\Http\Controllers\PayMongoWebhookController;
 
 /*
@@ -79,6 +80,12 @@ Route::middleware(['auth', 'role:customer'])->group(function () {
 |--------------------------------------------------------------------------
 | These endpoints are called by the Vue frontend via Axios
 */
+
+// Public API Routes
+Route::prefix('api')->group(function () {
+    // AI Chat
+    Route::post('/chat', [GeminiChatController::class, 'chat']);
+});
 
 // Public API routes - accessible to guests and customers
 Route::prefix('api')->group(function () {
