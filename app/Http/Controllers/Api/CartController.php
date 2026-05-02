@@ -49,6 +49,13 @@ class CartController extends Controller
             ->where('is_active', true)
             ->firstOrFail();
 
+        if ($product->category === 'Cakes') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cake products are made-to-order only. Please use the cake ordering guide to submit a custom request.',
+            ], 422);
+        }
+
         $cart = $this->userCart(true);
         $validated = $validator->validated();
         $size = $validated['size'] ?? null;
@@ -93,13 +100,16 @@ class CartController extends Controller
     public function addCustom(Request $request, CustomOrderImageService $customOrderImageService): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'size' => 'required|string|in:Small,Medium,Large',
+            'size' => 'required|string|max:120',
             'quantity' => 'required|integer|min:1|max:99',
-            'flavor' => 'required|string|max:100',
-            'design_description' => 'nullable|string|max:300',
+            'flavor' => 'nullable|string|max:120',
+            'design_description' => 'nullable|string|max:600',
             'dedication_message' => 'nullable|string|max:300',
             'image' => 'nullable|image|mimes:jpeg,jpg,png,gif,webp|max:5120',
             'image_url' => 'nullable|string|max:2048',
+            'guide_section' => 'nullable|string|max:120',
+            'product_name' => 'nullable|string|max:255',
+            'base_price' => 'nullable|numeric|min:0',
         ]);
 
         $validator->after(function ($validator) use ($request): void {
@@ -127,14 +137,19 @@ class CartController extends Controller
             'product_id' => null,
             'item_type' => 'custom',
             'quantity' => (int) $validated['quantity'],
-            'unit_price' => $this->customUnitPrice($validated['size']),
-            'product_name' => 'Custom Celebration Order',
-            'description' => $this->customDescription($validated['size'], $validated['flavor']),
+            'unit_price' => $this->customUnitPrice($validated['size'], isset($validated['base_price']) ? (float) $validated['base_price'] : null),
+            'product_name' => $validated['product_name'] ?? 'Custom Celebration Order',
+            'description' => $this->customDescription(
+                $validated['size'],
+                $validated['flavor'] ?? null,
+                $validated['product_name'] ?? null,
+                $validated['guide_section'] ?? null,
+            ),
             'image_url' => $imagePath,
             'design_description' => $validated['design_description'] ?? null,
             'dedication_message' => $validated['dedication_message'] ?? null,
             'size' => $validated['size'],
-            'flavor' => $validated['flavor'],
+            'flavor' => $validated['flavor'] ?? null,
         ]);
 
         return response()->json([
@@ -368,8 +383,10 @@ class CartController extends Controller
         $unitPrice = $this->cartItemUnitPrice($item);
 
         return [
+            'basePrice' => $unitPrice,
             'id' => $item->id,
             'product_id' => $item->product_id,
+            'productName' => $this->cartItemName($item),
             'source' => $item->item_type === 'custom' ? 'custom' : 'catalog',
             'name' => $this->cartItemName($item),
             'description' => $this->cartItemDescription($item),
@@ -412,8 +429,12 @@ class CartController extends Controller
         return $item->product?->description ?? $item->description ?? '';
     }
 
-    private function customUnitPrice(string $size): float
+    private function customUnitPrice(string $size, ?float $basePrice = null): float
     {
+        if ($basePrice !== null && $basePrice >= 0) {
+            return round($basePrice, 2);
+        }
+
         return match ($size) {
             'Small' => 500.00,
             'Medium' => 750.00,
@@ -422,12 +443,20 @@ class CartController extends Controller
         };
     }
 
-    private function customDescription(?string $size, ?string $flavor): string
+    private function customDescription(?string $size, ?string $flavor, ?string $productName = null, ?string $guideSection = null): string
     {
-        $normalizedSize = strtolower($size ?: 'medium');
-        $normalizedFlavor = strtolower($flavor ?: 'custom');
+        $productLabel = $productName ?: 'Custom Celebration Order';
+        $parts = array_filter([
+            $guideSection ? 'Guide: ' . $guideSection : null,
+            $size ? 'Size: ' . $size : null,
+            $flavor ? 'Flavor: ' . $flavor : null,
+        ]);
 
-        return "A {$normalizedFlavor} custom bake with {$normalizedSize} sizing and personalized finishing touches.";
+        if ($parts === []) {
+            return $productLabel . ' customized to the customer brief.';
+        }
+
+        return $productLabel . ' | ' . implode(' | ', $parts);
     }
 
     private function resolveImageUrl(?string $imagePath): ?string

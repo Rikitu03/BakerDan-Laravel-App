@@ -163,12 +163,12 @@ class PayMongoService
 
     private function cancelUrl(Order $order): string
     {
-        return url('/customer/cart') . '?ordered=' . $order->id . '&payment_return=cancelled';
+        return url('/customer/orders') . '?highlight=' . $order->id . '&payment_return=cancelled';
     }
 
     private function successUrl(Order $order): string
     {
-        return url('/customer/cart') . '?ordered=' . $order->id . '&payment_return=success';
+        return url('/customer/orders') . '?highlight=' . $order->id . '&payment_return=success';
     }
 
     private function lineItems(Order $order): array

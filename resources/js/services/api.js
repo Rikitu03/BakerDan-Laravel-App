@@ -84,6 +84,14 @@ export default {
     return api.post('/checkout', data)
   },
 
+  getOrders() {
+    return api.get('/orders')
+  },
+
+  cancelOrder(orderId) {
+    return api.patch(`/orders/${orderId}/cancel`)
+  },
+
   getOrderPaymentStatus(orderId) {
     return api.get(`/orders/${orderId}/payment-status`)
   },

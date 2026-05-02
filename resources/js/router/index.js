@@ -2,6 +2,7 @@ import { computed, ref } from 'vue';
 import HomePage from '../components/pages/HomePage.vue';
 import CartPage from '../components/pages/CartPage.vue';
 import CustomizePage from '../components/pages/CustomizePage.vue';
+import OrdersPage from '../components/pages/OrdersPage.vue';
 import MessagesPage from '../components/pages/MessagesPage.vue';
 import NotificationsPage from '../components/pages/NotificationsPage.vue';
 import SettingsPage from '../components/pages/SettingsPage.vue';
@@ -48,7 +49,24 @@ const resolveRoute = () => {
         paymentReturn: params.get('payment_return') || null,
       });
     case '/customer/customize':
-      return buildRoute(CustomizePage, 'customer.customize', path);
+      return buildRoute(CustomizePage, 'customer.customize', path, {
+        guide: params.get('guide') || 'general',
+        section: params.get('section') || null,
+      });
+    case '/customer/orders':
+      return buildRoute(
+        OrdersPage,
+        'customer.orders',
+        path,
+        {
+          highlight: params.get('highlight') || params.get('order') || null,
+          paymentReturn: params.get('payment_return') || null,
+        },
+        {
+          hideSidebar: true,
+          mainClass: 'bg-[#FBF7F2]',
+        },
+      );
     case '/customer/messages':
       return buildRoute(
         MessagesPage,

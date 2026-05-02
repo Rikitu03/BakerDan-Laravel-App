@@ -9,6 +9,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CustomOrderController;
+use App\Http\Controllers\Api\CustomerOrderController;
 use App\Http\Controllers\Api\OrderPaymentController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
@@ -99,6 +100,8 @@ Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
     Route::delete('/cart/items/{itemId}', [CartController::class, 'remove']);
     Route::delete('/cart/clear', [CartController::class, 'clear']);
     Route::post('/checkout', [CartController::class, 'checkout']);
+    Route::get('/orders', [CustomerOrderController::class, 'index']);
+    Route::patch('/orders/{order}/cancel', [CustomerOrderController::class, 'cancel']);
     Route::get('/orders/{order}/payment-status', [OrderPaymentController::class, 'show']);
     
     // Custom Orders

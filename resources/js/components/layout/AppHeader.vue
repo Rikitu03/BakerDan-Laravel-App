@@ -53,8 +53,9 @@
           href="/customer/cart"
           @click.prevent="navigateTo('/customer/cart')"
           class="relative hover:scale-110 transition-transform"
+          :class="isCartRoute ? 'text-[#B76539]' : 'text-gray-600'"
         >
-          <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
           <span 
@@ -64,6 +65,19 @@
             {{ cartCount }}
           </span>
         </a>
+
+        <!-- Orders -->
+        <button
+          type="button"
+          aria-label="Open orders"
+          @click="navigateTo('/customer/orders')"
+          class="relative rounded-full p-1 transition-transform hover:scale-110"
+          :class="isOrdersRoute ? 'bg-[#FFF2E8] text-[#B76539]' : 'text-gray-600'"
+        >
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5h6m-7 4h8m-9 4h10m-1 6H8a2 2 0 01-2-2V7a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2z" />
+          </svg>
+        </button>
 
         <!-- User Profile -->
         <button 
@@ -106,6 +120,8 @@ const { cartCount, loadCart } = useCartStore()
 const { unreadCount, loadNotifications } = useNotificationStore()
 const isNotificationsRoute = computed(() => currentRoute.value.name === 'customer.notifications')
 const isMessagesRoute = computed(() => currentRoute.value.name === 'customer.messages')
+const isCartRoute = computed(() => currentRoute.value.name === 'customer.cart')
+const isOrdersRoute = computed(() => currentRoute.value.name === 'customer.orders')
 const navigateTo = (path) => navigate(path)
 
 onMounted(() => {

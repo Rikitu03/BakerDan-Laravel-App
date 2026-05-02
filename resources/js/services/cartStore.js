@@ -94,8 +94,11 @@ const addCustomItem = async (data = {}) => {
       flavor: data.flavor,
       design_description: data.designDescription,
       dedication_message: data.dedicationMessage,
+      guide_section: data.guideSection,
       image: data.imageFile,
       image_url: data.imageUrl,
+      product_name: data.productName,
+      base_price: data.basePrice,
     });
     const payload = response.data?.data || {};
     syncCart(payload.cart);

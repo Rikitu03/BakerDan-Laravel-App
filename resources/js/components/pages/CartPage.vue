@@ -603,6 +603,8 @@ const addFeaturedToCart = async () => {
         designDescription: featuredProduct.value.designDescription,
         dedicationMessage: featuredProduct.value.dedicationMessage,
         imageUrl: featuredProduct.value.image,
+        productName: featuredProduct.value.productName || featuredProduct.value.name,
+        basePrice: featuredProduct.value.basePrice || featuredProduct.value.price,
       });
 
       if (addedItem?.id) {
@@ -644,7 +646,7 @@ const checkout = async () => {
     }
 
     if (order?.id) {
-      push(`/customer/cart?ordered=${order.id}`);
+      push(`/customer/orders?highlight=${order.id}`);
     }
   } catch (error) {
     window.alert(error.response?.data?.message || 'Unable to complete checkout right now.');
@@ -724,7 +726,7 @@ const proceedToCheckout = async () => {
     }
 
     if (order?.id) {
-      push(`/customer/cart?ordered=${order.id}`);
+      push(`/customer/orders?highlight=${order.id}`);
     }
   } catch (error) {
     window.alert(error.response?.data?.message || 'Unable to complete checkout right now.');

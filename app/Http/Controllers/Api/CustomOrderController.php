@@ -16,13 +16,16 @@ class CustomOrderController extends Controller
     public function store(Request $request, CustomOrderImageService $customOrderImageService): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'size' => 'required|string|in:Small,Medium,Large',
+            'size' => 'required|string|max:120',
             'quantity' => 'required|integer|min:1|max:99',
-            'flavor' => 'required|string|max:100',
-            'design_description' => 'nullable|string|max:300',
+            'flavor' => 'nullable|string|max:120',
+            'design_description' => 'nullable|string|max:600',
             'dedication_message' => 'nullable|string|max:300',
             'image' => 'nullable|image|mimes:jpeg,jpg,png,gif,webp|max:5120',
             'image_url' => 'nullable|string|max:2048',
+            'guide_section' => 'nullable|string|max:120',
+            'product_name' => 'nullable|string|max:255',
+            'base_price' => 'nullable|numeric|min:0',
         ]);
 
         $validator->after(function ($validator) use ($request): void {
@@ -53,14 +56,19 @@ class CustomOrderController extends Controller
             'product_id' => null,
             'item_type' => 'custom',
             'quantity' => (int) $validated['quantity'],
-            'unit_price' => $this->customUnitPrice($validated['size']),
-            'product_name' => 'Custom Celebration Order',
-            'description' => $this->customDescription($validated['size'], $validated['flavor']),
+            'unit_price' => $this->customUnitPrice($validated['size'], isset($validated['base_price']) ? (float) $validated['base_price'] : null),
+            'product_name' => $validated['product_name'] ?? 'Custom Celebration Order',
+            'description' => $this->customDescription(
+                $validated['size'],
+                $validated['flavor'] ?? null,
+                $validated['product_name'] ?? null,
+                $validated['guide_section'] ?? null,
+            ),
             'image_url' => $imagePath,
             'design_description' => $validated['design_description'] ?? null,
             'dedication_message' => $validated['dedication_message'] ?? null,
             'size' => $validated['size'],
-            'flavor' => $validated['flavor'],
+            'flavor' => $validated['flavor'] ?? null,
         ]);
 
         return response()->json([
@@ -70,7 +78,7 @@ class CustomOrderController extends Controller
                 'item' => $this->serializeCartItem($cartItem),
                 'workflow' => [
                     'estimated_completion' => $this->estimatedCompletionWindow((int) $validated['quantity']),
-                    'estimated_price' => round($this->customUnitPrice($validated['size']) * (int) $validated['quantity'], 2),
+                    'estimated_price' => round($this->customUnitPrice($validated['size'], isset($validated['base_price']) ? (float) $validated['base_price'] : null) * (int) $validated['quantity'], 2),
                     'next_step' => 'Review your custom request in the cart, then continue to checkout and payment.',
                     'requires_review' => true,
                 ],
@@ -78,8 +86,12 @@ class CustomOrderController extends Controller
         ]);
     }
 
-    private function customUnitPrice(string $size): float
+    private function customUnitPrice(string $size, ?float $basePrice = null): float
     {
+        if ($basePrice !== null && $basePrice >= 0) {
+            return round($basePrice, 2);
+        }
+
         return match ($size) {
             'Small' => 500.00,
             'Medium' => 750.00,
@@ -88,12 +100,20 @@ class CustomOrderController extends Controller
         };
     }
 
-    private function customDescription(?string $size, ?string $flavor): string
+    private function customDescription(?string $size, ?string $flavor, ?string $productName = null, ?string $guideSection = null): string
     {
-        $normalizedSize = strtolower($size ?: 'medium');
-        $normalizedFlavor = strtolower($flavor ?: 'custom');
+        $productLabel = $productName ?: 'Custom Celebration Order';
+        $parts = array_filter([
+            $guideSection ? 'Guide: ' . $guideSection : null,
+            $size ? 'Size: ' . $size : null,
+            $flavor ? 'Flavor: ' . $flavor : null,
+        ]);
 
-        return "A {$normalizedFlavor} custom bake with {$normalizedSize} sizing and personalized finishing touches.";
+        if ($parts === []) {
+            return $productLabel . ' customized to the customer brief.';
+        }
+
+        return $productLabel . ' | ' . implode(' | ', $parts);
     }
 
     private function estimatedCompletionWindow(int $quantity): string
@@ -115,7 +135,9 @@ class CustomOrderController extends Controller
     private function serializeCartItem(CartItem $item): array
     {
         return [
+            'basePrice' => (float) $item->unit_price,
             'id' => $item->id,
+            'productName' => $item->product_name ?: 'Custom Celebration Order',
             'source' => 'custom',
             'name' => $item->product_name ?: 'Custom Celebration Order',
             'description' => $item->description,
