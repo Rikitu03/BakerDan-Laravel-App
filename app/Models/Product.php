@@ -9,21 +9,54 @@ class Product extends Model
 {
     use HasFactory;
 
+    protected $table = 'inventory_products';
+
     protected $fillable = [
-        'name',
-        'description',
-        'price',
+        'product_id',
         'category',
-        'stock',
-        'available_sizes',
-        'available_flavors',
+        'product_name',
+        'description',
+        'price_label',
+        'sizes_available',
+        'flavors_available',
         'image_url',
-        'active',
+        'image_source',
+        'is_active',
+        'price',
     ];
 
     protected $casts = [
-        'available_sizes' => 'array',
-        'available_flavors' => 'array',
-        'active' => 'boolean',
+        'product_id' => 'integer',
+        'is_active' => 'boolean',
+        'price' => 'decimal:2',
     ];
+
+    protected static function booted(): void
+    {
+        static::created(function (self $product): void {
+            if ($product->product_id === null) {
+                $product->forceFill(['product_id' => $product->getKey()])->saveQuietly();
+            }
+        });
+    }
+
+    public function getNameAttribute(): ?string
+    {
+        return $this->product_name;
+    }
+
+    public function setNameAttribute($value): void
+    {
+        $this->attributes['product_name'] = $value;
+    }
+
+    public function getActiveAttribute(): bool
+    {
+        return (bool) $this->is_active;
+    }
+
+    public function setActiveAttribute($value): void
+    {
+        $this->attributes['is_active'] = (bool) $value;
+    }
 }

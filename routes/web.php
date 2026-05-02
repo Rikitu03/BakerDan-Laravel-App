@@ -4,12 +4,17 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\ForgotPasswordController;
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CustomOrderController;
+use App\Http\Controllers\Api\CustomerOrderController;
+use App\Http\Controllers\Api\OrderPaymentController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\GeminiChatController;
+use App\Http\Controllers\PayMongoWebhookController;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,6 +25,8 @@ use App\Http\Controllers\Api\GeminiChatController;
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::post('/webhooks/paymongo', [PayMongoWebhookController::class, 'handle']);
 
 Route::get('/login', [LoginController::class, 'show'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
@@ -56,6 +63,10 @@ Route::prefix('forgot-password')->group(function () {
 | Vue Router handles client-side navigation
 */
 
+// Public cart route - guests can browse cart
+Route::get('/cart', [CustomerController::class, 'spa'])->name('cart');
+
+// Protected customer routes
 Route::middleware(['auth', 'role:customer'])->group(function () {
     // All customer routes return the SPA
     Route::get('/customer/{any?}', [CustomerController::class, 'spa'])
@@ -76,21 +87,29 @@ Route::prefix('api')->group(function () {
     Route::post('/chat', [GeminiChatController::class, 'chat']);
 });
 
-Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
-    
-    // Products
+// Public API routes - accessible to guests and customers
+Route::prefix('api')->group(function () {
+    // Products - public for browsing
     Route::get('/products', [ProductController::class, 'index']);
     Route::get('/products/{id}', [ProductController::class, 'show']);
     
-    // Categories
+    // Categories - public for browsing
     Route::get('/categories', [ProductController::class, 'categories']);
-    
-    // Cart
+});
+
+// Protected API routes - requires authentication
+Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
+    // Cart - guests can view cart (stored in localStorage), auth users get server-side cart
     Route::get('/cart', [CartController::class, 'index']);
     Route::post('/cart/add/{productId}', [CartController::class, 'add']);
+    Route::post('/cart/custom', [CartController::class, 'addCustom']);
     Route::put('/cart/items/{itemId}', [CartController::class, 'update']);
     Route::delete('/cart/items/{itemId}', [CartController::class, 'remove']);
     Route::delete('/cart/clear', [CartController::class, 'clear']);
+    Route::post('/checkout', [CartController::class, 'checkout']);
+    Route::get('/orders', [CustomerOrderController::class, 'index']);
+    Route::patch('/orders/{order}/cancel', [CustomerOrderController::class, 'cancel']);
+    Route::get('/orders/{order}/payment-status', [OrderPaymentController::class, 'show']);
     
     // Custom Orders
     Route::post('/custom-orders', [CustomOrderController::class, 'store']);
@@ -99,6 +118,9 @@ Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);
     Route::put('/profile/password', [ProfileController::class, 'updatePassword']);
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/{notificationId}/read', [NotificationController::class, 'markRead']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
 });
 
 /*
@@ -107,6 +129,13 @@ Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::get('/admin', function() { 
-    return view('admin.dashboard'); 
-})->name('admin.home');
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
+    Route::get('/', [AdminController::class, 'index'])->name('admin.home');
+    Route::post('/inventory', [AdminController::class, 'storeInventory'])->name('admin.inventory.store');
+    Route::post('/inventory/bulk', [AdminController::class, 'bulkUploadInventory'])->name('admin.inventory.bulk');
+    Route::put('/inventory/{product}', [AdminController::class, 'updateInventory'])->name('admin.inventory.update');
+    Route::delete('/inventory/{product}', [AdminController::class, 'destroyInventory'])->name('admin.inventory.destroy');
+    Route::post('/orders/walkin', [AdminController::class, 'storeWalkinOrder'])->name('admin.orders.walkin');
+    Route::patch('/orders/{order}/status', [AdminController::class, 'updateOrderStatus'])->name('admin.orders.status');
+    Route::patch('/orders/{order}/payment-status', [AdminController::class, 'updateOrderPaymentStatus'])->name('admin.orders.payment-status');
+});

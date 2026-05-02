@@ -47,7 +47,7 @@
 
       <div class="flex items-center justify-between gap-3">
         <p class="text-xl font-bold text-gray-800">
-          PHP {{ formatPrice(product.price) }}
+          {{ product.priceLabel || `PHP ${formatPrice(product.price)}` }}
         </p>
 
         <button

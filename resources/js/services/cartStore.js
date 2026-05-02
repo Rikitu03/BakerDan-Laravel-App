@@ -1,146 +1,210 @@
-import { ref, watch } from 'vue';
+import { computed, ref } from 'vue';
+import api from './api';
 
-const STORAGE_KEY = 'bakerdan-cart-items';
-const LAST_ADDED_KEY = 'bakerdan-cart-last-added';
+const cartItems = ref([]);
+const subtotal = ref(0);
+const tax = ref(0);
+const total = ref(0);
+const itemCount = ref(0);
+const isLoading = ref(false);
+const isSubmitting = ref(false);
+const hasLoaded = ref(false);
+const lastAddedId = ref(null);
+const lastCheckoutOrderId = ref(null);
 
-const defaultItems = [
-  {
-    id: 101,
-    productKey: 'catalog-1',
-    source: 'catalog',
-    name: 'Korean Garlic Cream Cheese Bun',
-    description: 'Soft enriched dough with a rich cream cheese center and a glossy garlic finish.',
-    price: 499,
-    image: '/images/bakerdan/Creme_Cheese_Garlic.png',
-    quantity: 1,
-    size: 'Medium',
-    flavor: '',
-    tag: 'Best Seller',
-  },
-  {
-    id: 102,
-    productKey: 'catalog-2',
-    source: 'catalog',
-    name: 'Classic Cream Puffs',
-    description: 'Airy pastry shells filled with silky vanilla cream and a light sugar dusting.',
-    price: 299,
-    image: '/images/bakerdan/Creme_Puffs.png',
-    quantity: 1,
-    size: 'Box of 6',
-    flavor: 'Vanilla',
-    tag: 'Fresh Batch',
-  },
-];
+let loadPromise = null;
 
-const readStorage = (key, fallback) => {
-  if (typeof window === 'undefined') {
-    return fallback;
+const syncCart = (cart = {}) => {
+  const items = Array.isArray(cart.items) ? cart.items : [];
+
+  cartItems.value = items;
+  subtotal.value = Number(cart.subtotal || 0);
+  tax.value = Number(cart.tax || 0);
+  total.value = Number(cart.total || 0);
+  itemCount.value = Number(cart.item_count || items.reduce((sum, item) => sum + Number(item.quantity || 0), 0));
+
+  if (lastAddedId.value && !items.some((item) => item.id === lastAddedId.value)) {
+    lastAddedId.value = null;
   }
+};
+
+const loadCart = async ({ force = false } = {}) => {
+  if (hasLoaded.value && !force) {
+    return cartItems.value;
+  }
+
+  if (loadPromise && !force) {
+    return loadPromise;
+  }
+
+  isLoading.value = true;
+  loadPromise = api.getCart()
+    .then((response) => {
+      syncCart(response.data?.data);
+      hasLoaded.value = true;
+      return cartItems.value;
+    })
+    .catch((error) => {
+      // If unauthorized (guest), just load empty cart
+      if (error.response?.status === 401) {
+        syncCart({ items: [], subtotal: 0, tax: 0, total: 0 });
+        hasLoaded.value = true;
+        return cartItems.value;
+      }
+      throw error;
+    })
+    .finally(() => {
+      isLoading.value = false;
+      loadPromise = null;
+    });
+
+  return loadPromise;
+};
+
+const addCatalogItem = async (productId, data = {}) => {
+  isSubmitting.value = true;
 
   try {
-    const value = window.localStorage.getItem(key);
-    return value ? JSON.parse(value) : fallback;
-  } catch {
-    return fallback;
+    const response = await api.addToCart(productId, data);
+    const payload = response.data?.data || {};
+    syncCart(payload.cart);
+    lastAddedId.value = payload.item?.id || null;
+    hasLoaded.value = true;
+
+    return payload.item || null;
+  } catch (error) {
+    // Redirect to login for guests trying to add to cart
+    if (error.response?.status === 401) {
+      window.location.href = '/login';
+      return null;
+    }
+    throw error;
+  } finally {
+    isSubmitting.value = false;
   }
 };
 
-const initialItems = readStorage(STORAGE_KEY, defaultItems);
-const cartItems = ref(initialItems);
-const lastAddedId = ref(readStorage(LAST_ADDED_KEY, initialItems[0]?.id || null));
+const addCustomItem = async (data = {}) => {
+  isSubmitting.value = true;
 
-let cartSequence = cartItems.value.reduce((maxId, item) => {
-  const currentId = Number(item.id) || 0;
-  return currentId > maxId ? currentId : maxId;
-}, 100);
+  try {
+    const response = await api.addCustomToCart({
+      size: data.size,
+      quantity: data.quantity,
+      flavor: data.flavor,
+      design_description: data.designDescription,
+      dedication_message: data.dedicationMessage,
+      guide_section: data.guideSection,
+      image: data.imageFile,
+      image_url: data.imageUrl,
+      product_name: data.productName,
+      base_price: data.basePrice,
+    });
+    const payload = response.data?.data || {};
+    syncCart(payload.cart);
+    lastAddedId.value = payload.item?.id || null;
+    hasLoaded.value = true;
 
-const nextId = () => {
-  cartSequence += 1;
-  return cartSequence;
-};
-
-const persistCart = () => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cartItems.value));
-  window.localStorage.setItem(LAST_ADDED_KEY, JSON.stringify(lastAddedId.value));
-};
-
-watch(cartItems, persistCart, { deep: true });
-watch(lastAddedId, persistCart);
-
-const normalizeCartItem = (item) => ({
-  id: Number(item.id) || nextId(),
-  productKey: item.productKey || `item-${Date.now()}`,
-  source: item.source || 'catalog',
-  name: item.name || 'Bakerdan Item',
-  description: item.description || '',
-  price: Number(item.price) || 0,
-  image: item.image || '/images/bakerdan/Bread.png',
-  quantity: Math.max(1, Number(item.quantity) || 1),
-  size: item.size || 'Medium',
-  flavor: item.flavor || '',
-  tag: item.tag || 'Bakerdan',
-  designDescription: item.designDescription || '',
-  dedicationMessage: item.dedicationMessage || '',
-});
-
-const addCartItem = (item) => {
-  const normalizedItem = normalizeCartItem(item);
-  const existingIndex = cartItems.value.findIndex(
-    (cartItem) => cartItem.productKey === normalizedItem.productKey && cartItem.source === normalizedItem.source,
-  );
-
-  if (existingIndex > -1 && normalizedItem.source !== 'custom') {
-    cartItems.value[existingIndex] = {
-      ...cartItems.value[existingIndex],
-      quantity: cartItems.value[existingIndex].quantity + normalizedItem.quantity,
-    };
-    lastAddedId.value = cartItems.value[existingIndex].id;
-    return cartItems.value[existingIndex].id;
-  }
-
-  cartItems.value = [normalizedItem, ...cartItems.value];
-  lastAddedId.value = normalizedItem.id;
-  return normalizedItem.id;
-};
-
-const updateCartItemQuantity = (itemId, quantity) => {
-  cartItems.value = cartItems.value.map((item) =>
-    item.id === itemId
-      ? {
-          ...item,
-          quantity: Math.max(1, Number(quantity) || 1),
-        }
-      : item,
-  );
-};
-
-const removeCartItem = (itemId) => {
-  cartItems.value = cartItems.value.filter((item) => item.id !== itemId);
-
-  if (lastAddedId.value === itemId) {
-    lastAddedId.value = cartItems.value[0]?.id || null;
+    return payload.item || null;
+  } catch (error) {
+    // Redirect to login for guests trying to add to cart
+    if (error.response?.status === 401) {
+      window.location.href = '/login';
+      return null;
+    }
+    throw error;
+  } finally {
+    isSubmitting.value = false;
   }
 };
 
-const clearCart = () => {
-  cartItems.value = [];
-  lastAddedId.value = null;
+const updateCartItemQuantity = async (itemId, quantity) => {
+  isSubmitting.value = true;
+
+  try {
+    const response = await api.updateCartItem(itemId, { quantity });
+    const payload = response.data?.data || {};
+    syncCart(payload.cart);
+
+    return payload.item || null;
+  } finally {
+    isSubmitting.value = false;
+  }
 };
 
-const setLastAddedId = (itemId) => {
-  lastAddedId.value = itemId;
+const removeCartItem = async (itemId) => {
+  isSubmitting.value = true;
+
+  try {
+    const response = await api.removeFromCart(itemId);
+    syncCart(response.data?.data?.cart);
+  } finally {
+    isSubmitting.value = false;
+  }
+};
+
+const clearCart = async () => {
+  isSubmitting.value = true;
+
+  try {
+    const response = await api.clearCart();
+    syncCart(response.data?.data?.cart);
+  } finally {
+    isSubmitting.value = false;
+  }
+};
+
+const checkout = async (itemIds, data = {}) => {
+  isSubmitting.value = true;
+
+  try {
+    const response = await api.checkout({
+      item_ids: itemIds,
+      payment_method: data.paymentMethod,
+      shipping_address: data.shippingAddress,
+    });
+    const payload = response.data?.data || {};
+    syncCart(payload.cart);
+    lastCheckoutOrderId.value = payload.order?.id || null;
+    hasLoaded.value = true;
+
+    return payload.order || null;
+  } catch (error) {
+    // Redirect to login for guests trying to checkout
+    if (error.response?.status === 401) {
+      window.location.href = '/login';
+      return null;
+    }
+    throw error;
+  } finally {
+    isSubmitting.value = false;
+  }
+};
+
+const syncOrderPaymentStatus = async (orderId) => {
+  const response = await api.getOrderPaymentStatus(orderId);
+
+  return response.data?.data || null;
 };
 
 export const useCartStore = () => ({
   cartItems,
+  subtotal,
+  tax,
+  total,
+  itemCount: computed(() => itemCount.value),
+  cartCount: computed(() => itemCount.value),
+  isLoading,
+  isSubmitting,
+  hasLoaded,
   lastAddedId,
-  addCartItem,
+  lastCheckoutOrderId,
+  loadCart,
+  addCatalogItem,
+  addCustomItem,
   updateCartItemQuantity,
   removeCartItem,
   clearCart,
-  setLastAddedId,
+  checkout,
+  syncOrderPaymentStatus,
 });
