@@ -4,19 +4,10 @@ namespace Database\Seeders;
 
 use App\Models\Product;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\File;
 
 class ProductCatalogSeeder extends Seeder
 {
-    private const PRODUCT_IMAGE_MAP = [
-        'creme cheese garlic box of 6 pcs' => '/images/bakerdan/Creme_Cheese_Garlic.png',
-        'creme puffs box of 12 pcs' => '/images/bakerdan/Creme_Puffs.png',
-        'wallnut brownies box of 15 pcs' => '/images/bakerdan/Brownies.png',
-        'piped cupcakes 12 pcs' => '/images/bakerdan/piped_cupcakes.jpg',
-        'fondant cupcakes 12 pcs' => '/images/bakerdan/fondant_cupcakes.jpg',
-        'sugar cookies 25 pcs' => '/images/bakerdan/sugar_cookies.jpg',
-        'creampuff tower 36 to 40 pcs' => '/images/bakerdan/creampuff_tower.jpg',
-    ];
-
     private const PRODUCTS = [
         ['product_name' => 'Creme Cheese Garlic (Box of 6 pcs)', 'category' => 'Breads', 'price_label' => 'PHP 280.00', 'sizes_available' => 'N/A', 'flavors_available' => 'N/A', 'image_source' => 'received_1732155128165064.webp'],
         ['product_name' => 'Ube / Classic Potato Ensaymada', 'category' => 'Breads', 'price_label' => 'PHP 160.00', 'sizes_available' => 'N/A', 'flavors_available' => 'Ube, Classic Potato', 'image_source' => 'received_1732155128165064.webp'],
@@ -48,6 +39,8 @@ class ProductCatalogSeeder extends Seeder
         ['product_name' => 'Soft Icing with Fondant Details', 'category' => 'Customization', 'price_label' => 'Rates to be discussed', 'sizes_available' => 'N/A', 'flavors_available' => 'N/A', 'image_source' => 'received_1378296820985078.jpeg'],
         ['product_name' => 'Additional Fondant Details & Edible Print', 'category' => 'Customization', 'price_label' => 'Additional fee applies', 'sizes_available' => 'N/A', 'flavors_available' => 'N/A', 'image_source' => 'received_26342431045415063.jpeg'],
     ];
+
+    private ?array $catalogImageCandidates = null;
 
     public function run(): void
     {
@@ -143,8 +136,20 @@ class ProductCatalogSeeder extends Seeder
     {
         $normalizedProductName = $this->normalizeProductName($productName);
 
-        if (isset(self::PRODUCT_IMAGE_MAP[$normalizedProductName])) {
-            return self::PRODUCT_IMAGE_MAP[$normalizedProductName];
+        foreach ($this->catalogImageCandidates() as $candidate) {
+            if ($candidate['normalized'] === $normalizedProductName) {
+                return $candidate['path'];
+            }
+        }
+
+        foreach ($this->catalogImageCandidates() as $candidate) {
+            if (strlen($candidate['normalized']) < 8) {
+                continue;
+            }
+
+            if (str_contains($normalizedProductName, $candidate['normalized'])) {
+                return $candidate['path'];
+            }
         }
 
         return match ($category) {
@@ -161,6 +166,34 @@ class ProductCatalogSeeder extends Seeder
         $normalized = preg_replace('/[^a-z0-9]+/', ' ', $normalized) ?? $normalized;
 
         return trim($normalized);
+    }
+
+    private function catalogImageCandidates(): array
+    {
+        if ($this->catalogImageCandidates !== null) {
+            return $this->catalogImageCandidates;
+        }
+
+        $directory = public_path('images/bakerdan');
+
+        if (!is_dir($directory)) {
+            return $this->catalogImageCandidates = [];
+        }
+
+        return $this->catalogImageCandidates = collect(File::files($directory))
+            ->filter(fn ($file) => in_array(strtolower($file->getExtension()), ['png', 'jpg', 'jpeg', 'webp'], true))
+            ->map(function ($file): array {
+                $filename = pathinfo($file->getFilename(), PATHINFO_FILENAME);
+
+                return [
+                    'normalized' => $this->normalizeProductName($filename),
+                    'path' => '/images/bakerdan/' . $file->getFilename(),
+                ];
+            })
+            ->filter(fn (array $candidate): bool => $candidate['normalized'] !== '')
+            ->sortByDesc(fn (array $candidate): int => strlen($candidate['normalized']))
+            ->values()
+            ->all();
     }
 
     private function signature(string $category, string $productName): string
