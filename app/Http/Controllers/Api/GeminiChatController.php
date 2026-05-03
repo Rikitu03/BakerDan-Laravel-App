@@ -24,7 +24,9 @@ class GeminiChatController extends Controller
         $history = $request->input('history', []); // Previous messages if any
 
         // Fetch active products to inject as context
-        $products = Product::where('active', true)->get();
+        $products = Product::query()
+            ->where('is_active', '=', true, 'and')
+            ->get();
 
         $productContext = "Here is the current list of products available at BakerDan:\n";
         foreach ($products as $product) {

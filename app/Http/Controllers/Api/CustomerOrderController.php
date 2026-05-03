@@ -242,7 +242,7 @@ class CustomerOrderController extends Controller
         }
 
         if (Storage::disk('public')->exists($imagePath)) {
-            return Storage::disk('public')->url($imagePath);
+            return asset('storage/' . ltrim($imagePath, '/'));
         }
 
         return asset('storage/' . ltrim($imagePath, '/'));

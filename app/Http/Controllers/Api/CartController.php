@@ -194,7 +194,7 @@ class CartController extends Controller
     {
         $cartItem = $this->ownedCartItem($itemId);
         $cart = $cartItem->cart;
-        $cartItem->delete();
+        CartItem::destroy($itemId);
 
         return response()->json([
             'success' => true,
@@ -475,7 +475,7 @@ class CartController extends Controller
         }
 
         if (Storage::disk('public')->exists($imagePath)) {
-            return Storage::disk('public')->url($imagePath);
+            return asset('storage/' . ltrim($imagePath, '/'));
         }
 
         return asset('storage/' . $publicRelativePath);

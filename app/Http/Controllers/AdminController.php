@@ -44,7 +44,7 @@ class AdminController extends Controller
         ]);
 
         $products = Product::query()
-            ->whereIn('id', collect($data['items'])->pluck('product_id')->all())
+            ->whereIn('id', collect($data['items'])->pluck('product_id')->all(), 'and', false)
             ->get()
             ->keyBy('id');
 
@@ -268,7 +268,7 @@ class AdminController extends Controller
 
     public function destroyInventory(Product $product): RedirectResponse
     {
-        $product->delete();
+        Product::destroy($product->id);
 
         return redirect()->route('admin.home')->with('status', 'Product removed successfully.');
     }

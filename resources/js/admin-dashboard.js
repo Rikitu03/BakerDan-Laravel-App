@@ -597,7 +597,9 @@ if (dashboard) {
 
     const openInventoryDrawer = (mode, product = null) => {
         setInventoryMode(mode, product);
-        inventoryDrawer.hidden = false;
+        if (inventoryDrawer) {
+            inventoryDrawer.hidden = false;
+        }
     };
 
     const closeInventoryDrawer = () => {
@@ -610,19 +612,27 @@ if (dashboard) {
     };
 
     const setInventoryMode = (mode, product = null) => {
-        inventoryForm.dataset.mode = mode;
-        inventoryTitle.textContent = mode === 'edit' ? 'Edit Product' : 'Add Product';
-        inventorySubtitle.textContent = mode === 'edit'
-            ? 'Update the selected product information before saving.'
-            : 'Create a new active product for the bakery catalog.';
-        inventoryFeedback.textContent = '';
+        if (inventoryForm) {
+            inventoryForm.dataset.mode = mode;
+        }
+        if (inventoryTitle) {
+            inventoryTitle.textContent = mode === 'edit' ? 'Edit Product' : 'Add Product';
+        }
+        if (inventorySubtitle) {
+            inventorySubtitle.textContent = mode === 'edit'
+                ? 'Update the selected product information before saving.'
+                : 'Create a new active product for the bakery catalog.';
+        }
+        if (inventoryFeedback) {
+            inventoryFeedback.textContent = '';
+        }
 
         if (product) {
-            inventoryId.value = product.id;
-            inventoryName.value = product.name;
-            inventoryDescription.value = product.description;
-            inventoryPrice.value = product.price;
-            inventoryType.value = product.category || 'Bread';
+            if (inventoryId) inventoryId.value = product.id;
+            if (inventoryName) inventoryName.value = product.name;
+            if (inventoryDescription) inventoryDescription.value = product.description;
+            if (inventoryPrice) inventoryPrice.value = product.price;
+            if (inventoryType) inventoryType.value = product.category || 'Bread';
             if (inventoryIsActive) {
                 inventoryIsActive.value = product.is_active ? '1' : '0';
             }
@@ -631,8 +641,8 @@ if (dashboard) {
                 inventoryMethod.value = 'PUT';
             }
         } else {
-            inventoryForm.reset();
-            inventoryId.value = '';
+            if (inventoryForm) inventoryForm.reset();
+            if (inventoryId) inventoryId.value = '';
             if (inventoryType) {
                 inventoryType.value = 'Bread';
             }
@@ -932,7 +942,7 @@ if (dashboard) {
         event.preventDefault();
 
         const mode = inventoryForm.dataset.mode || 'add';
-        const productId = inventoryId.value;
+        const productId = inventoryId ? inventoryId.value : '';
         const baseUrl = inventoryForm.dataset.updateUrlBase;
 
         if (mode === 'edit' && productId) {

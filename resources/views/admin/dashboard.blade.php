@@ -1355,6 +1355,7 @@
                         <p class="text-sm font-medium text-slate-500">Product form</p>
                         <h3 data-inventory-title class="font-display mt-1 text-2xl font-bold">Add Product</h3>
                         <p data-inventory-subtitle class="mt-1 text-sm text-slate-500">Create a new active product for the bakery catalog.</p>
+                        <p data-inventory-feedback class="mt-2 text-sm font-medium text-rose-600"></p>
                     </div>
                     <button type="button" data-inventory-close class="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-600">✕</button>
                 </div>

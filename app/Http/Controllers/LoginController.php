@@ -22,7 +22,9 @@ class LoginController extends Controller
             'password' => 'required',
         ]);
 
-        $detail = UserDetail::where('username', $credentials['username'])->first();
+        $detail = UserDetail::query()
+            ->where('username', '=', $credentials['username'], 'and')
+            ->first();
 
         if ($detail && Hash::check($credentials['password'], $detail->password)) {
             $user = $detail->user;
