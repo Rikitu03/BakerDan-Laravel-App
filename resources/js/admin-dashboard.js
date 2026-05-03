@@ -21,6 +21,8 @@ if (dashboard) {
     const inventoryDescription = dashboard.querySelector('[data-inventory-description]');
     const inventoryPrice = dashboard.querySelector('[data-inventory-price]');
     const inventoryType = dashboard.querySelector('[data-inventory-type]');
+    const inventoryIsActive = dashboard.querySelector('[data-inventory-is-active]');
+    const inventoryMethod = dashboard.querySelector('[data-inventory-method]');
     const inventoryId = dashboard.querySelector('[data-inventory-id]');
     const customerPanel = dashboard.querySelector('[data-customer-panel]');
     const customerPanelTitle = dashboard.querySelector('[data-customer-panel-title]');
@@ -38,9 +40,35 @@ if (dashboard) {
     const personTabs = Array.from(dashboard.querySelectorAll('[data-person-tab]'));
     const personPanels = Array.from(dashboard.querySelectorAll('[data-person-panel]'));
     const paginationControlGroups = Array.from(dashboard.querySelectorAll('[data-pagination-controls]'));
+    const adminMessageSearch = dashboard.querySelector('[data-admin-message-search]');
+    const adminMessageList = dashboard.querySelector('[data-admin-message-list]');
+    const adminMessageUnread = dashboard.querySelector('[data-admin-message-unread]');
+    const adminMessageAvatar = dashboard.querySelector('[data-admin-message-avatar]');
+    const adminMessageName = dashboard.querySelector('[data-admin-message-name]');
+    const adminMessageSubtitle = dashboard.querySelector('[data-admin-message-subtitle]');
+    const adminMessageLabel = dashboard.querySelector('[data-admin-message-label]');
+    const adminMessageFeed = dashboard.querySelector('[data-admin-message-feed]');
+    const adminMessageDraft = dashboard.querySelector('[data-admin-message-draft]');
+    const adminMessageSend = dashboard.querySelector('[data-admin-message-send]');
+    const adminMessageMarkRead = dashboard.querySelector('[data-admin-message-mark-read]');
+    const walkinOrderModal = document.getElementById('walkin-order-modal');
+    const openWalkinOrderBtn = dashboard.querySelector('[data-open-walkin-order]');
+    const closeWalkinOrderButtons = Array.from(walkinOrderModal?.querySelectorAll('[data-close-walkin-order]') || []);
+    const bulkUploadModal = document.getElementById('bulk-upload-modal');
+    const openBulkUploadBtn = dashboard.querySelector('[data-open-bulk-upload]');
+    const closeBulkUploadButtons = Array.from(bulkUploadModal?.querySelectorAll('[data-close-bulk-upload]') || []);
+    const walkinItemsContainer = walkinOrderModal?.querySelector('[data-walkin-items]');
+    const addWalkinItemButton = walkinOrderModal?.querySelector('[data-add-walkin-item]');
+    const walkinItemTemplate = dashboard.querySelector('[data-walkin-item-template]');
+    const downloadBulkTemplateButton = bulkUploadModal?.querySelector('[data-download-bulk-template]');
 
     const reportDataElement = document.getElementById('admin-report-data');
     const reportData = reportDataElement ? JSON.parse(reportDataElement.textContent) : null;
+    const productOptionsElement = document.getElementById('admin-product-options');
+    const productOptions = productOptionsElement ? JSON.parse(productOptionsElement.textContent) : [];
+    const adminMessagesElement = document.getElementById('admin-messages-data');
+    const adminMessages = adminMessagesElement ? JSON.parse(adminMessagesElement.textContent) : [];
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
     const paginationKeys = ['inventory', 'orders', 'customers', 'admins', 'notifications'];
     const paginations = {
@@ -50,8 +78,14 @@ if (dashboard) {
         admins: { page: 1, size: 10 },
         notifications: { page: 1, size: 10 },
     };
+    const filters = {
+        inventory: { query: '', value: 'all' },
+        orders: { query: '', value: 'all' },
+        notifications: { query: '', value: 'all' },
+    };
 
     let modalAction = null;
+    let activeAdminMessageId = adminMessages[0]?.id || null;
 
     const sectionLabels = navButtons.reduce((acc, button) => {
         const key = button.dataset.nav;
@@ -90,6 +124,76 @@ if (dashboard) {
         link.click();
         link.remove();
         URL.revokeObjectURL(url);
+    };
+
+    const openDialog = (dialog) => {
+        dialog?.removeAttribute('hidden');
+    };
+
+    const closeDialog = (dialog) => {
+        dialog?.setAttribute('hidden', '');
+    };
+
+    const syncWalkinRows = () => {
+        const rows = Array.from(walkinItemsContainer?.querySelectorAll('[data-walkin-item]') || []);
+        rows.forEach((row, index) => {
+            const productSelect = row.querySelector('select');
+            const quantityInput = row.querySelector('input[type="number"]');
+            if (productSelect) {
+                productSelect.name = `items[${index}][product_id]`;
+            }
+            if (quantityInput) {
+                quantityInput.name = `items[${index}][quantity]`;
+            }
+            const removeButton = row.querySelector('[data-remove-walkin-item]');
+            if (removeButton) {
+                removeButton.disabled = rows.length === 1;
+                removeButton.classList.toggle('opacity-50', rows.length === 1);
+            }
+        });
+    };
+
+    const buildProductOptions = (select, selectedValue = '') => {
+        select.innerHTML = '';
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = 'Select a product';
+        select.appendChild(placeholder);
+
+        productOptions.forEach((product) => {
+            const option = document.createElement('option');
+            option.value = product.id;
+            option.textContent = `${product.name} - ${product.price}`;
+            option.selected = String(selectedValue) === String(product.id);
+            select.appendChild(option);
+        });
+    };
+
+    const addWalkinItemRow = ({ productId = '', quantity = 1 } = {}) => {
+        if (!walkinItemsContainer || !walkinItemTemplate) {
+            return;
+        }
+
+        const fragment = walkinItemTemplate.content.cloneNode(true);
+        const row = fragment.querySelector('[data-walkin-item]');
+        const select = row.querySelector('[data-walkin-product]');
+        const quantityInput = row.querySelector('[data-walkin-quantity]');
+
+        buildProductOptions(select, productId);
+        quantityInput.value = quantity;
+
+        walkinItemsContainer.appendChild(fragment);
+        syncWalkinRows();
+    };
+
+    const downloadBulkTemplate = () => {
+        const template = [
+            'name,description,price,category,image_url,is_active',
+            '"Classic Pandesal","Soft bread rolls",45,Bread,,1',
+            '"Cheese Roll","Butter bread with cheese",65,Pastries,https://example.com/cheese-roll.jpg,1',
+        ].join('\n');
+
+        downloadContent('inventory-bulk-template.csv', template, 'text/csv;charset=utf-8;');
     };
 
     const getReportRows = (target) => {
@@ -160,12 +264,210 @@ if (dashboard) {
         }).join('');
     };
 
+    const getFilteredAdminMessages = () => {
+        const query = (adminMessageSearch?.value || '').trim().toLowerCase();
+
+        if (!query) {
+            return adminMessages;
+        }
+
+        return adminMessages.filter((conversation) => [
+            conversation.name,
+            conversation.label,
+            conversation.preview,
+        ].join(' ').toLowerCase().includes(query));
+    };
+
+    const getActiveAdminMessage = () => adminMessages.find((conversation) => conversation.id === activeAdminMessageId) || null;
+
+    const renderAdminMessageSummary = () => {
+        if (!adminMessageUnread) {
+            return;
+        }
+
+        const unread = adminMessages.filter((conversation) => conversation.unread).length;
+        adminMessageUnread.textContent = `${unread} unread`;
+
+        const navCount = dashboard.querySelector('[data-nav-count="messages"]');
+        if (navCount) {
+            navCount.textContent = String(unread);
+        }
+    };
+
+    const renderAdminMessageList = () => {
+        if (!adminMessageList) {
+            return;
+        }
+
+        const filtered = getFilteredAdminMessages();
+
+        if (!filtered.length) {
+            adminMessageList.innerHTML = `
+                <div class="rounded-[24px] border border-dashed border-[#E4D5C8] bg-white px-5 py-8 text-center text-sm text-[#7F746D]">
+                    No conversations match your search.
+                </div>
+            `;
+            return;
+        }
+
+        adminMessageList.innerHTML = filtered.map((conversation) => `
+            <button
+                type="button"
+                data-admin-message-thread="${conversation.id}"
+                class="message-thread-button mb-2 flex w-full items-start gap-3 rounded-[22px] border border-transparent px-3 py-3 text-left transition-all hover:bg-white/80"
+                data-active="${conversation.id === activeAdminMessageId ? 'true' : 'false'}"
+            >
+                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#C9876C] to-[#B8765B] text-sm font-bold text-white shadow-sm">
+                    ${conversation.avatar}
+                </div>
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="truncate text-sm font-semibold text-[#453A35]">${conversation.name}</p>
+                        <span class="shrink-0 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#B79F8F]">${conversation.time}</span>
+                    </div>
+                    <p class="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-[#C68D64]">${conversation.label}</p>
+                    <p class="mt-1 truncate text-sm text-[#796F68]">${conversation.preview}</p>
+                </div>
+                ${conversation.unread ? '<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-[#D96D45]"></span>' : ''}
+            </button>
+        `).join('');
+    };
+
+    const renderAdminMessageFeed = () => {
+        const conversation = getActiveAdminMessage();
+
+        if (!adminMessageName || !adminMessageSubtitle || !adminMessageAvatar || !adminMessageLabel || !adminMessageFeed) {
+            return;
+        }
+
+        if (!conversation) {
+            adminMessageAvatar.textContent = '--';
+            adminMessageName.textContent = 'Select a thread';
+            adminMessageSubtitle.textContent = 'Choose a conversation from the inbox.';
+            adminMessageLabel.textContent = 'Inbox';
+            adminMessageFeed.innerHTML = `
+                <div class="flex h-full min-h-[20rem] items-center justify-center">
+                    <div class="text-center">
+                        <h3 class="text-2xl font-bold text-[#50382A]" style="font-family: 'Sora', sans-serif;">No conversation selected</h3>
+                        <p class="mt-3 text-sm text-[#7F746C]">Pick a message thread from the left to continue chatting.</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        adminMessageAvatar.textContent = conversation.avatar;
+        adminMessageName.textContent = conversation.name;
+        adminMessageSubtitle.textContent = conversation.subtitle;
+        adminMessageLabel.textContent = conversation.label;
+        adminMessageFeed.innerHTML = `
+            <div class="mx-auto flex min-h-full max-w-4xl flex-col justify-end gap-4">
+                <div class="self-center rounded-full bg-white/85 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#B7A08F] shadow-sm">
+                    Today
+                </div>
+                ${conversation.messages.map((message) => `
+                    <div class="flex ${message.sender === 'me' ? 'justify-end' : 'justify-start'}">
+                        <div class="max-w-[85%] rounded-[24px] px-4 py-3 shadow-[0_18px_36px_-32px_rgba(95,59,35,0.5)] md:max-w-[70%] ${message.sender === 'me'
+                            ? 'rounded-br-[8px] bg-[#C9876C] text-white'
+                            : 'rounded-bl-[8px] bg-white text-[#5D534D] ring-1 ring-[#E9DDD3]'}">
+                            <p class="text-sm leading-6">${message.text}</p>
+                            <p class="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] ${message.sender === 'me' ? 'text-white/75' : 'text-[#B49A89]'}">${message.time}</p>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        adminMessageFeed.scrollTop = adminMessageFeed.scrollHeight;
+    };
+
+    const renderAdminMessages = () => {
+        renderAdminMessageSummary();
+        renderAdminMessageList();
+        renderAdminMessageFeed();
+    };
+
     const getPageItems = (key) => {
         return Array.from(dashboard.querySelectorAll(`[data-page-item="${key}"]`)).filter((item) => item.dataset.removed !== '1');
     };
 
+    const matchesInventoryFilter = (item) => {
+        const query = filters.inventory.query.trim().toLowerCase();
+        const category = filters.inventory.value;
+        const haystack = [
+            item.dataset.productName,
+            item.dataset.productDescription,
+            item.dataset.productCategory,
+        ].join(' ').toLowerCase();
+
+        if (category !== 'all' && item.dataset.productCategory !== category) {
+            return false;
+        }
+
+        return !query || haystack.includes(query);
+    };
+
+    const matchesOrdersFilter = (item) => {
+        const query = filters.orders.query.trim().toLowerCase();
+        const selected = filters.orders.value;
+        const haystack = [
+            item.dataset.orderId,
+            item.dataset.orderCustomer,
+            item.dataset.orderStatus,
+            item.dataset.paymentStatus,
+            item.textContent,
+        ].join(' ').toLowerCase();
+
+        if (selected !== 'all') {
+            const matchesSelected = item.dataset.orderStatus === selected
+                || item.dataset.paymentStatus === selected
+                || (selected === 'custom' && item.dataset.orderCustom === '1');
+
+            if (!matchesSelected) {
+                return false;
+            }
+        }
+
+        return !query || haystack.includes(query);
+    };
+
+    const matchesNotificationsFilter = (item) => {
+        const query = filters.notifications.query.trim().toLowerCase();
+        const selected = filters.notifications.value;
+        const haystack = [
+            item.dataset.notificationTitle,
+            item.dataset.notificationMessage,
+            item.dataset.notificationCustomer,
+            item.dataset.notificationOrder,
+        ].join(' ').toLowerCase();
+
+        if (selected !== 'all' && item.dataset.notificationCategory !== selected) {
+            return false;
+        }
+
+        return !query || haystack.includes(query);
+    };
+
+    const getFilteredItems = (key) => {
+        const items = getPageItems(key);
+
+        if (key === 'inventory') {
+            return items.filter(matchesInventoryFilter);
+        }
+
+        if (key === 'orders') {
+            return items.filter(matchesOrdersFilter);
+        }
+
+        if (key === 'notifications') {
+            return items.filter(matchesNotificationsFilter);
+        }
+
+        return items;
+    };
+
     const getTotalPages = (key) => {
-        const total = getPageItems(key).length;
+        const total = getFilteredItems(key).length;
         return Math.max(1, Math.ceil(total / paginations[key].size));
     };
 
@@ -185,7 +487,7 @@ if (dashboard) {
 
     const updateNotificationCount = () => {
         if (notificationCount) {
-            notificationCount.textContent = String(getPageItems('notifications').length);
+            notificationCount.textContent = String(getFilteredItems('notifications').length);
         }
     };
 
@@ -196,6 +498,7 @@ if (dashboard) {
             orders: getPageItems('orders').length,
             customers: getPageItems('customers').length,
             notifications: getPageItems('notifications').length,
+            messages: adminMessages.filter((conversation) => conversation.unread).length,
         };
 
         Object.entries(counts).forEach(([key, value]) => {
@@ -208,7 +511,8 @@ if (dashboard) {
 
     const renderPagination = (key) => {
         const state = paginations[key];
-        const items = getPageItems(key);
+        const allItems = getPageItems(key);
+        const items = getFilteredItems(key);
         const total = items.length;
         const pages = Math.max(1, Math.ceil(total / state.size));
 
@@ -218,6 +522,10 @@ if (dashboard) {
 
         const start = (state.page - 1) * state.size;
         const end = start + state.size;
+
+        allItems.forEach((item) => {
+            item.hidden = true;
+        });
 
         items.forEach((item, index) => {
             item.hidden = index < start || index >= end;
@@ -273,6 +581,10 @@ if (dashboard) {
         if (name === 'inventory' || name === 'orders' || name === 'notifications') {
             renderPagination(name);
         }
+
+        if (name === 'messages') {
+            renderAdminMessages();
+        }
     };
 
     const openModal = (action) => {
@@ -285,7 +597,9 @@ if (dashboard) {
 
     const openInventoryDrawer = (mode, product = null) => {
         setInventoryMode(mode, product);
-        inventoryDrawer.hidden = false;
+        if (inventoryDrawer) {
+            inventoryDrawer.hidden = false;
+        }
     };
 
     const closeInventoryDrawer = () => {
@@ -298,22 +612,47 @@ if (dashboard) {
     };
 
     const setInventoryMode = (mode, product = null) => {
-        inventoryForm.dataset.mode = mode;
-        inventoryTitle.textContent = mode === 'edit' ? 'Edit Product' : 'Add Product';
-        inventorySubtitle.textContent = mode === 'edit'
-            ? 'Update the selected product information before saving.'
-            : 'Create a new active product for the bakery catalog.';
-        inventoryFeedback.textContent = '';
+        if (inventoryForm) {
+            inventoryForm.dataset.mode = mode;
+        }
+        if (inventoryTitle) {
+            inventoryTitle.textContent = mode === 'edit' ? 'Edit Product' : 'Add Product';
+        }
+        if (inventorySubtitle) {
+            inventorySubtitle.textContent = mode === 'edit'
+                ? 'Update the selected product information before saving.'
+                : 'Create a new active product for the bakery catalog.';
+        }
+        if (inventoryFeedback) {
+            inventoryFeedback.textContent = '';
+        }
 
         if (product) {
-            inventoryId.value = product.id;
-            inventoryName.value = product.name;
-            inventoryDescription.value = product.description;
-            inventoryPrice.value = product.price;
-            inventoryType.value = product.type;
+            if (inventoryId) inventoryId.value = product.id;
+            if (inventoryName) inventoryName.value = product.name;
+            if (inventoryDescription) inventoryDescription.value = product.description;
+            if (inventoryPrice) inventoryPrice.value = product.price;
+            if (inventoryType) inventoryType.value = product.category || 'Bread';
+            if (inventoryIsActive) {
+                inventoryIsActive.value = product.is_active ? '1' : '0';
+            }
+            if (inventoryMethod) {
+                inventoryMethod.disabled = false;
+                inventoryMethod.value = 'PUT';
+            }
         } else {
-            inventoryForm.reset();
-            inventoryId.value = '';
+            if (inventoryForm) inventoryForm.reset();
+            if (inventoryId) inventoryId.value = '';
+            if (inventoryType) {
+                inventoryType.value = 'Bread';
+            }
+            if (inventoryIsActive) {
+                inventoryIsActive.value = '1';
+            }
+            if (inventoryMethod) {
+                inventoryMethod.disabled = true;
+                inventoryMethod.value = '';
+            }
         }
     };
 
@@ -324,6 +663,74 @@ if (dashboard) {
             paginations[key].page = 1;
             renderPagination(key);
         });
+    });
+
+    dashboard.querySelectorAll('[data-search-input]').forEach((input) => {
+        input.addEventListener('input', (event) => {
+            const key = event.target.dataset.searchInput;
+            if (!filters[key]) {
+                return;
+            }
+
+            filters[key].query = event.target.value || '';
+            paginations[key].page = 1;
+            renderPagination(key);
+        });
+    });
+
+    dashboard.querySelectorAll('[data-filter-button]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const key = button.dataset.filterButton;
+            if (!filters[key]) {
+                return;
+            }
+
+            filters[key].value = button.dataset.filterValue || 'all';
+            paginations[key].page = 1;
+
+            dashboard.querySelectorAll(`[data-filter-button="${key}"]`).forEach((candidate) => {
+                candidate.dataset.active = candidate === button ? 'true' : 'false';
+            });
+
+            renderPagination(key);
+        });
+    });
+
+    adminMessageSearch?.addEventListener('input', () => {
+        renderAdminMessageList();
+    });
+
+    adminMessageSend?.addEventListener('click', () => {
+        const draft = adminMessageDraft?.value.trim();
+        const conversation = getActiveAdminMessage();
+
+        if (!draft || !conversation) {
+            return;
+        }
+
+        conversation.messages.push({
+            id: Date.now(),
+            sender: 'me',
+            text: draft,
+            time: 'Just now',
+        });
+        conversation.preview = draft;
+        conversation.time = 'now';
+        conversation.unread = false;
+        adminMessageDraft.value = '';
+        renderAdminMessages();
+    });
+
+    adminMessageMarkRead?.addEventListener('click', () => {
+        const conversation = getActiveAdminMessage();
+
+        if (!conversation) {
+            return;
+        }
+
+        conversation.unread = false;
+        renderAdminMessages();
+        updateNavCounts();
     });
 
     dashboard.addEventListener('click', (event) => {
@@ -359,6 +766,18 @@ if (dashboard) {
             return;
         }
 
+        const messageThread = event.target.closest('[data-admin-message-thread]');
+        if (messageThread) {
+            activeAdminMessageId = Number(messageThread.dataset.adminMessageThread);
+            const conversation = getActiveAdminMessage();
+            if (conversation) {
+                conversation.unread = false;
+            }
+            renderAdminMessages();
+            updateNavCounts();
+            return;
+        }
+
         const prevPage = event.target.closest('[data-page-prev]');
         if (prevPage) {
             const key = prevPage.dataset.pagePrev;
@@ -389,7 +808,8 @@ if (dashboard) {
                 name: row.dataset.productName,
                 description: row.dataset.productDescription,
                 price: row.dataset.productPrice,
-                type: row.dataset.productType,
+                category: row.dataset.productCategory,
+                is_active: row.dataset.productIsActive === '1',
             });
             return;
         }
@@ -426,30 +846,54 @@ if (dashboard) {
             const orderCard = orderAction.closest('[data-order-card]');
             const action = orderAction.dataset.orderAction;
 
-            if (action === 'ready') {
-                openModal({
-                    title: 'Mark as Complete',
-                    message: 'Mark this order as complete?',
-                    confirmLabel: 'Complete',
-                    orderId: orderCard.dataset.orderId,
-                });
+            const orderId = orderCard?.dataset.orderId;
+            const requestConfig = {
+                method: 'PATCH',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+            };
+
+            const submitWorkflowUpdate = async (url, payload) => {
+                orderAction.disabled = true;
+
+                try {
+                    const response = await fetch(url, {
+                        ...requestConfig,
+                        body: JSON.stringify(payload),
+                    });
+
+                    const responsePayload = await response.json().catch(() => null);
+
+                    if (!response.ok) {
+                        throw new Error(responsePayload?.message || 'Unable to update the order right now.');
+                    }
+
+                    window.location.reload();
+                } catch (error) {
+                    window.alert(error.message || 'Unable to update the order right now.');
+                    orderAction.disabled = false;
+                }
+            };
+
+            if (action === 'mark-paid' && orderId) {
+                submitWorkflowUpdate(`/admin/orders/${orderId}/payment-status`, { payment_status: 'paid' });
                 return;
             }
 
-            if (action === 'mark-paid') {
-                orderCard.dataset.paymentStatus = 'paid';
-                orderCard.querySelector('[data-payment-status]').textContent = 'Paid';
-                orderAction.hidden = true;
+            if (action === 'advance' && orderId) {
+                const nextStatus = orderAction.dataset.nextStatus;
+
+                if (!nextStatus) {
+                    return;
+                }
+
+                submitWorkflowUpdate(`/admin/orders/${orderId}/status`, { status: nextStatus });
                 return;
             }
 
-            const nextStatus = action === 'accept' ? 'preparing' : action === 'preparing' ? 'ready' : null;
-            if (nextStatus) {
-                orderCard.dataset.orderStatus = nextStatus;
-                orderAction.hidden = true;
-                const nextButton = orderCard.querySelector(`[data-order-action="${nextStatus}"]`);
-                if (nextButton) nextButton.hidden = false;
-            }
             return;
         }
 
@@ -458,7 +902,7 @@ if (dashboard) {
             const row = viewCustomer.closest('[data-person-card]');
             customerPanel.hidden = false;
             customerPanelTitle.textContent = row.dataset.personName;
-            customerPanelMeta.textContent = `${row.dataset.personRole} · ${row.dataset.personEmail}`;
+            customerPanelMeta.textContent = `${row.dataset.personRole} | ${row.dataset.personEmail}`;
             customerPanel.querySelector('[data-customer-panel-body]').innerHTML = row.querySelector('[data-person-details]').innerHTML;
             return;
         }
@@ -496,19 +940,43 @@ if (dashboard) {
 
     inventoryForm?.addEventListener('submit', (event) => {
         event.preventDefault();
-        inventoryFeedback.textContent = inventoryForm.dataset.mode === 'edit' ? 'Product updated' : 'Product added';
-        closeInventoryDrawer();
+
+        const mode = inventoryForm.dataset.mode || 'add';
+        const productId = inventoryId ? inventoryId.value : '';
+        const baseUrl = inventoryForm.dataset.updateUrlBase;
+
+        if (mode === 'edit' && productId) {
+            inventoryForm.action = `${baseUrl}/${productId}`;
+            if (inventoryMethod) {
+                inventoryMethod.disabled = false;
+                inventoryMethod.value = 'PUT';
+            }
+        } else {
+            inventoryForm.action = inventoryForm.dataset.storeUrl || inventoryForm.action;
+            if (inventoryMethod) {
+                inventoryMethod.disabled = true;
+                inventoryMethod.value = '';
+            }
+        }
+
+        inventoryForm.submit();
     });
 
     modalConfirm?.addEventListener('click', () => {
         if (!modalAction) return;
 
         if (modalAction.productId) {
-            const productRow = dashboard.querySelector(`[data-product-row][data-product-id="${modalAction.productId}"]`);
-            if (productRow) {
-                productRow.dataset.removed = '1';
-                renderPagination('inventory');
-            }
+            fetch(`/admin/inventory/${modalAction.productId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                },
+            }).then(() => {
+                window.location.reload();
+            });
+            closeModal();
+            return;
         }
 
         if (modalAction.orderId) {
@@ -541,13 +1009,67 @@ if (dashboard) {
     });
 
     inventoryDrawerClose?.addEventListener('click', closeInventoryDrawer);
+    openWalkinOrderBtn?.addEventListener('click', () => {
+        openDialog(walkinOrderModal);
+    });
+    closeWalkinOrderButtons.forEach((button) => button.addEventListener('click', () => {
+        closeDialog(walkinOrderModal);
+    }));
+    openBulkUploadBtn?.addEventListener('click', () => {
+        openDialog(bulkUploadModal);
+    });
+    closeBulkUploadButtons.forEach((button) => button.addEventListener('click', () => {
+        closeDialog(bulkUploadModal);
+    }));
+    addWalkinItemButton?.addEventListener('click', () => {
+        addWalkinItemRow();
+    });
+    walkinItemsContainer?.addEventListener('click', (event) => {
+        const removeButton = event.target.closest('[data-remove-walkin-item]');
+        if (!removeButton) {
+            return;
+        }
+
+        const rows = walkinItemsContainer.querySelectorAll('[data-walkin-item]');
+        if (rows.length <= 1) {
+            return;
+        }
+
+        removeButton.closest('[data-walkin-item]')?.remove();
+        syncWalkinRows();
+    });
+    walkinOrderModal?.addEventListener('click', (event) => {
+        if (event.target === walkinOrderModal) {
+            closeDialog(walkinOrderModal);
+        }
+    });
+    bulkUploadModal?.addEventListener('click', (event) => {
+        if (event.target === bulkUploadModal) {
+            closeDialog(bulkUploadModal);
+        }
+    });
+    downloadBulkTemplateButton?.addEventListener('click', downloadBulkTemplate);
+
+    syncWalkinRows();
+    if (walkinItemsContainer && !walkinItemsContainer.children.length) {
+        addWalkinItemRow();
+    }
 
     renderLineChart();
     renderTypeBars();
+    renderAdminMessages();
 
     paginationKeys.forEach((key) => renderPagination(key));
     updateNavCounts();
     syncPeoplePaginationControls(getActivePeopleKey());
 
     showSection(dashboard.dataset.defaultSection || 'dashboard');
+
+    if (dashboard.dataset.openModal === 'walkin') {
+        openDialog(walkinOrderModal);
+    }
+
+    if (dashboard.dataset.openModal === 'bulk-upload') {
+        openDialog(bulkUploadModal);
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Order;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -43,6 +44,9 @@ class CustomerController extends Controller
         $user->loadMissing('detail');
         $detail = $user->detail;
         $name = $detail?->name ?: 'Bakerdan Customer';
+        $totalOrders = Order::query()
+            ->where('user_id', $user->user_id)
+            ->count();
         
         // Generate initials for avatar
         $initials = collect(preg_split('/\s+/', trim($name)) ?: [])
@@ -58,8 +62,8 @@ class CustomerController extends Controller
             'email' => $detail?->email ?: 'customer@bakerdan.com',
             'phone' => $detail?->contact ?: '+63 900 000 0000',
             'address' => $detail?->address ?: 'Metro Manila',
-            'total_orders' => 12, // TODO: Get from database
-            'loyalty_points' => 850, // TODO: Get from database
+            'total_orders' => $totalOrders,
+            'loyalty_points' => $totalOrders * 10,
             'member_since' => $user->created_at?->format('F Y') ?: 'New member',
             'avatar' => $initials ?: 'BC',
         ], $overrides);

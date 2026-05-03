@@ -113,7 +113,49 @@
     </section>
 
     <section class="mt-6">
-      <div class="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
+      <div
+        v-if="isCakeCategory"
+        class="rounded-[32px] border border-[#E7DED7] bg-white p-6 shadow-[0_18px_40px_-34px_rgba(118,79,49,0.25)] md:p-8"
+      >
+        <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div class="max-w-2xl">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#B47A52]">Made To Order</p>
+            <h2 class="mt-2 text-3xl font-black text-[#4C4641]" style="font-family: 'Urbanist', sans-serif;">Cake orders now follow the custom guide</h2>
+            <p class="mt-3 text-sm leading-6 text-[#756A63]">
+              Bakerdan does not offer ready-made cakes in the customer catalog anymore. Every cake request now starts from the ordering guide, then moves into a custom brief with your design peg, flavor, message, and event details.
+            </p>
+          </div>
+          <button
+            type="button"
+            @click="openCakeGuide()"
+            class="rounded-full bg-[#C9876C] px-5 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#B8765B]"
+          >
+            Open cake guide
+          </button>
+        </div>
+
+        <div class="mt-7 grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-4">
+          <article
+            v-for="section in cakeGuideSections"
+            :key="section.id"
+            class="rounded-[26px] border border-[#E9DDD2] bg-[#FCFAF7] p-5 shadow-[0_12px_28px_-26px_rgba(118,79,49,0.35)]"
+          >
+            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#B47A52]">{{ section.eyebrow }}</p>
+            <h3 class="mt-3 text-xl font-bold text-[#4B4743]">{{ section.title }}</h3>
+            <p class="mt-3 text-sm leading-6 text-[#756A63]">{{ section.description }}</p>
+            <p class="mt-4 text-sm font-semibold text-[#8B5A3C]">{{ section.priceNote }}</p>
+            <button
+              type="button"
+              @click="openCakeGuide(section.id)"
+              class="mt-5 rounded-full border border-[#DEC6B1] bg-white px-4 py-2.5 text-sm font-semibold text-[#7A563F] transition-colors hover:bg-[#FFF4EB]"
+            >
+              Start custom order
+            </button>
+          </article>
+        </div>
+      </div>
+
+      <div v-else-if="paginatedProducts.length" class="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
         <ProductCard
           v-for="product in paginatedProducts"
           :key="product.id"
@@ -122,9 +164,14 @@
           @toggle-like="handleToggleLike"
         />
       </div>
+
+      <div v-else class="rounded-[28px] border border-dashed border-[#E1D4C8] bg-[#FCF8F4] px-6 py-12 text-center text-[#756A63]">
+        <h2 class="text-2xl font-bold text-[#4C4641]" style="font-family: 'Urbanist', sans-serif;">No products available</h2>
+        <p class="mt-2 text-sm">The catalog is waiting for products from the database.</p>
+      </div>
     </section>
 
-    <nav class="mt-10 flex items-center justify-center gap-3" aria-label="Product pagination">
+    <nav v-if="filteredProducts.length" class="mt-10 flex items-center justify-center gap-3" aria-label="Product pagination">
       <button
         type="button"
         class="flex h-10 w-10 items-center justify-center rounded-full border border-[#E1D6CC] bg-white text-[#71675F]"
@@ -144,8 +191,10 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useSpaRouter } from '../../router';
+import { cakeGuideSections } from '../../data/cakeGuides';
+import api from '../../services/api';
 import { useCartStore } from '../../services/cartStore';
 import ProductCard from '../shared/ProductCard.vue';
 
@@ -157,7 +206,7 @@ const props = defineProps({
 });
 
 const { push } = useSpaRouter();
-const { addCartItem } = useCartStore();
+const { addCatalogItem } = useCartStore();
 
 const attachmentInput = ref(null);
 const attachmentName = ref('');
@@ -173,140 +222,8 @@ const sortModes = [
   { id: 'low-to-high', label: 'Low to High' },
 ];
 
-const products = ref([
-  {
-    id: 1,
-    category: 'Bread',
-    name: 'Korean Garlic Cream Cheese Bun',
-    description: 'Soft enriched dough with a rich cream cheese center and a glossy garlic finish.',
-    price: 499.0,
-    image: '/images/bakerdan/Creme_Cheese_Garlic.png',
-    liked: true,
-    tag: 'Best Seller',
-    rating: '4.9/5',
-  },
-  {
-    id: 2,
-    category: 'Pastries',
-    name: 'Classic Cream Puffs',
-    description: 'Airy pastry shells filled with silky vanilla cream and a light sugar dusting.',
-    price: 299.0,
-    image: '/images/bakerdan/Creme_Puffs.png',
-    liked: false,
-    tag: 'Fresh Batch',
-    rating: '4.8/5',
-  },
-  {
-    id: 3,
-    category: 'Cakes',
-    name: 'Celebration Butter Cake',
-    description: 'A soft layered cake made for birthdays, milestones, and everyday sweet cravings.',
-    price: 899.0,
-    image: '/images/bakerdan/Cake_Celebration.png',
-    liked: true,
-    tag: 'Party Pick',
-    rating: '4.9/5',
-  },
-  {
-    id: 4,
-    category: 'Pastries',
-    name: 'Fudgy Brownie Squares',
-    description: 'Rich chocolate brownie bars with a chewy middle and delicate crackly top.',
-    price: 240.0,
-    image: '/images/bakerdan/Brownies.png',
-    liked: false,
-    tag: 'Chocolate',
-    rating: '4.7/5',
-  },
-  {
-    id: 5,
-    category: 'Customize',
-    name: 'Customized Cookies Box',
-    description: 'Personalized cookies prepared with your chosen colors, message, and event theme.',
-    price: 650.0,
-    image: '/images/bakerdan/Customized_Cookies.png',
-    liked: true,
-    tag: 'Made to Order',
-    rating: '4.9/5',
-  },
-  {
-    id: 6,
-    category: 'Bread',
-    name: 'Daily Artisan Bread Loaf',
-    description: 'Golden crust outside, fluffy crumb inside, and baked fresh each morning.',
-    price: 180.0,
-    image: '/images/bakerdan/Bread.png',
-    liked: false,
-    tag: 'Daily Fresh',
-    rating: '4.8/5',
-  },
-  {
-    id: 7,
-    category: 'Bread',
-    name: 'Garlic Cream Cheese Bun Trio',
-    description: 'A trio of creamy garlic buns for sharing with the whole table.',
-    price: 760.0,
-    image: '/images/bakerdan/Creme_Cheese_Garlic.png',
-    liked: true,
-    tag: 'Bundle',
-    rating: '4.9/5',
-  },
-  {
-    id: 8,
-    category: 'Pastries',
-    name: 'Vanilla Puff Treats',
-    description: 'A bakery favorite with airy pastry and a balanced vanilla filling.',
-    price: 315.0,
-    image: '/images/bakerdan/Creme_Puffs.png',
-    liked: false,
-    tag: 'Customer Pick',
-    rating: '4.7/5',
-  },
-  {
-    id: 9,
-    category: 'Cakes',
-    name: 'Buttercream Celebration Cake',
-    description: 'Smooth buttercream edges with a rich sponge and a festive presentation.',
-    price: 990.0,
-    image: '/images/bakerdan/Cake_Celebration.png',
-    liked: true,
-    tag: 'Signature',
-    rating: '5.0/5',
-  },
-  {
-    id: 10,
-    category: 'Bread',
-    name: 'Bakerdan House Loaf',
-    description: 'Lightly crisp, deeply comforting, and ideal for sandwiches or breakfast toast.',
-    price: 165.0,
-    image: '/images/bakerdan/Bread.png',
-    liked: false,
-    tag: 'House Favorite',
-    rating: '4.8/5',
-  },
-  {
-    id: 11,
-    category: 'Pastries',
-    name: 'Chocolate Brownie Bites',
-    description: 'Compact brownie pieces with intense cocoa flavor and a tender crumb.',
-    price: 210.0,
-    image: '/images/bakerdan/Brownies.png',
-    liked: false,
-    tag: 'Snack Box',
-    rating: '4.6/5',
-  },
-  {
-    id: 12,
-    category: 'Customize',
-    name: 'Celebration Cookie Set',
-    description: 'Color-coordinated sugar cookies that can match birthdays, weddings, and gifts.',
-    price: 720.0,
-    image: '/images/bakerdan/Customized_Cookies.png',
-    liked: true,
-    tag: 'Custom Gift',
-    rating: '4.9/5',
-  },
-]);
+const products = ref([]);
+const isCakeCategory = computed(() => props.activeCategory === 'Cakes');
 
 watch(
   () => props.activeCategory,
@@ -315,7 +232,40 @@ watch(
   },
 );
 
+const mapProduct = (product) => ({
+  id: product.id ?? product.product_id,
+  category: product.category ?? 'Bread',
+  name: product.name ?? product.product_name ?? 'Untitled Product',
+  description: product.description ?? '',
+  price: Number(product.price ?? 0),
+  priceLabel: product.price_label ?? '',
+  image: product.image_url || product.image || '/images/bakerdan/Bread.png',
+  liked: false,
+  tag: product.order_mode === 'custom' ? 'Custom Order' : (product.is_active ? 'Available' : 'Inactive'),
+  rating: '5.0/5',
+  orderMode: product.order_mode || 'catalog',
+  orderingGuide: product.ordering_guide || null,
+});
+
+const loadProducts = async () => {
+  try {
+    const response = await api.getProducts();
+    const catalog = response.data?.data || [];
+    products.value = catalog.map(mapProduct);
+  } catch (error) {
+    products.value = [];
+  }
+};
+
+onMounted(() => {
+  loadProducts();
+});
+
 const filteredProducts = computed(() => {
+  if (isCakeCategory.value) {
+    return [];
+  }
+
   const query = searchQuery.value.trim().toLowerCase();
 
   let result = products.value.filter((product) => {
@@ -374,21 +324,29 @@ const submitSearch = () => {
   currentPage.value = 1;
 };
 
-const handleAddToCart = (productId) => {
+const handleAddToCart = async (productId) => {
   const product = products.value.find((item) => item.id === productId);
 
   if (!product) {
     return;
   }
 
-  const addedId = addCartItem({
-    ...product,
-    productKey: `catalog-${product.id}`,
-    source: 'catalog',
-    quantity: 1,
-  });
+  if (product.orderMode === 'custom') {
+    push(`/customer/customize?guide=${product.orderingGuide || 'cakes'}`);
+    return;
+  }
 
-  push(`/customer/cart?added=${addedId}`);
+  try {
+    const addedItem = await addCatalogItem(product.id, {
+      quantity: 1,
+    });
+
+    if (addedItem?.id) {
+      push(`/customer/cart?added=${addedItem.id}`);
+    }
+  } catch (error) {
+    window.alert('Unable to add this item to the cart right now.');
+  }
 };
 
 const handleToggleLike = (productId) => {
@@ -397,5 +355,15 @@ const handleToggleLike = (productId) => {
   if (product) {
     product.liked = !product.liked;
   }
+};
+
+const openCakeGuide = (section = null) => {
+  const query = new URLSearchParams({ guide: 'cakes' });
+
+  if (section) {
+    query.set('section', section);
+  }
+
+  push(`/customer/customize?${query.toString()}`);
 };
 </script>

@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
 use Carbon\Carbon;
+use Throwable;
+use Illuminate\Support\Facades\Log;
 
 class ForgotPasswordController extends Controller
 {
@@ -24,8 +26,9 @@ class ForgotPasswordController extends Controller
         $request->validate(['email' => 'required|email|exists:user_details,email']);
         $email = $request->email;
 
-        $existingOtp = Otp::where('email', $email)
-            ->where('purpose', 'password')
+        $existingOtp = Otp::query()
+            ->where('email', '=', $email, 'and')
+            ->where('purpose', '=', 'password', 'and')
             ->first();
 
         if ($existingOtp && $existingOtp->expire_at > Carbon::now()) {
@@ -42,7 +45,13 @@ class ForgotPasswordController extends Controller
             );
         }
 
-        Mail::to($email)->send(new OtpMail($otpValue));
+        try {
+            Mail::to($email)->send(new OtpMail($otpValue));
+        } catch (Throwable $e) {
+            Log::error('Forgot Password Mail Error: ' . $e->getMessage());
+            return back()->withErrors(['email' => 'Unable to send OTP. Please try again later or contact support.']);
+        }
+
 
         Session::put('forgot_password_email', $email);
         return redirect()->route('password.otp');
@@ -61,9 +70,10 @@ class ForgotPasswordController extends Controller
         $request->validate(['otp' => 'required']);
         $email = Session::get('forgot_password_email');
 
-        $otpRecord = Otp::where('email', $email)
-            ->where('otp', $request->otp)
-            ->where('purpose', 'password')
+        $otpRecord = Otp::query()
+            ->where('email', '=', $email, 'and')
+            ->where('otp', '=', $request->otp, 'and')
+            ->where('purpose', '=', 'password', 'and')
             ->first();
 
         if (!$otpRecord) {
@@ -74,7 +84,7 @@ class ForgotPasswordController extends Controller
             return back()->withErrors(['otp' => 'OTP has expired']);
         }
 
-        $otpRecord->delete();
+        Otp::destroy($otpRecord->otp_id);
         Session::put('password_otp_verified', true);
 
         return redirect()->route('password.reset');
@@ -96,7 +106,7 @@ class ForgotPasswordController extends Controller
 
         $email = Session::get('forgot_password_email');
         
-        $detail = UserDetail::where('email', $email)->first();
+        $detail = UserDetail::query()->where('email', '=', $email, 'and')->first();
         if ($detail) {
             $detail->update([
                 'password' => Hash::make($request->password)
