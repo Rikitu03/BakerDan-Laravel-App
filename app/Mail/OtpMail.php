@@ -29,7 +29,7 @@ class OtpMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Your Registration OTP',
+            subject: 'Your BakerDan Verification Code',
         );
     }
 

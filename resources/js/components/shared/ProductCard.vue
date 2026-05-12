@@ -2,8 +2,13 @@
   <div class="group overflow-hidden rounded-[26px] border border-[#E9DDD2] bg-white p-3 shadow-[0_18px_40px_-32px_rgba(118,79,49,0.45)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_26px_50px_-30px_rgba(118,79,49,0.4)]">
     <div class="relative aspect-[4/3] overflow-hidden rounded-[22px]">
       <img
-        :src="product.image"
+        :src="activeImage"
         :alt="product.name"
+        loading="lazy"
+        decoding="async"
+        fetchpriority="low"
+        width="640"
+        height="480"
         class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
       />
 
@@ -42,16 +47,31 @@
         {{ product.name }}
       </h3>
       <p class="mb-4 line-clamp-2 min-h-[2.7rem] text-sm leading-5 text-gray-600">
-        {{ product.description }}
+        {{ activeDescription }}
       </p>
+
+      <div v-if="hasVariants" class="mb-4 flex flex-wrap gap-2">
+        <button
+          v-for="variant in product.variants"
+          :key="variant.id"
+          type="button"
+          @click="activeVariantId = variant.id"
+          class="rounded-full px-3 py-1.5 text-xs font-semibold transition-all"
+          :class="activeVariantId === variant.id
+            ? 'bg-[#B47A52] text-white shadow-sm'
+            : 'bg-[#F7F2EC] text-[#6E6259] hover:bg-[#EFE2D6]'"
+        >
+          {{ variant.label }}
+        </button>
+      </div>
 
       <div class="flex items-center justify-between gap-3">
         <p class="text-xl font-bold text-gray-800">
-          {{ product.priceLabel || `PHP ${formatPrice(product.price)}` }}
+          {{ activePrice }}
         </p>
 
         <button
-          @click="$emit('add-to-cart', product.id)"
+          @click="$emit('add-to-cart', activeProductId)"
           class="rounded-full bg-[#C9876C] px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:bg-[#B8765B] hover:shadow-lg"
         >
           Add to cart
@@ -62,7 +82,9 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed, ref, watch } from 'vue';
+
+const props = defineProps({
   product: {
     type: Object,
     required: true,
@@ -72,4 +94,42 @@ defineProps({
 defineEmits(['add-to-cart', 'toggle-like']);
 
 const formatPrice = (price) => price.toFixed(2);
+
+const hasVariants = computed(() => props.product.variants && props.product.variants.length > 1);
+
+const activeVariantId = ref(
+  props.product.variants?.[0]?.id ?? props.product.id,
+);
+
+watch(
+  () => props.product.id,
+  () => {
+    activeVariantId.value = props.product.variants?.[0]?.id ?? props.product.id;
+  },
+);
+
+const activeVariant = computed(() => {
+  if (!hasVariants.value) return null;
+  return props.product.variants.find((v) => v.id === activeVariantId.value)
+    || props.product.variants[0];
+});
+
+const activeImage = computed(() => {
+  return activeVariant.value?.image || props.product.image;
+});
+
+const activeDescription = computed(() => {
+  return activeVariant.value?.description || props.product.description;
+});
+
+const activePrice = computed(() => {
+  if (activeVariant.value) {
+    return activeVariant.value.priceLabel || `PHP ${formatPrice(activeVariant.value.price)}`;
+  }
+  return props.product.priceLabel || `PHP ${formatPrice(props.product.price)}`;
+});
+
+const activeProductId = computed(() => {
+  return activeVariant.value?.id || props.product.id;
+});
 </script>

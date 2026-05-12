@@ -1,10 +1,11 @@
 <template>
-  <div class="min-h-screen bg-[radial-gradient(circle_at_top,#fffdf8_0%,#f1ebe3_42%,#dec7b2_100%)] p-3 lg:p-5">
+  <div class="min-h-screen bg-[radial-gradient(circle_at_top,#fffdf8_0%,#f1ebe3_42%,#dec7b2_100%)] p-1.5 sm:p-3 lg:p-5">
     <div class="mx-auto max-w-[1720px]">
-      <div class="flex min-h-[95vh] flex-col overflow-hidden rounded-[2.2rem] border border-[#D79E72] bg-white shadow-[0_32px_80px_-42px_rgba(133,88,53,0.48)]">
+      <div class="flex min-h-[95vh] flex-col overflow-hidden rounded-2xl sm:rounded-[2.2rem] border border-[#D79E72] bg-white shadow-[0_32px_80px_-42px_rgba(133,88,53,0.48)]">
         <AppHeader
           :user="user"
           @toggle-user-menu="showUserMenu = !showUserMenu"
+          @toggle-sidebar="sidebarOpen = !sidebarOpen"
         />
 
         <div class="flex flex-1 overflow-hidden">
@@ -12,7 +13,9 @@
             v-if="!layoutProps.hideSidebar"
             :categories="categories"
             :active-category="activeCategory"
+            :open="sidebarOpen"
             @category-select="handleCategorySelect"
+            @close="sidebarOpen = false"
           />
 
           <main class="flex-1 overflow-y-auto" :class="layoutProps.mainClass">
@@ -39,7 +42,7 @@
     >
       <div
         v-if="showUserMenu"
-        class="fixed top-20 right-8 z-50 w-48 rounded-lg bg-white py-2 shadow-xl"
+        class="fixed top-16 right-3 z-50 w-48 rounded-lg bg-white py-2 shadow-xl sm:top-20 sm:right-8"
         @click.stop
       >
         <a
@@ -51,6 +54,16 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5h6m-7 4h8m-9 4h10m-1 6H8a2 2 0 01-2-2V7a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2z" />
           </svg>
           Orders
+        </a>
+        <a
+          href="/customer/purchases"
+          @click.prevent="push('/customer/purchases'); showUserMenu = false"
+          class="flex items-center gap-2 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-100"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          </svg>
+          Purchase History
         </a>
         <a
           href="/customer/settings"
@@ -85,7 +98,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { useSpaRouter } from '../../router';
 import AppHeader from './AppHeader.vue';
 import AppSidebar from './AppSidebar.vue';
@@ -108,7 +121,7 @@ defineProps({
   },
 });
 
-const { push } = useSpaRouter();
+const { push, currentRoute } = useSpaRouter();
 const bootUser = window.Laravel?.customer || window.Laravel?.user || {};
 const rawUserName = bootUser.name || 'Guest Explorer';
 
@@ -124,14 +137,17 @@ const user = ref({
 });
 
 const categories = ref([
-  { name: 'Bread', active: true },
+  { name: 'All', active: true },
+  { name: 'Bread', active: false },
   { name: 'Pastries', active: false },
-  { name: 'Cakes', active: false },
-  { name: 'Customize', active: false },
+  { name: 'Tarts', active: false },
+  { name: 'Brazos and Cakes', active: false },
+  { name: 'Customize Order', active: false },
 ]);
 
-const activeCategory = ref('Bread');
+const activeCategory = ref('All');
 const showUserMenu = ref(false);
+const sidebarOpen = ref(false);
 
 const handleCategorySelect = (categoryName) => {
   activeCategory.value = categoryName;
@@ -139,12 +155,13 @@ const handleCategorySelect = (categoryName) => {
     category.active = category.name === categoryName;
   });
 
-  if (categoryName === 'Customize') {
-    push('/customer/customize');
-    return;
-  }
+  sidebarOpen.value = false;
 
-  push('/customer');
+  if (categoryName === 'Customize Order') {
+    push('/customer/customize?guide=cakes');
+  } else {
+    push('/customer');
+  }
 };
 
 const updateCartCount = (count) => {
@@ -172,7 +189,23 @@ const handleClickOutside = (event) => {
   }
 };
 
+const syncSidebarWithRoute = () => {
+  const path = currentRoute.value?.path || window.location.pathname;
+  if (path === '/customer/customize') {
+    activeCategory.value = 'Customize Order';
+    categories.value.forEach((category) => {
+      category.active = category.name === 'Customize Order';
+    });
+  }
+};
+
+watch(currentRoute, () => {
+  syncSidebarWithRoute();
+  sidebarOpen.value = false;
+});
+
 onMounted(() => {
+  syncSidebarWithRoute();
   document.addEventListener('click', handleClickOutside);
 });
 

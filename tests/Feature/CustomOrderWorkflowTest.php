@@ -5,8 +5,11 @@ namespace Tests\Feature;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\PayMongoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Support\Facades\Cache;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
 class CustomOrderWorkflowTest extends TestCase
@@ -18,6 +21,7 @@ class CustomOrderWorkflowTest extends TestCase
         parent::setUp();
 
         $this->withoutMiddleware(VerifyCsrfToken::class);
+        Cache::store('file')->flush();
     }
 
     public function test_customer_must_provide_design_reference_for_custom_order(): void
@@ -228,5 +232,139 @@ class CustomOrderWorkflowTest extends TestCase
             ->assertJsonPath('data.item.price', 1850)
             ->assertJsonPath('data.item.size', '8" x 12"')
             ->assertJsonPath('data.item.flavor', 'Chocolate Chiffon');
+    }
+
+    public function test_checkout_adds_fixed_shipping_fee_and_formats_delivery_details(): void
+    {
+        $customer = User::query()->create([
+            'role' => 'customer',
+            'is_active' => true,
+        ]);
+
+        $product = Product::query()->create([
+            'category' => 'Bread',
+            'product_name' => 'Classic Sourdough',
+            'description' => 'Naturally leavened loaf.',
+            'price' => 500,
+            'price_label' => 'PHP 500',
+            'is_active' => true,
+        ]);
+
+        $addResponse = $this
+            ->actingAs($customer)
+            ->postJson("/api/cart/add/{$product->id}", [
+                'quantity' => 1,
+            ]);
+
+        $addResponse->assertOk();
+        $cartItemId = $addResponse->json('data.item.id');
+
+        $capturedPendingOrder = null;
+
+        $this->mock(PayMongoService::class, function (MockInterface $mock) use (&$capturedPendingOrder): void {
+            $mock->shouldReceive('createCheckoutSessionFromPendingOrder')
+                ->once()
+                ->withArgs(function (array $pendingOrder) use (&$capturedPendingOrder): bool {
+                    $capturedPendingOrder = $pendingOrder;
+
+                    return true;
+                })
+                ->andReturn([
+                    'id' => 'cs_test_checkout_shipping',
+                    'attributes' => [
+                        'checkout_url' => 'https://paymongo.test/checkout/shipping',
+                        'reference_number' => 'BD-PND-SHIPPING',
+                        'status' => 'active',
+                    ],
+                ]);
+        });
+
+        $response = $this
+            ->actingAs($customer)
+            ->postJson('/api/checkout', [
+                'item_ids' => [$cartItemId],
+                'payment_method' => 'gcash',
+                'fulfillment_method' => 'delivery',
+                'shipping_address' => '123 Baker Street, Pasig City',
+                'shipping_pin_link' => 'https://maps.example/pin',
+            ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.order.total_amount', 650)
+            ->assertJsonPath('data.order.shipping_address', '123 Baker Street, Pasig City | Pin link: https://maps.example/pin')
+            ->assertJsonPath('data.order.checkout_url', 'https://paymongo.test/checkout/shipping');
+
+        $this->assertNotNull($capturedPendingOrder);
+        $this->assertSame(650.0, $capturedPendingOrder['total_amount']);
+        $this->assertSame('123 Baker Street, Pasig City | Pin link: https://maps.example/pin', $capturedPendingOrder['shipping_address']);
+        $this->assertDatabaseCount('cart_items', 0);
+    }
+
+    public function test_checkout_pickup_uses_shop_details_and_skips_shipping_fee(): void
+    {
+        $customer = User::query()->create([
+            'role' => 'customer',
+            'is_active' => true,
+        ]);
+
+        $product = Product::query()->create([
+            'category' => 'Bread',
+            'product_name' => 'Classic Sourdough',
+            'description' => 'Naturally leavened loaf.',
+            'price' => 500,
+            'price_label' => 'PHP 500',
+            'is_active' => true,
+        ]);
+
+        $addResponse = $this
+            ->actingAs($customer)
+            ->postJson("/api/cart/add/{$product->id}", [
+                'quantity' => 1,
+            ]);
+
+        $addResponse->assertOk();
+        $cartItemId = $addResponse->json('data.item.id');
+
+        $capturedPendingOrder = null;
+
+        $this->mock(PayMongoService::class, function (MockInterface $mock) use (&$capturedPendingOrder): void {
+            $mock->shouldReceive('createCheckoutSessionFromPendingOrder')
+                ->once()
+                ->withArgs(function (array $pendingOrder) use (&$capturedPendingOrder): bool {
+                    $capturedPendingOrder = $pendingOrder;
+
+                    return true;
+                })
+                ->andReturn([
+                    'id' => 'cs_test_checkout_pickup',
+                    'attributes' => [
+                        'checkout_url' => 'https://paymongo.test/checkout/pickup',
+                        'reference_number' => 'BD-PND-PICKUP',
+                        'status' => 'active',
+                    ],
+                ]);
+        });
+
+        $response = $this
+            ->actingAs($customer)
+            ->postJson('/api/checkout', [
+                'item_ids' => [$cartItemId],
+                'payment_method' => 'gcash',
+                'fulfillment_method' => 'pickup',
+            ]);
+
+        $pickupAddress = 'Pickup at Bakerdan Shop | Bakerdan Shop, 28 Market Avenue, San Nicolas, Pasig City, Metro Manila | Pin link: https://maps.app.goo.gl/bakerdan-pickup-placeholder';
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.order.total_amount', 500)
+            ->assertJsonPath('data.order.shipping_address', $pickupAddress)
+            ->assertJsonPath('data.order.checkout_url', 'https://paymongo.test/checkout/pickup');
+
+        $this->assertNotNull($capturedPendingOrder);
+        $this->assertSame(500.0, $capturedPendingOrder['total_amount']);
+        $this->assertSame($pickupAddress, $capturedPendingOrder['shipping_address']);
+        $this->assertDatabaseCount('cart_items', 0);
     }
 }

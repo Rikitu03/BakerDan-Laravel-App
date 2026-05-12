@@ -8,7 +8,7 @@
     @csrf
     <div class="mb-4">
         <label for="email" class="block text-sm font-medium mb-1">Email</label>
-        <input type="email" name="email" id="email" required
+        <input type="email" name="email" id="email" required value="{{ old('email') }}"
             class="w-full rounded-xl border p-3 bg-white/50 focus:bg-white transition"
             style="border-color: var(--line);" placeholder="your@email.com">
         @error('email')

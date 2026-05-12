@@ -1,10 +1,12 @@
 import { computed, ref } from 'vue';
 import HomePage from '../components/pages/HomePage.vue';
 import CartPage from '../components/pages/CartPage.vue';
+import CheckoutPage from '../components/pages/CheckoutPage.vue';
 import CustomizePage from '../components/pages/CustomizePage.vue';
 import OrdersPage from '../components/pages/OrdersPage.vue';
 import MessagesPage from '../components/pages/MessagesPage.vue';
 import NotificationsPage from '../components/pages/NotificationsPage.vue';
+import PurchaseHistoryPage from '../components/pages/PurchaseHistoryPage.vue';
 import SettingsPage from '../components/pages/SettingsPage.vue';
 
 const baseLayoutProps = {
@@ -47,10 +49,24 @@ const resolveRoute = () => {
         added: params.get('added') || null,
         ordered: params.get('ordered') || null,
         paymentReturn: params.get('payment_return') || null,
+        preview: params.get('preview') || null,
       });
+    case '/customer/checkout':
+      return buildRoute(
+        CheckoutPage,
+        'customer.checkout',
+        path,
+        {
+          items: params.get('items') || null,
+        },
+        {
+          hideSidebar: true,
+          mainClass: 'bg-[#FBF7F2]',
+        },
+      );
     case '/customer/customize':
       return buildRoute(CustomizePage, 'customer.customize', path, {
-        guide: params.get('guide') || 'general',
+        guide: params.get('guide') || 'cakes',
         section: params.get('section') || null,
       });
     case '/customer/orders':
@@ -87,6 +103,17 @@ const resolveRoute = () => {
         {
           hideSidebar: true,
           mainClass: 'bg-[#FBF6F0]',
+        },
+      );
+    case '/customer/purchases':
+      return buildRoute(
+        PurchaseHistoryPage,
+        'customer.purchases',
+        path,
+        {},
+        {
+          hideSidebar: true,
+          mainClass: 'bg-[#FBF7F2]',
         },
       );
     case '/customer/settings':

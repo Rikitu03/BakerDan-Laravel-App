@@ -16,18 +16,18 @@ class ProductCatalogSeederTest extends TestCase
     {
         $this->seed(ProductCatalogSeeder::class);
 
-        $this->assertSame(29, Product::query()->count());
+        $this->assertSame(48, Product::query()->count());
 
         $this->assertDatabaseHas('inventory_products', [
             'category' => 'Bread',
-            'product_name' => 'Creme Cheese Garlic (Box of 6 pcs)',
-            'image_url' => '/images/bakerdan/Creme_Cheese_Garlic.png',
+            'product_name' => 'Korean Garlic Creamcheese Bun (KBUN)',
+            'image_url' => '/images/bakerdan/bread/Creme_Cheese_Garlic.png',
         ]);
 
         $this->assertDatabaseHas('inventory_products', [
-            'category' => 'Bread',
-            'product_name' => 'Ube / Classic Potato Ensaymada',
-            'image_url' => '/images/bakerdan/Bread.png',
+            'category' => 'Pastries',
+            'product_name' => 'Coconut Macaroons',
+            'image_url' => '/images/bakerdan/pastries/coconut_macaroons.jpg',
         ]);
 
         $customer = User::query()->create([
@@ -40,10 +40,10 @@ class ProductCatalogSeederTest extends TestCase
             ->getJson('/api/products')
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonCount(29, 'data')
+            ->assertJsonCount(48, 'data')
             ->assertJsonFragment([
-                'product_name' => 'Piped Cupcakes (12 pcs)',
-                'image_url' => '/images/bakerdan/piped_cupcakes.jpg',
+                'product_name' => 'Brazo Roll - Tsokolate',
+                'image_url' => '/images/bakerdan/brazo and cakes/brazo-roll_chocolate.jpg',
             ]);
     }
 }

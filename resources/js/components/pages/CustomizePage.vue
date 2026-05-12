@@ -57,6 +57,53 @@
         </div>
       </section>
 
+      <section
+        v-if="isCakeGuide && activeGalleryImages.length"
+        class="mt-7 rounded-[32px] border border-[#E8DDD3] bg-white p-6 shadow-[0_18px_40px_-34px_rgba(118,79,49,0.25)] md:p-8"
+      >
+        <h2 class="text-2xl font-bold text-[#4B4743]">
+          {{ activeCakeSection?.eyebrow }} — Reference Gallery
+        </h2>
+        <p class="mt-2 text-sm leading-6 text-[#766C65]">
+          Browse past designs for inspiration. Upload your own reference when placing the order.
+        </p>
+
+        <div class="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+          <button
+            v-for="(img, idx) in activeGalleryImages"
+            :key="idx"
+            type="button"
+            @click="openGalleryImage(img)"
+            class="group aspect-square overflow-hidden rounded-[20px] border border-[#E9DDD2] bg-[#F9F5F1] transition-all hover:shadow-md"
+          >
+            <img
+              :src="img"
+              :alt="`${activeCakeSection?.eyebrow} reference ${idx + 1}`"
+              class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+            />
+          </button>
+        </div>
+
+        <div
+          v-if="galleryLightbox"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          @click.self="galleryLightbox = null"
+        >
+          <div class="relative max-h-[90vh] max-w-3xl overflow-hidden rounded-[24px]">
+            <img :src="galleryLightbox" alt="Gallery preview" class="max-h-[85vh] w-full object-contain" />
+            <button
+              type="button"
+              @click="galleryLightbox = null"
+              class="absolute right-3 top-3 rounded-full bg-white/90 p-2 shadow-md transition hover:bg-white"
+            >
+              <svg class="h-5 w-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
       <section class="mt-7 rounded-[32px] border border-[#E8DDD3] bg-white p-6 shadow-[0_18px_40px_-34px_rgba(118,79,49,0.35)] md:p-8">
         <h2 class="text-2xl font-bold text-[#4B4743]">
           {{ isCakeGuide ? 'Selected order details' : 'Product details' }}
@@ -466,6 +513,7 @@ const isDragging = ref(false);
 const fileInput = ref(null);
 const selectedCheckoutFlow = ref('cart_first');
 const selectedPaymentMethod = ref('gcash');
+const galleryLightbox = ref(null);
 
 const activeCakeSection = computed(() => (
   isCakeGuide.value ? getCakeGuideSection(selectedCakeSectionId.value) : null
@@ -481,6 +529,12 @@ const selectedFlavorOptions = computed(() => (
     ? (activeCakeSection.value?.flavorOptions || ['To be discussed with Bakerdan'])
     : legacyFlavorOptions
 ));
+const activeGalleryImages = computed(() => activeCakeSection.value?.galleryImages || []);
+
+const openGalleryImage = (src) => {
+  galleryLightbox.value = src;
+};
+
 const primaryActionLabel = computed(() => {
   if (selectedCheckoutFlow.value === 'direct_checkout') {
     return isCakeGuide.value ? 'Direct Checkout This Cake Order' : 'Direct Checkout This Custom Order';

@@ -18,45 +18,56 @@ class PayMongoService
         $order->loadMissing(['items', 'user.detail']);
         $referenceNumber = $order->payment_reference ?: sprintf('BD-%06d-%s', $order->id, Str::upper(Str::random(6)));
 
-        $payload = [
-            'data' => [
-                'attributes' => [
-                    'cancel_url' => $this->cancelUrl($order),
-                    'description' => "Bakerdan order #{$order->id}",
-                    'line_items' => $this->lineItems($order),
-                    'metadata' => [
-                        'order_id' => (string) $order->id,
-                        'payment_method' => $this->normalizePaymentMethod($order->payment_method),
-                    ],
-                    'payment_method_types' => [
-                        $this->payMongoPaymentMethod($order->payment_method),
-                    ],
-                    'reference_number' => $referenceNumber,
-                    'send_email_receipt' => false,
-                    'show_description' => true,
-                    'show_line_items' => true,
-                    'success_url' => $this->successUrl($order),
-                ],
+        return $this->createCheckoutSessionFromAttributes([
+            'cancel_url' => $this->cancelUrl($order),
+            'description' => "Bakerdan order #{$order->id}",
+            'line_items' => $this->lineItems($order),
+            'metadata' => [
+                'order_id' => (string) $order->id,
+                'payment_method' => $this->normalizePaymentMethod($order->payment_method),
             ],
-        ];
-
-        $response = $this->client()->post('/checkout_sessions', $payload);
-        $this->throwOnError($response, 'Unable to create a PayMongo checkout session right now.');
-
-        $checkoutSession = $response->json('data');
-
-        if (!is_array($checkoutSession) || blank($checkoutSession['id'] ?? null) || blank(data_get($checkoutSession, 'attributes.checkout_url'))) {
-            throw new RuntimeException('PayMongo returned an incomplete checkout session response.');
-        }
-
-        return $checkoutSession;
+            'payment_method_types' => [
+                $this->payMongoPaymentMethod($order->payment_method),
+            ],
+            'reference_number' => $referenceNumber,
+            'send_email_receipt' => false,
+            'show_description' => true,
+            'show_line_items' => true,
+            'success_url' => $this->successUrl($order),
+        ]);
     }
 
-    public function retrieveCheckoutSession(string $sessionId): array
+    public function createCheckoutSessionFromPendingOrder(array $pendingOrder): array
     {
         $this->ensureConfigured();
 
-        $response = $this->client()->get('/checkout_sessions/' . $sessionId);
+        $referenceNumber = $pendingOrder['payment_reference'] ?? sprintf('BD-PND-%s', Str::upper(Str::random(8)));
+
+        return $this->createCheckoutSessionFromAttributes([
+            'cancel_url' => $this->pendingOrderCancelUrl($pendingOrder),
+            'description' => "Bakerdan pending order {$pendingOrder['id']}",
+            'line_items' => $this->pendingOrderLineItems($pendingOrder),
+            'metadata' => array_filter([
+                'pending_order_id' => (string) ($pendingOrder['id'] ?? ''),
+                'user_id' => isset($pendingOrder['user_id']) ? (string) $pendingOrder['user_id'] : null,
+                'payment_method' => $this->normalizePaymentMethod($pendingOrder['payment_method'] ?? null),
+            ], fn ($value) => $value !== null && $value !== ''),
+            'payment_method_types' => [
+                $this->payMongoPaymentMethod($pendingOrder['payment_method'] ?? null),
+            ],
+            'reference_number' => $referenceNumber,
+            'send_email_receipt' => false,
+            'show_description' => true,
+            'show_line_items' => true,
+            'success_url' => $this->pendingOrderSuccessUrl($pendingOrder),
+        ]);
+    }
+
+    public function retrieveCheckoutSession(string $sessionId, int $timeoutSeconds = 10): array
+    {
+        $this->ensureConfigured();
+
+        $response = $this->client($timeoutSeconds)->get('/checkout_sessions/' . $sessionId);
         $this->throwOnError($response, 'Unable to retrieve the PayMongo checkout session.');
 
         $checkoutSession = $response->json('data');
@@ -145,6 +156,18 @@ class PayMongoService
         };
     }
 
+    public function checkoutSessionPaymentStatus(array $checkoutSession): string
+    {
+        $payment = collect(data_get($checkoutSession, 'attributes.payments', []))->first();
+        $paymentAttributes = is_array($payment) ? ($payment['attributes'] ?? []) : [];
+
+        return $this->resolvePaymentStatus(
+            data_get($checkoutSession, 'attributes.status'),
+            data_get($checkoutSession, 'attributes.payment_intent.attributes.status'),
+            $paymentAttributes['status'] ?? null,
+        );
+    }
+
     private function ensureConfigured(): void
     {
         if (blank(config('services.paymongo.secret_key'))) {
@@ -152,12 +175,15 @@ class PayMongoService
         }
     }
 
-    private function client()
+    private function client(int $timeoutSeconds = 15)
     {
+        $timeoutSeconds = max(5, $timeoutSeconds);
+
         return Http::acceptJson()
             ->asJson()
             ->baseUrl(rtrim((string) config('services.paymongo.base_url', 'https://api.paymongo.com/v1'), '/'))
-            ->timeout(30)
+            ->connectTimeout(min(5, $timeoutSeconds))
+            ->timeout($timeoutSeconds)
             ->withBasicAuth((string) config('services.paymongo.secret_key'), '');
     }
 
@@ -171,9 +197,19 @@ class PayMongoService
         return url('/customer/orders') . '?highlight=' . $order->id . '&payment_return=success';
     }
 
+    private function pendingOrderCancelUrl(array $pendingOrder): string
+    {
+        return url('/customer/orders') . '?highlight=' . urlencode((string) ($pendingOrder['id'] ?? '')) . '&payment_return=cancelled';
+    }
+
+    private function pendingOrderSuccessUrl(array $pendingOrder): string
+    {
+        return url('/customer/orders') . '?highlight=' . urlencode((string) ($pendingOrder['id'] ?? '')) . '&payment_return=success';
+    }
+
     private function lineItems(Order $order): array
     {
-        return $order->items->map(function ($item): array {
+        $items = $order->items->map(function ($item): array {
             return [
                 'amount' => $this->toCentavos((float) $item->price),
                 'currency' => 'PHP',
@@ -181,7 +217,55 @@ class PayMongoService
                 'name' => Str::limit((string) ($item->product_name ?: 'Bakerdan item'), 120, ''),
                 'quantity' => (int) $item->quantity,
             ];
-        })->values()->all();
+        })->values();
+
+        $itemsSubtotal = $order->items->sum(fn ($item) => (float) $item->price * (int) $item->quantity);
+        $shippingLineItem = $this->shippingLineItem((float) $order->total_amount, (float) $itemsSubtotal);
+
+        if ($shippingLineItem) {
+            $items->push($shippingLineItem);
+        }
+
+        return $items->all();
+    }
+
+    private function pendingOrderLineItems(array $pendingOrder): array
+    {
+        $items = collect($pendingOrder['items'] ?? [])->map(function (array $item): array {
+            return [
+                'amount' => $this->toCentavos((float) ($item['unit_price'] ?? 0)),
+                'currency' => 'PHP',
+                'description' => Str::limit((string) ($item['description'] ?? $item['product_name'] ?? 'Bakerdan item'), 255, ''),
+                'name' => Str::limit((string) ($item['product_name'] ?? 'Bakerdan item'), 120, ''),
+                'quantity' => (int) ($item['quantity'] ?? 1),
+            ];
+        })->values();
+        $itemsSubtotal = collect($pendingOrder['items'] ?? [])
+            ->sum(fn (array $item) => (float) ($item['unit_price'] ?? 0) * (int) ($item['quantity'] ?? 1));
+        $shippingLineItem = $this->shippingLineItem((float) ($pendingOrder['total_amount'] ?? 0), (float) $itemsSubtotal);
+
+        if ($shippingLineItem) {
+            $items->push($shippingLineItem);
+        }
+
+        return $items->all();
+    }
+
+    private function shippingLineItem(float $totalAmount, float $itemsSubtotal): ?array
+    {
+        $shippingAmount = round($totalAmount - $itemsSubtotal, 2);
+
+        if ($shippingAmount <= 0) {
+            return null;
+        }
+
+        return [
+            'amount' => $this->toCentavos($shippingAmount),
+            'currency' => 'PHP',
+            'description' => 'Fixed shipping fee',
+            'name' => 'Shipping Fee',
+            'quantity' => 1,
+        ];
     }
 
     private function payMongoPaymentMethod(?string $paymentMethod): string
@@ -235,5 +319,23 @@ class PayMongoService
     private function toCentavos(float $amount): int
     {
         return (int) round($amount * 100);
+    }
+
+    private function createCheckoutSessionFromAttributes(array $attributes): array
+    {
+        $response = $this->client()->post('/checkout_sessions', [
+            'data' => [
+                'attributes' => $attributes,
+            ],
+        ]);
+        $this->throwOnError($response, 'Unable to create a PayMongo checkout session right now.');
+
+        $checkoutSession = $response->json('data');
+
+        if (!is_array($checkoutSession) || blank($checkoutSession['id'] ?? null) || blank(data_get($checkoutSession, 'attributes.checkout_url'))) {
+            throw new RuntimeException('PayMongo returned an incomplete checkout session response.');
+        }
+
+        return $checkoutSession;
     }
 }

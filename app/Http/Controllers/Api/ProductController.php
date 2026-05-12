@@ -14,7 +14,22 @@ class ProductController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Product::query()->where('is_active', true);
+        $query = Product::query()
+            ->select([
+                'id',
+                'product_id',
+                'product_name',
+                'description',
+                'price',
+                'price_label',
+                'category',
+                'sizes_available',
+                'flavors_available',
+                'image_url',
+                'image_source',
+                'is_active',
+            ])
+            ->where('is_active', true);
 
         $query->when($request->filled('category'), fn ($builder) => $builder->where('category', $request->string('category')));
         $query->when($request->filled('min_price'), fn ($builder) => $builder->where('price', '>=', (float) $request->input('min_price')));
@@ -30,7 +45,6 @@ class ProductController extends Controller
 
         $products = $query->orderByDesc('id')->get()->map(function (Product $product): array {
             $imageUrl = $this->resolveImageUrl($product->image_url);
-            $isCustomOnly = $product->category === 'Cakes';
             return [
                 'id' => $product->id,
                 'product_id' => $product->product_id ?? $product->id,
@@ -47,10 +61,10 @@ class ProductController extends Controller
                 'image_source' => $product->image_source,
                 'in_stock' => true,
                 'is_active' => (bool) $product->is_active,
-                'is_custom_only' => $isCustomOnly,
+                'is_custom_only' => false,
                 'liked' => false,
-                'order_mode' => $isCustomOnly ? 'custom' : 'catalog',
-                'ordering_guide' => $isCustomOnly ? 'cakes' : null,
+                'order_mode' => 'catalog',
+                'ordering_guide' => null,
             ];
         });
 
@@ -63,7 +77,7 @@ class ProductController extends Controller
                 'current_page' => 1,
                 'last_page' => 1,
             ]
-        ]);
+        ])->header('Cache-Control', 'public, max-age=300');
     }
 
     /**
@@ -83,14 +97,17 @@ class ProductController extends Controller
                 'product_name' => $product->product_name,
                 'description' => $product->description,
                 'price' => (float) $product->price,
+                'price_label' => $product->price_label ?: null,
                 'category' => $product->category,
+                'sizes_available' => $product->sizes_available,
+                'flavors_available' => $product->flavors_available,
                 'image' => $imageUrl,
                 'image_url' => $imageUrl,
                 'in_stock' => true,
                 'is_active' => (bool) $product->is_active,
-                'is_custom_only' => $product->category === 'Cakes',
-                'order_mode' => $product->category === 'Cakes' ? 'custom' : 'catalog',
-                'ordering_guide' => $product->category === 'Cakes' ? 'cakes' : null,
+                'is_custom_only' => false,
+                'order_mode' => 'catalog',
+                'ordering_guide' => null,
             ]
         ]);
     }

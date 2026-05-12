@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Services\CustomOrderImageService;
+use App\Services\PendingOrderService;
 use App\Services\PayMongoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,11 @@ use Throwable;
 
 class CartController extends Controller
 {
+    private const SHIPPING_FEE = 150.00;
+    private const PICKUP_SHOP_NAME = 'Bakerdan Shop';
+    private const PICKUP_SHOP_ADDRESS = 'Bakerdan Shop, 28 Market Avenue, San Nicolas, Pasig City, Metro Manila';
+    private const PICKUP_SHOP_PIN_LINK = 'https://maps.app.goo.gl/bakerdan-pickup-placeholder';
+
     public function index(): JsonResponse
     {
         return response()->json([
@@ -222,14 +228,24 @@ class CartController extends Controller
         ]);
     }
 
-    public function checkout(Request $request, PayMongoService $payMongo): JsonResponse
+    public function checkout(Request $request, PayMongoService $payMongo, PendingOrderService $pendingOrders): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'item_ids' => 'required|array|min:1',
             'item_ids.*' => 'integer',
             'payment_method' => 'required|string|in:gcash,maya',
+            'fulfillment_method' => 'nullable|string|in:delivery,pickup',
             'shipping_address' => 'nullable|string|max:1000',
+            'shipping_pin_link' => 'nullable|string|max:1000',
         ]);
+
+        $validator->after(function ($validator) use ($request): void {
+            $fulfillmentMethod = $request->input('fulfillment_method', 'delivery');
+
+            if ($fulfillmentMethod === 'delivery' && blank($request->input('shipping_address'))) {
+                $validator->errors()->add('shipping_address', 'A delivery address is required for delivery orders.');
+            }
+        });
 
         if ($validator->fails()) {
             return response()->json([
@@ -239,6 +255,7 @@ class CartController extends Controller
         }
 
         $validated = $validator->validated();
+        $fulfillmentMethod = $validated['fulfillment_method'] ?? 'delivery';
         $cart = $this->userCart();
 
         if (!$cart) {
@@ -261,25 +278,26 @@ class CartController extends Controller
             ], 422);
         }
 
-        $order = DB::transaction(function () use ($validated, $items): Order {
-            $subtotal = $items->sum(fn (CartItem $item) => $this->cartItemUnitPrice($item) * $item->quantity);
-
-            $order = Order::query()->create([
-                'user_id' => Auth::id(),
-                'total_amount' => $subtotal,
-                'status' => 'pending',
-                'payment_status' => 'pending',
-                'payment_method' => $validated['payment_method'],
-                'payment_provider' => 'paymongo',
-                'shipping_address' => $validated['shipping_address'] ?? null,
-            ]);
-
-            foreach ($items as $item) {
-                $order->items()->create([
+        $itemsSubtotal = $items->sum(fn (CartItem $item) => $this->cartItemUnitPrice($item) * $item->quantity);
+        $shippingFee = $this->shippingFeeFor($fulfillmentMethod, $items->isNotEmpty());
+        $expiresAt = now()->addHours(2);
+        $pendingOrder = $pendingOrders->create([
+            'user_id' => (int) Auth::id(),
+            'total_amount' => $itemsSubtotal + $shippingFee,
+            'payment_method' => $validated['payment_method'],
+            'payment_provider' => 'paymongo',
+            'shipping_address' => $this->formatShippingAddress(
+                $fulfillmentMethod,
+                $validated['shipping_address'] ?? null,
+                $validated['shipping_pin_link'] ?? null,
+            ),
+            'expires_at' => $expiresAt,
+            'items' => $items->map(function (CartItem $item): array {
+                return [
                     'product_id' => $item->product_id,
                     'item_type' => $item->item_type,
                     'quantity' => $item->quantity,
-                    'price' => $this->cartItemUnitPrice($item),
+                    'unit_price' => $this->cartItemUnitPrice($item),
                     'product_name' => $this->cartItemName($item),
                     'description' => $this->cartItemDescription($item),
                     'image_url' => $item->item_type === 'custom' ? $item->image_url : $item->product?->image_url,
@@ -287,17 +305,15 @@ class CartController extends Controller
                     'dedication_message' => $item->dedication_message,
                     'size' => $item->size,
                     'flavor' => $item->flavor,
-                ]);
-            }
-
-            return $order->load(['items', 'user.detail']);
-        });
+                ];
+            })->values()->all(),
+        ]);
 
         try {
-            $checkoutSession = $payMongo->createCheckoutSession($order);
+            $checkoutSession = $payMongo->createCheckoutSessionFromPendingOrder($pendingOrder);
         } catch (Throwable $exception) {
             report($exception);
-            $order->delete();
+            $pendingOrders->forget((string) $pendingOrder['id']);
 
             return response()->json([
                 'success' => false,
@@ -305,29 +321,17 @@ class CartController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($checkoutSession, $items, $order): void {
-            $order->update([
-                'payment_reference' => data_get($checkoutSession, 'attributes.reference_number'),
-                'payment_session_id' => $checkoutSession['id'] ?? null,
-                'payment_checkout_url' => data_get($checkoutSession, 'attributes.checkout_url'),
-                'payment_metadata' => array_filter([
-                    'checkout_session_status' => data_get($checkoutSession, 'attributes.status'),
-                    'payment_intent_id' => data_get($checkoutSession, 'attributes.payment_intent.id'),
-                    'payment_intent_status' => data_get($checkoutSession, 'attributes.payment_intent.attributes.status'),
-                ], fn ($value) => $value !== null && $value !== ''),
-            ]);
-
+        DB::transaction(function () use ($checkoutSession, $items): void {
             $items->each->delete();
         });
 
-        $order = $order->fresh('items');
-        $this->notifyCustomerOrderSentToAdmin($order);
+        $pendingOrder = $pendingOrders->syncCheckoutSession($pendingOrder, $checkoutSession);
 
         return response()->json([
             'success' => true,
             'message' => 'Checkout session created successfully.',
             'data' => [
-                'order' => $this->serializeOrder($order),
+                'order' => $pendingOrders->serializeForCustomer($pendingOrder),
                 'cart' => $this->cartSummary($cart->fresh()),
             ],
         ]);
@@ -457,6 +461,44 @@ class CartController extends Controller
         }
 
         return $productLabel . ' | ' . implode(' | ', $parts);
+    }
+
+    private function shippingFeeFor(string $fulfillmentMethod, bool $hasItems): float
+    {
+        if (! $hasItems) {
+            return 0;
+        }
+
+        return $fulfillmentMethod === 'pickup' ? 0 : self::SHIPPING_FEE;
+    }
+
+    private function formatShippingAddress(string $fulfillmentMethod, ?string $address, ?string $pinLink): ?string
+    {
+        if ($fulfillmentMethod === 'pickup') {
+            return sprintf(
+                'Pickup at %s | %s | Pin link: %s',
+                self::PICKUP_SHOP_NAME,
+                self::PICKUP_SHOP_ADDRESS,
+                self::PICKUP_SHOP_PIN_LINK,
+            );
+        }
+
+        $address = filled($address) ? trim((string) $address) : null;
+        $pinLink = filled($pinLink) ? trim((string) $pinLink) : null;
+
+        if ($address && $pinLink) {
+            return $address . ' | Pin link: ' . $pinLink;
+        }
+
+        if ($address) {
+            return $address;
+        }
+
+        if ($pinLink) {
+            return 'Pin link: ' . $pinLink;
+        }
+
+        return null;
     }
 
     private function resolveImageUrl(?string $imagePath): ?string

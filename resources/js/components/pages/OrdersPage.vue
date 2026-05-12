@@ -45,19 +45,19 @@
           <div class="mt-7 grid gap-4 sm:grid-cols-3">
             <div class="rounded-[26px] border border-[#EADBCB] bg-white/80 p-5 backdrop-blur">
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#AE8B6F]">Current Orders</p>
-              <p class="mt-3 text-3xl font-black text-[#463B35]">{{ currentOrders.length }}</p>
+              <p class="mt-3 text-3xl font-black text-[#463B35]">{{ hasLoadedOrders ? currentOrderCount : '--' }}</p>
               <p class="mt-1 text-sm text-[#74685F]">Pending, preparing, or ready for release.</p>
             </div>
 
             <div class="rounded-[26px] border border-[#EADBCB] bg-white/80 p-5 backdrop-blur">
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#AE8B6F]">Pending Payment</p>
-              <p class="mt-3 text-3xl font-black text-[#463B35]">{{ pendingPaymentCount }}</p>
+              <p class="mt-3 text-3xl font-black text-[#463B35]">{{ hasLoadedOrders ? pendingPaymentCount : '--' }}</p>
               <p class="mt-1 text-sm text-[#74685F]">Orders still waiting for successful payment.</p>
             </div>
 
             <div class="rounded-[26px] border border-[#EADBCB] bg-white/80 p-5 backdrop-blur">
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#AE8B6F]">Custom Briefs</p>
-              <p class="mt-3 text-3xl font-black text-[#463B35]">{{ customOrderCount }}</p>
+              <p class="mt-3 text-3xl font-black text-[#463B35]">{{ hasLoadedOrders ? customOrderCount : '--' }}</p>
               <p class="mt-1 text-sm text-[#74685F]">Orders that include custom design instructions.</p>
             </div>
           </div>
@@ -162,6 +162,9 @@
                 <span v-if="order.item_count"> | {{ order.item_count }} item{{ order.item_count > 1 ? 's' : '' }}</span>
               </p>
               <p class="mt-3 max-w-3xl text-sm leading-6 text-[#776B63]">{{ order.status_note }}</p>
+              <p v-if="order.is_pending_checkout" class="mt-2 text-sm font-semibold text-[#B26C41]">
+                Pending payment window: {{ countdownLabel(order) }}
+              </p>
             </div>
 
             <div class="flex flex-wrap gap-2">
@@ -177,19 +180,19 @@
                 v-if="order.can_refresh_payment"
                 type="button"
                 @click="refreshPayment(order.id)"
-                :disabled="refreshingOrderId === order.id"
+                :disabled="refreshingOrderId === normalizeOrderId(order.id)"
                 class="rounded-full border border-[#E2D4C7] bg-white px-4 py-2 text-sm font-semibold text-[#6D6259] transition-colors hover:bg-[#FFF8F2] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {{ refreshingOrderId === order.id ? 'Refreshing...' : 'Refresh status' }}
+                {{ refreshingOrderId === normalizeOrderId(order.id) ? 'Refreshing...' : 'Refresh status' }}
               </button>
               <button
-                v-if="order.can_cancel"
+                v-if="showCancelAction(order)"
                 type="button"
                 @click="cancelOrder(order)"
-                :disabled="cancellingOrderId === order.id"
+                :disabled="cancellingOrderId === normalizeOrderId(order.id)"
                 class="rounded-full border border-[#E7C7C0] bg-[#FFF4F1] px-4 py-2 text-sm font-semibold text-[#B85D4A] transition-colors hover:bg-[#FFEAE5] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {{ cancellingOrderId === order.id ? 'Cancelling...' : 'Cancel order' }}
+                {{ cancellingOrderId === normalizeOrderId(order.id) ? 'Cancelling...' : 'Cancel order' }}
               </button>
             </div>
           </div>
@@ -245,6 +248,8 @@
                 <p class="mt-3 text-xl font-black text-[#473D36]" style="font-family: 'Urbanist', sans-serif;">{{ order.flow_status_label }}</p>
                 <p class="mt-2 text-sm text-[#746961]">Payment method: {{ order.payment_method_label }}</p>
                 <p class="mt-1 text-sm text-[#746961]">Payment status: {{ order.payment_status_label }}</p>
+                <p v-if="order.is_pending_checkout" class="mt-3 text-sm font-semibold text-[#B26C41]">Auto-removes in {{ countdownLabel(order) }}</p>
+                <p v-if="order.is_pending_checkout" class="mt-1 text-xs text-[#8A7E76]">Window ends {{ order.pending_expires_at_label }}</p>
               </div>
 
               <div class="rounded-[26px] border border-[#EDE1D7] bg-[#FFFDFB] p-5">
@@ -328,7 +333,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useSpaRouter } from '../../router';
 import api from '../../services/api';
 
@@ -343,12 +348,21 @@ const props = defineProps({
   },
 });
 
-const { push } = useSpaRouter();
+const { push, replace } = useSpaRouter();
 const orders = ref([]);
+const summary = ref({
+  current_orders: 0,
+  custom_orders: 0,
+  pending_payment: 0,
+});
 const isLoading = ref(false);
+const hasLoadedOrders = ref(false);
 const loadError = ref('');
 const refreshingOrderId = ref(null);
 const cancellingOrderId = ref(null);
+const isHighlightSyncing = ref(false);
+const countdownNow = ref(Date.now());
+let countdownTimer = null;
 
 const flowSteps = [
   {
@@ -373,25 +387,66 @@ const flowSteps = [
   },
 ];
 
-const highlightedOrderId = computed(() => {
-  const parsed = Number(props.highlight);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-});
+const normalizeOrderId = (value) => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const normalized = String(value).trim();
+  return normalized !== '' ? normalized : null;
+};
+
+const isPendingOrderId = (value) => String(value || '').startsWith('pending-');
+
+const highlightedOrderId = computed(() => normalizeOrderId(props.highlight));
 
 const highlightedOrder = computed(() =>
-  orders.value.find((order) => order.id === highlightedOrderId.value) || null,
+  orders.value.find((order) => normalizeOrderId(order.id) === highlightedOrderId.value) || null,
 );
 
 const currentOrders = computed(() => orders.value.filter((order) => order.is_current));
 const historyOrders = computed(() => orders.value.filter((order) => !order.is_current));
-const pendingPaymentCount = computed(() =>
-  currentOrders.value.filter((order) => ['pending', 'unpaid'].includes(order.payment_status)).length,
+const currentOrderCount = computed(() =>
+  Number(summary.value.current_orders ?? currentOrders.value.length),
 );
-const customOrderCount = computed(() => orders.value.filter((order) => order.contains_custom).length);
+const pendingPaymentCount = computed(() =>
+  Number(summary.value.pending_payment ?? currentOrders.value.filter((order) => ['pending', 'unpaid'].includes(order.payment_status)).length),
+);
+const customOrderCount = computed(() =>
+  Number(summary.value.custom_orders ?? orders.value.filter((order) => order.contains_custom).length),
+);
+
+const formatCountdown = (milliseconds) => {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return [hours, minutes, seconds].map((value) => String(value).padStart(2, '0')).join(':');
+};
+
+const countdownLabel = (order) => {
+  if (!order?.is_pending_checkout || !order.pending_expires_at) {
+    return '00:00:00';
+  }
+
+  const expiresAt = new Date(order.pending_expires_at).getTime();
+  return formatCountdown(expiresAt - countdownNow.value);
+};
 
 const notice = computed(() => {
-  if (!highlightedOrder.value && !props.paymentReturn) {
+  if (!highlightedOrder.value && !props.paymentReturn && !isHighlightSyncing.value) {
     return { visible: false };
+  }
+
+  if (isHighlightSyncing.value && highlightedOrderId.value) {
+    return {
+      visible: true,
+      title: 'Checking payment',
+      message: `We're checking the latest payment state for ${highlightedOrderId.value}.`,
+      wrapperClass: 'border-[#D8E8F6] bg-[#F4FAFF] text-[#2F5F87]',
+      eyebrowClass: 'text-[#5E94C2]',
+    };
   }
 
   if (!highlightedOrder.value) {
@@ -399,6 +454,16 @@ const notice = computed(() => {
       visible: true,
       title: 'Order update',
       message: 'We could not find the highlighted order, but your latest orders are listed below.',
+      wrapperClass: 'border-[#F0DCCC] bg-[#FFF4EB] text-[#8E5632]',
+      eyebrowClass: 'text-[#C9876C]',
+    };
+  }
+
+  if (highlightedOrder.value.is_pending_checkout) {
+    return {
+      visible: true,
+      title: 'Pending payment',
+      message: `Complete payment for ${highlightedOrder.value.id} within ${countdownLabel(highlightedOrder.value)} or the draft order will be removed automatically.`,
       wrapperClass: 'border-[#F0DCCC] bg-[#FFF4EB] text-[#8E5632]',
       eyebrowClass: 'text-[#C9876C]',
     };
@@ -443,12 +508,24 @@ const notice = computed(() => {
   };
 });
 
-const mergeOrder = (nextOrder, paymentPayload = null) => {
-  if (!nextOrder?.id) {
+const removeOrderById = (orderId) => {
+  const normalizedId = normalizeOrderId(orderId);
+
+  if (!normalizedId) {
     return;
   }
 
-  const existingIndex = orders.value.findIndex((order) => order.id === nextOrder.id);
+  orders.value = orders.value.filter((order) => normalizeOrderId(order.id) !== normalizedId);
+};
+
+const mergeOrder = (nextOrder, paymentPayload = null) => {
+  const nextOrderId = normalizeOrderId(nextOrder?.id);
+
+  if (!nextOrderId) {
+    return;
+  }
+
+  const existingIndex = orders.value.findIndex((order) => normalizeOrderId(order.id) === nextOrderId);
   const existingOrder = existingIndex >= 0 ? orders.value[existingIndex] : {};
   const mergedOrder = {
     ...existingOrder,
@@ -473,7 +550,19 @@ const loadOrders = async () => {
 
   try {
     const response = await api.getOrders();
-    orders.value = response.data?.data?.orders || [];
+    const payload = response.data?.data;
+
+    if (!payload || !Array.isArray(payload.orders)) {
+      throw new Error('Invalid orders payload');
+    }
+
+    orders.value = payload.orders;
+    summary.value = {
+      current_orders: Number(payload.summary?.current_orders ?? payload.orders.filter((order) => order.is_current).length),
+      custom_orders: Number(payload.summary?.custom_orders ?? payload.orders.filter((order) => order.contains_custom).length),
+      pending_payment: Number(payload.summary?.pending_payment ?? payload.orders.filter((order) => order.is_current && ['pending', 'unpaid'].includes(order.payment_status)).length),
+    };
+    hasLoadedOrders.value = true;
   } catch (error) {
     loadError.value = error.response?.data?.message || 'We could not load your orders right now.';
   } finally {
@@ -481,14 +570,58 @@ const loadOrders = async () => {
   }
 };
 
-const refreshPayment = async (orderId) => {
-  refreshingOrderId.value = orderId;
+const shouldAutoRefreshHighlightedOrder = () => {
+  return Boolean(highlightedOrderId.value && props.paymentReturn);
+};
+
+const syncHighlightedPayment = async () => {
+  if (!shouldAutoRefreshHighlightedOrder()) {
+    return;
+  }
+
+  isHighlightSyncing.value = true;
 
   try {
-    const response = await api.getOrderPaymentStatus(orderId);
+    await refreshPayment(highlightedOrderId.value);
+  } finally {
+    isHighlightSyncing.value = false;
+  }
+};
+
+const refreshPayment = async (orderId) => {
+  const normalizedOrderId = normalizeOrderId(orderId);
+
+  if (!normalizedOrderId) {
+    return;
+  }
+
+  refreshingOrderId.value = normalizedOrderId;
+
+  try {
+    const response = isPendingOrderId(normalizedOrderId)
+      ? await api.getPendingOrderPaymentStatus(normalizedOrderId)
+      : await api.getOrderPaymentStatus(normalizedOrderId);
     const payload = response.data?.data || {};
+
+    if (payload.replaced_pending_order_id) {
+      removeOrderById(payload.replaced_pending_order_id);
+    }
+
     mergeOrder(payload.order, payload.payment);
+
+    if (payload.materialized && payload.replaced_pending_order_id && highlightedOrderId.value === payload.replaced_pending_order_id) {
+      const search = props.paymentReturn ? `?highlight=${payload.order.id}&payment_return=${props.paymentReturn}` : `?highlight=${payload.order.id}`;
+      replace(`/customer/orders${search}`);
+    }
   } catch (error) {
+    if (error.response?.status === 410) {
+      removeOrderById(normalizedOrderId);
+
+      if (highlightedOrderId.value === normalizedOrderId) {
+        replace('/customer/orders');
+      }
+    }
+
     window.alert(error.response?.data?.message || 'Unable to refresh the payment status right now.');
   } finally {
     refreshingOrderId.value = null;
@@ -496,7 +629,12 @@ const refreshPayment = async (orderId) => {
 };
 
 const cancelOrder = async (order) => {
-  if (!order?.can_cancel) {
+  if (!order) {
+    return;
+  }
+
+  if (!order.can_cancel) {
+    window.alert("Can't cancel order");
     return;
   }
 
@@ -505,13 +643,24 @@ const cancelOrder = async (order) => {
     return;
   }
 
-  cancellingOrderId.value = order.id;
+  cancellingOrderId.value = normalizeOrderId(order.id);
 
   try {
+    if (order.is_pending_checkout) {
+      await api.cancelPendingOrder(order.id);
+      removeOrderById(order.id);
+
+      if (highlightedOrderId.value === normalizeOrderId(order.id)) {
+        replace('/customer/orders');
+      }
+
+      return;
+    }
+
     const response = await api.cancelOrder(order.id);
     mergeOrder(response.data?.data?.order);
   } catch (error) {
-    window.alert(error.response?.data?.message || 'Unable to cancel this order right now.');
+    window.alert(error.response?.data?.message || "Can't cancel order");
   } finally {
     cancellingOrderId.value = null;
   }
@@ -565,11 +714,33 @@ const paymentClass = (paymentStatus) => {
   return 'bg-[#FFF3DE] text-[#A36A1F]';
 };
 
-onMounted(async () => {
-  await loadOrders();
+const showCancelAction = (order) => {
+  if (!order?.is_current) {
+    return false;
+  }
 
-  if (highlightedOrderId.value) {
-    await refreshPayment(highlightedOrderId.value);
+  return !['cancelled', 'delivered'].includes(order.status);
+};
+
+onMounted(() => {
+  countdownTimer = window.setInterval(() => {
+    countdownNow.value = Date.now();
+  }, 1000);
+
+  void loadOrders().then(() => {
+    if (!shouldAutoRefreshHighlightedOrder()) {
+      return;
+    }
+
+    window.setTimeout(() => {
+      void syncHighlightedPayment();
+    }, 0);
+  });
+});
+
+onUnmounted(() => {
+  if (countdownTimer) {
+    window.clearInterval(countdownTimer);
   }
 });
 </script>

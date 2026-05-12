@@ -58,9 +58,16 @@
 
         <div class="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label class="mb-2 block text-sm text-gray-600">Size</label>
-            <div class="flex h-12 items-center rounded-full border border-[#DED4CB] bg-[#FCFBF9] px-5 text-sm font-medium text-[#58514B]">
-              {{ featuredProduct.size || 'Medium' }}
+            <label class="mb-2 block text-sm text-gray-600">Size / Option</label>
+            <select
+              v-if="sizeOptions.length > 1"
+              v-model="selectedSize"
+              class="h-12 w-full rounded-full border border-[#DED4CB] bg-[#FCFBF9] px-5 text-sm font-medium text-[#58514B] outline-none focus:ring-2 focus:ring-[#C9876C]"
+            >
+              <option v-for="opt in sizeOptions" :key="opt" :value="opt">{{ opt }}</option>
+            </select>
+            <div v-else class="flex h-12 items-center rounded-full border border-[#DED4CB] bg-[#FCFBF9] px-5 text-sm font-medium text-[#58514B]">
+              {{ sizeOptions[0] || 'Standard' }}
             </div>
           </div>
 
@@ -77,7 +84,7 @@
                 </svg>
               </button>
               <input
-                :value="featuredProduct.quantity"
+                :value="isPreviewMode ? previewQuantity : featuredProduct.quantity"
                 type="number"
                 min="1"
                 class="flex-1 bg-transparent py-3 text-center outline-none"
@@ -106,44 +113,6 @@
           <p class="mt-2 text-sm leading-6 text-[#695F57]">{{ featuredProduct.dedicationMessage }}</p>
         </div>
 
-        <div class="mt-6 rounded-[24px] border border-[#EFE5DC] bg-[#FCFAF8] p-5">
-          <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#B59884]">Payment Method</p>
-              <p class="mt-2 text-sm text-[#695F57]">Use PayMongo to pay with your preferred wallet.</p>
-            </div>
-            <span class="inline-flex w-fit rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9B6A48]">
-              PayMongo
-            </span>
-          </div>
-
-          <div class="mt-4 grid gap-3 sm:grid-cols-2">
-            <button
-              v-for="option in paymentMethodOptions"
-              :key="`featured-${option.value}`"
-              type="button"
-              @click="selectedPaymentMethod = option.value"
-              class="rounded-[22px] border px-4 py-4 text-left transition-all"
-              :class="paymentMethodButtonClass(option.value)"
-            >
-              <div class="flex items-center justify-between gap-3">
-                <div>
-                  <p class="font-semibold text-[#4D4742]">{{ option.label }}</p>
-                  <p class="mt-1 text-xs text-[#766D67]">{{ option.description }}</p>
-                </div>
-                <span
-                  class="flex h-6 w-6 items-center justify-center rounded-full border"
-                  :class="paymentMethodIndicatorClass(option.value)"
-                >
-                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M5 13l4 4L19 7" />
-                  </svg>
-                </span>
-              </div>
-            </button>
-          </div>
-        </div>
-
         <div class="mt-6 space-y-3">
           <button
             type="button"
@@ -151,13 +120,6 @@
             class="w-full rounded-full bg-[#C9876C] py-4 font-semibold text-white shadow-md transition-colors hover:bg-[#B8765B]"
           >
             Add to cart
-          </button>
-          <button
-            type="button"
-            @click="checkout"
-            class="w-full rounded-full bg-[#8B6F47] py-4 font-semibold text-white shadow-md transition-colors hover:bg-[#7A5F3A]"
-          >
-            Checkout with {{ selectedPaymentMethodLabel }}
           </button>
           <button
             type="button"
@@ -275,38 +237,20 @@
           </div>
 
           <div class="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
-            <div class="flex flex-col gap-5 xl:items-end">
-              <div class="rounded-[24px] border border-[#EAE0D8] bg-[#FCFAF8] p-4">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#B59884]">Payment Method</p>
-                <div class="mt-3 flex flex-wrap gap-3">
-                  <button
-                    v-for="option in paymentMethodOptions"
-                    :key="`summary-${option.value}`"
-                    type="button"
-                    @click="selectedPaymentMethod = option.value"
-                    class="rounded-full border px-4 py-2 text-sm font-semibold transition-all"
-                    :class="paymentMethodButtonClass(option.value)"
-                  >
-                    {{ option.label }}
-                  </button>
-                </div>
+            <div class="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
+              <div class="text-right">
+                <p class="text-sm text-gray-600">Total ({{ selectedItems.length }} item{{ selectedItems.length === 1 ? '' : 's' }})</p>
+                <p class="text-3xl font-bold text-gray-800">PHP {{ formatPrice(cartTotal) }}</p>
               </div>
 
-              <div class="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
-                <div class="text-right">
-                  <p class="text-sm text-gray-600">Total ({{ selectedItems.length }} item)</p>
-                  <p class="text-3xl font-bold text-gray-800">PHP {{ formatPrice(cartTotal) }}</p>
-                </div>
-
-                <button
-                  type="button"
-                  @click="proceedToCheckout"
-                  :disabled="selectedItems.length === 0"
-                  class="rounded-full bg-[#C9876C] px-8 py-4 font-semibold text-white shadow-md transition-colors hover:bg-[#B8765B] disabled:cursor-not-allowed disabled:bg-gray-300"
-                >
-                  Checkout with {{ selectedPaymentMethodLabel }}
-                </button>
-              </div>
+              <button
+                type="button"
+                @click="proceedToCheckout"
+                :disabled="selectedItems.length === 0"
+                class="rounded-full bg-[#C9876C] px-8 py-4 font-semibold text-white shadow-md transition-colors hover:bg-[#B8765B] disabled:cursor-not-allowed disabled:bg-gray-300"
+              >
+                Proceed to checkout
+              </button>
             </div>
           </div>
         </div>
@@ -318,6 +262,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { useSpaRouter } from '../../router';
+import api from '../../services/api';
 import { useCartStore } from '../../services/cartStore';
 import CartItem from '../shared/CartItem.vue';
 
@@ -334,6 +279,10 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  preview: {
+    type: [String, Number],
+    default: null,
+  },
 });
 
 const { push } = useSpaRouter();
@@ -346,7 +295,6 @@ const {
   addCustomItem,
   updateCartItemQuantity,
   removeCartItem,
-  checkout: checkoutCartItems,
   syncOrderPaymentStatus,
 } = useCartStore();
 
@@ -358,18 +306,49 @@ const selectedPaymentMethod = ref('gcash');
 const paymentStatusDetails = ref(null);
 const isSyncingPayment = ref(false);
 const paymentSyncError = ref('');
-const paymentMethodOptions = [
-  {
-    value: 'gcash',
-    label: 'GCash',
-    description: 'Pay through the GCash wallet.',
-  },
-  {
-    value: 'maya',
-    label: 'Maya',
-    description: 'Pay through the Maya wallet.',
-  },
-];
+const previewProduct = ref(null);
+const previewQuantity = ref(1);
+const selectedSize = ref('');
+
+const isPreviewMode = computed(() => Boolean(previewProduct.value));
+
+const loadPreviewProduct = async () => {
+  const previewId = Number(props.preview);
+  if (!previewId) {
+    previewProduct.value = null;
+    return;
+  }
+
+  try {
+    const response = await api.getProduct(previewId);
+    const p = response.data?.data;
+    if (p) {
+      previewProduct.value = {
+        id: p.id,
+        product_id: p.product_id ?? p.id,
+        name: p.name ?? p.product_name,
+        description: p.description ?? '',
+        price: Number(p.price ?? 0),
+        image: p.image_url || p.image || '/images/bakerdan/Bread.png',
+        tag: p.is_active ? 'Available' : 'Inactive',
+        source: 'catalog',
+        quantity: 1,
+        sizesAvailable: p.sizes_available || '',
+        flavorsAvailable: p.flavors_available || '',
+      };
+      previewQuantity.value = 1;
+      const sizes = parseSizes(previewProduct.value.sizesAvailable);
+      selectedSize.value = sizes[0] || 'Standard';
+    }
+  } catch (error) {
+    previewProduct.value = null;
+  }
+};
+
+const parseSizes = (sizesStr) => {
+  if (!sizesStr) return [];
+  return sizesStr.split('|').map((s) => s.trim()).filter(Boolean);
+};
 
 const addedItemId = computed(() => Number(props.added) || Number(lastAddedId.value) || null);
 const checkoutOrderId = computed(() => Number(props.ordered) || Number(lastCheckoutOrderId.value) || null);
@@ -418,9 +397,24 @@ const visibleCartItems = computed(() => {
   return result;
 });
 
-const featuredProduct = computed(() =>
-  cartItems.value.find((item) => item.id === activeFeaturedId.value) || cartItems.value[0] || null,
-);
+const featuredProduct = computed(() => {
+  if (isPreviewMode.value) return previewProduct.value;
+  return cartItems.value.find((item) => item.id === activeFeaturedId.value) || cartItems.value[0] || null;
+});
+
+const sizeOptions = computed(() => {
+  if (!featuredProduct.value) return [];
+  const raw = featuredProduct.value.sizesAvailable || featuredProduct.value.size || '';
+  const sizes = parseSizes(raw);
+  return sizes.length ? sizes : ['Standard'];
+});
+
+watch(featuredProduct, (prod) => {
+  if (prod && !isPreviewMode.value) {
+    const sizes = parseSizes(prod.sizesAvailable || prod.size || '');
+    selectedSize.value = sizes[0] || prod.size || 'Standard';
+  }
+}, { immediate: true });
 
 const addedItem = computed(() => cartItems.value.find((item) => item.id === addedItemId.value) || null);
 const allSelected = computed(() => selectedItems.value.length === cartItems.value.length && cartItems.value.length > 0);
@@ -440,7 +434,6 @@ const resolvedPaymentStatus = computed(() => {
 
   return checkoutOrderId.value ? 'pending' : null;
 });
-const selectedPaymentMethodLabel = computed(() => formatPaymentMethod(selectedPaymentMethod.value));
 const canContinuePayment = computed(() => Boolean(paymentCheckoutUrl.value) && resolvedPaymentStatus.value === 'pending');
 const checkoutNotice = computed(() => {
   if (!checkoutOrderId.value) {
@@ -514,16 +507,6 @@ const checkoutNotice = computed(() => {
 
 const formatPrice = (price) => Number(price).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 const formatPaymentMethod = (value) => (value === 'maya' ? 'Maya' : 'GCash');
-const paymentMethodButtonClass = (value) => (
-  selectedPaymentMethod.value === value
-    ? 'border-[#C9876C] bg-[#FFF4EB] text-[#7E4E32] shadow-[0_12px_30px_-26px_rgba(201,135,108,0.7)]'
-    : 'border-[#E5D8CC] bg-white text-[#5C5651] hover:border-[#D6B9A5]'
-);
-const paymentMethodIndicatorClass = (value) => (
-  selectedPaymentMethod.value === value
-    ? 'border-[#C9876C] bg-[#C9876C] text-white'
-    : 'border-[#D8CCC2] bg-white text-transparent'
-);
 
 const refreshCart = async () => {
   try {
@@ -553,7 +536,10 @@ const refreshOrderPaymentStatus = async () => {
 };
 
 const incrementQuantity = async () => {
-  if (!featuredProduct.value) {
+  if (!featuredProduct.value) return;
+
+  if (isPreviewMode.value) {
+    previewQuantity.value += 1;
     return;
   }
 
@@ -565,7 +551,10 @@ const incrementQuantity = async () => {
 };
 
 const decrementQuantity = async () => {
-  if (!featuredProduct.value) {
+  if (!featuredProduct.value) return;
+
+  if (isPreviewMode.value) {
+    previewQuantity.value = Math.max(1, previewQuantity.value - 1);
     return;
   }
 
@@ -577,11 +566,15 @@ const decrementQuantity = async () => {
 };
 
 const setQuantity = async (value) => {
-  if (!featuredProduct.value) {
+  if (!featuredProduct.value) return;
+
+  const normalizedQuantity = Math.max(1, Number(value) || 1);
+
+  if (isPreviewMode.value) {
+    previewQuantity.value = normalizedQuantity;
     return;
   }
 
-  const normalizedQuantity = Math.max(1, Number(value) || 1);
   try {
     await updateCartItemQuantity(featuredProduct.value.id, normalizedQuantity);
   } catch (error) {
@@ -597,8 +590,8 @@ const addFeaturedToCart = async () => {
   try {
     if (featuredProduct.value.source === 'custom') {
       const addedItem = await addCustomItem({
-        size: featuredProduct.value.size,
-        quantity: 1,
+        size: selectedSize.value || featuredProduct.value.size,
+        quantity: isPreviewMode.value ? previewQuantity.value : 1,
         flavor: featuredProduct.value.flavor,
         designDescription: featuredProduct.value.designDescription,
         dedicationMessage: featuredProduct.value.dedicationMessage,
@@ -607,6 +600,8 @@ const addFeaturedToCart = async () => {
         basePrice: featuredProduct.value.basePrice || featuredProduct.value.price,
       });
 
+      previewProduct.value = null;
+
       if (addedItem?.id) {
         push(`/customer/cart?added=${addedItem.id}`);
       }
@@ -614,42 +609,20 @@ const addFeaturedToCart = async () => {
       return;
     }
 
-    const addedItem = await addCatalogItem(featuredProduct.value.product_id, {
-      quantity: 1,
-      size: featuredProduct.value.size,
+    const productId = featuredProduct.value.product_id || featuredProduct.value.id;
+    const addedItem = await addCatalogItem(productId, {
+      quantity: isPreviewMode.value ? previewQuantity.value : 1,
+      size: selectedSize.value || featuredProduct.value.size,
       flavor: featuredProduct.value.flavor,
     });
+
+    previewProduct.value = null;
 
     if (addedItem?.id) {
       push(`/customer/cart?added=${addedItem.id}`);
     }
   } catch (error) {
     window.alert('Unable to add this item to the cart right now.');
-  }
-};
-
-const checkout = async () => {
-  if (!featuredProduct.value) {
-    return;
-  }
-
-  try {
-    const featuredItemId = featuredProduct.value.id;
-    const order = await checkoutCartItems([featuredItemId], {
-      paymentMethod: selectedPaymentMethod.value,
-    });
-    selectedItems.value = selectedItems.value.filter((itemId) => itemId !== featuredItemId);
-
-    if (order?.checkout_url) {
-      window.location.href = order.checkout_url;
-      return;
-    }
-
-    if (order?.id) {
-      push(`/customer/orders?highlight=${order.id}`);
-    }
-  } catch (error) {
-    window.alert(error.response?.data?.message || 'Unable to complete checkout right now.');
   }
 };
 
@@ -709,28 +682,12 @@ const deleteSelected = async () => {
   }
 };
 
-const proceedToCheckout = async () => {
+const proceedToCheckout = () => {
   if (!selectedItems.value.length) {
     return;
   }
 
-  try {
-    const order = await checkoutCartItems(selectedItems.value, {
-      paymentMethod: selectedPaymentMethod.value,
-    });
-    selectedItems.value = [];
-
-    if (order?.checkout_url) {
-      window.location.href = order.checkout_url;
-      return;
-    }
-
-    if (order?.id) {
-      push(`/customer/orders?highlight=${order.id}`);
-    }
-  } catch (error) {
-    window.alert(error.response?.data?.message || 'Unable to complete checkout right now.');
-  }
+  push(`/customer/checkout?items=${selectedItems.value.join(',')}`);
 };
 
 const continuePayment = () => {
@@ -749,5 +706,6 @@ watch(
 
 onMounted(() => {
   refreshCart();
+  loadPreviewProduct();
 });
 </script>

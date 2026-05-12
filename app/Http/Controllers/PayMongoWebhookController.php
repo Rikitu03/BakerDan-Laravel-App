@@ -3,13 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Services\PendingOrderService;
 use App\Services\PayMongoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PayMongoWebhookController extends Controller
 {
-    public function handle(Request $request, PayMongoService $payMongo): JsonResponse
+    public function handle(Request $request, PayMongoService $payMongo, PendingOrderService $pendingOrders): JsonResponse
     {
         if (! $payMongo->shouldProcessWebhook()) {
             return response()->json([
@@ -33,6 +34,7 @@ class PayMongoWebhookController extends Controller
             $checkoutSession = data_get($event, 'data.attributes.data');
             $orderId = (int) data_get($checkoutSession, 'attributes.metadata.order_id');
             $sessionId = data_get($checkoutSession, 'id');
+            $pendingOrderId = data_get($checkoutSession, 'attributes.metadata.pending_order_id');
 
             if (is_array($checkoutSession) && ($orderId > 0 || filled($sessionId))) {
                 $order = Order::query()
@@ -49,6 +51,20 @@ class PayMongoWebhookController extends Controller
 
                 if ($order) {
                     $payMongo->syncOrderPayment($order, $checkoutSession);
+                } else {
+                    $pendingOrder = null;
+
+                    if (filled($pendingOrderId)) {
+                        $pendingOrder = $pendingOrders->find((string) $pendingOrderId);
+                    }
+
+                    if (! $pendingOrder && filled($sessionId)) {
+                        $pendingOrder = $pendingOrders->findBySessionId((string) $sessionId);
+                    }
+
+                    if ($pendingOrder) {
+                        $pendingOrders->materializePaidOrder($pendingOrder, $checkoutSession, $payMongo);
+                    }
                 }
             }
         }

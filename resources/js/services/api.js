@@ -41,6 +41,10 @@ export default {
     return api.get(`/products/${id}`)
   },
 
+  chat(data) {
+    return api.post('/chat', data)
+  },
+
   // Cart
   getCart() {
     return api.get('/cart')
@@ -88,12 +92,24 @@ export default {
     return api.get('/orders')
   },
 
+  getPurchases() {
+    return api.get('/purchases')
+  },
+
   cancelOrder(orderId) {
     return api.patch(`/orders/${orderId}/cancel`)
   },
 
+  cancelPendingOrder(pendingOrderId) {
+    return api.patch(`/pending-orders/${encodeURIComponent(pendingOrderId)}/cancel`)
+  },
+
   getOrderPaymentStatus(orderId) {
     return api.get(`/orders/${orderId}/payment-status`)
+  },
+
+  getPendingOrderPaymentStatus(pendingOrderId) {
+    return api.get(`/pending-orders/${encodeURIComponent(pendingOrderId)}/payment-status`)
   },
 
   // Custom Orders

@@ -161,7 +161,9 @@ const checkout = async (itemIds, data = {}) => {
     const response = await api.checkout({
       item_ids: itemIds,
       payment_method: data.paymentMethod,
+      fulfillment_method: data.fulfillmentMethod,
       shipping_address: data.shippingAddress,
+      shipping_pin_link: data.shippingPinLink,
     });
     const payload = response.data?.data || {};
     syncCart(payload.cart);

@@ -178,7 +178,7 @@ function initChat() {
                 addMessage(data.reply, 'model');
                 history.push({ role: 'model', text: data.reply });
             } else {
-                addMessage('Sorry, I encountered an error. Please try again.', 'model');
+                addMessage(data.message || 'Sorry, I encountered an error. Please try again.', 'model');
             }
         } catch (error) {
             console.error(error);

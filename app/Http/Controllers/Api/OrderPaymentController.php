@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Services\PendingOrderService;
 use App\Services\PayMongoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -45,6 +46,103 @@ class OrderPaymentController extends Controller
                     'status' => $order->payment_status,
                     'sync_error' => $syncError,
                 ],
+            ],
+        ]);
+    }
+
+    public function showPending(string $pendingOrderId, PendingOrderService $pendingOrders, PayMongoService $payMongo): JsonResponse
+    {
+        $resolvedOrderId = $pendingOrders->resolveMaterializedOrderId($pendingOrderId);
+
+        if ($resolvedOrderId) {
+            $order = Order::query()
+                ->with(['items.product'])
+                ->where('user_id', Auth::id())
+                ->whereKey($resolvedOrderId)
+                ->firstOrFail();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'order' => $this->serializeOrder($order),
+                    'payment' => [
+                        'checkout_url' => $order->payment_checkout_url,
+                        'gateway_status' => data_get($order->payment_metadata, 'payment_intent_status')
+                            ?: data_get($order->payment_metadata, 'checkout_session_status'),
+                        'provider' => $order->payment_provider,
+                        'reference' => $order->payment_reference,
+                        'session_id' => $order->payment_session_id,
+                        'status' => $order->payment_status,
+                        'sync_error' => null,
+                    ],
+                    'materialized' => true,
+                    'replaced_pending_order_id' => $pendingOrderId,
+                ],
+            ]);
+        }
+
+        $pendingOrder = $pendingOrders->findForUser((int) Auth::id(), $pendingOrderId);
+
+        if (! $pendingOrder) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This pending payment window has expired or the order draft no longer exists.',
+            ], 410);
+        }
+
+        if ($pendingOrders->isExpired($pendingOrder)) {
+            $pendingOrders->forget($pendingOrderId);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'This pending payment window has expired and the order draft was removed automatically.',
+            ], 410);
+        }
+
+        $syncError = null;
+
+        if (filled($pendingOrder['payment_session_id'] ?? null)) {
+            try {
+                $checkoutSession = $payMongo->retrieveCheckoutSession((string) $pendingOrder['payment_session_id']);
+                $paymentStatus = $payMongo->checkoutSessionPaymentStatus($checkoutSession);
+
+                if ($paymentStatus === 'paid') {
+                    $order = $pendingOrders->materializePaidOrder($pendingOrder, $checkoutSession, $payMongo);
+
+                    return response()->json([
+                        'success' => true,
+                        'data' => [
+                            'order' => $this->serializeOrder($order),
+                            'payment' => [
+                                'checkout_url' => $order->payment_checkout_url,
+                                'gateway_status' => data_get($order->payment_metadata, 'payment_intent_status')
+                                    ?: data_get($order->payment_metadata, 'checkout_session_status'),
+                                'provider' => $order->payment_provider,
+                                'reference' => $order->payment_reference,
+                                'session_id' => $order->payment_session_id,
+                                'status' => $order->payment_status,
+                                'sync_error' => null,
+                            ],
+                            'materialized' => true,
+                            'replaced_pending_order_id' => $pendingOrderId,
+                        ],
+                    ]);
+                }
+
+                $pendingOrder = $pendingOrders->syncCheckoutSession($pendingOrder, $checkoutSession);
+            } catch (Throwable $exception) {
+                report($exception);
+                $syncError = $exception->getMessage();
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'order' => $pendingOrders->serializeForCustomer($pendingOrder),
+                'payment' => $pendingOrders->paymentPayloadForCustomer($pendingOrder, $syncError),
+                'materialized' => false,
+                'replaced_pending_order_id' => null,
             ],
         ]);
     }

@@ -108,8 +108,11 @@ Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
     Route::delete('/cart/clear', [CartController::class, 'clear']);
     Route::post('/checkout', [CartController::class, 'checkout']);
     Route::get('/orders', [CustomerOrderController::class, 'index']);
+    Route::get('/purchases', [CustomerOrderController::class, 'purchaseHistory']);
     Route::patch('/orders/{order}/cancel', [CustomerOrderController::class, 'cancel']);
     Route::get('/orders/{order}/payment-status', [OrderPaymentController::class, 'show']);
+    Route::patch('/pending-orders/{pendingOrderId}/cancel', [CustomerOrderController::class, 'cancelPending']);
+    Route::get('/pending-orders/{pendingOrderId}/payment-status', [OrderPaymentController::class, 'showPending']);
     
     // Custom Orders
     Route::post('/custom-orders', [CustomOrderController::class, 'store']);

@@ -4,200 +4,623 @@ namespace Database\Seeders;
 
 use App\Models\Product;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\File;
 
 class ProductCatalogSeeder extends Seeder
 {
-    private const PRODUCTS = [
-        ['product_name' => 'Creme Cheese Garlic (Box of 6 pcs)', 'category' => 'Breads', 'price_label' => 'PHP 280.00', 'sizes_available' => 'N/A', 'flavors_available' => 'N/A', 'image_source' => 'received_1732155128165064.webp'],
-        ['product_name' => 'Ube / Classic Potato Ensaymada', 'category' => 'Breads', 'price_label' => 'PHP 160.00', 'sizes_available' => 'N/A', 'flavors_available' => 'Ube, Classic Potato', 'image_source' => 'received_1732155128165064.webp'],
-        ['product_name' => 'Cinnamon Rolls (Box of 12 pcs)', 'category' => 'Pastries', 'price_label' => 'PHP 360.00', 'sizes_available' => 'N/A', 'flavors_available' => 'N/A', 'image_source' => 'received_1732155128165064.webp'],
-        ['product_name' => 'Golden Egg Pie', 'category' => 'Pastries', 'price_label' => 'PHP 260.00', 'sizes_available' => '8" round', 'flavors_available' => 'N/A', 'image_source' => 'received_1732155128165064.webp'],
-        ['product_name' => 'Eclair (Box of 12 pcs)', 'category' => 'Pastries', 'price_label' => 'PHP 180.00', 'sizes_available' => 'N/A', 'flavors_available' => 'N/A', 'image_source' => 'received_1732155128165064.webp'],
-        ['product_name' => 'Mix Tarts (Box of 11 pcs)', 'category' => 'Pastries', 'price_label' => 'PHP 200.00', 'sizes_available' => 'N/A', 'flavors_available' => 'N/A', 'image_source' => 'received_1732155128165064.webp'],
-        ['product_name' => 'Barkada Macaroons (Box of 35 pcs)', 'category' => 'Pastries', 'price_label' => 'PHP 180.00', 'sizes_available' => 'N/A', 'flavors_available' => 'N/A', 'image_source' => 'received_1732155128165064.webp'],
-        ['product_name' => 'Creme Puffs (Box of 12 pcs)', 'category' => 'Pastries', 'price_label' => 'PHP 160.00', 'sizes_available' => 'N/A', 'flavors_available' => 'N/A', 'image_source' => 'received_1732155128165064.webp'],
-        ['product_name' => 'Wallnut Brownies (Box of 15 pcs)', 'category' => 'Pastries', 'price_label' => 'PHP 230.00', 'sizes_available' => 'N/A', 'flavors_available' => 'N/A', 'image_source' => 'received_1732155128165064.webp'],
-        ['product_name' => 'Piped Cupcakes (12 pcs)', 'category' => 'Pastries', 'price_label' => 'PHP 750.00', 'sizes_available' => 'N/A', 'flavors_available' => 'Up to 3 colors', 'image_source' => 'received_1303018598395719.jpeg'],
-        ['product_name' => 'Fondant Cupcakes (12 pcs)', 'category' => 'Pastries', 'price_label' => 'PHP 950.00 - 1,000.00', 'sizes_available' => 'N/A', 'flavors_available' => 'Up to 3 designs', 'image_source' => 'received_1303018598395719.jpeg'],
-        ['product_name' => 'Sugar Cookies (25 pcs)', 'category' => 'Pastries', 'price_label' => 'PHP 1,500.00', 'sizes_available' => '3" inch', 'flavors_available' => 'Up to 5 designs', 'image_source' => 'received_1303018598395719.jpeg'],
-        ['product_name' => 'Cupcake Tower (11 pcs)', 'category' => 'Pastries', 'price_label' => 'PHP 1,300.00', 'sizes_available' => '3 oz cupcakes', 'flavors_available' => 'N/A', 'image_source' => 'received_1303018598395719.jpeg'],
-        ['product_name' => 'Creampuff Tower (36 to 40 pcs)', 'category' => 'Pastries', 'price_label' => 'PHP 2,500.00', 'sizes_available' => 'N/A', 'flavors_available' => 'N/A', 'image_source' => 'received_1303018598395719.jpeg'],
-        ['product_name' => 'Custard Cake', 'category' => 'Cakes', 'price_label' => 'PHP 200.00', 'sizes_available' => '8" round', 'flavors_available' => 'N/A', 'image_source' => 'received_1732155128165064.webp'],
-        ['product_name' => 'Brazo de Ube / Mercedes', 'category' => 'Cakes', 'price_label' => 'PHP 300.00', 'sizes_available' => 'N/A', 'flavors_available' => 'Ube, Mercedes', 'image_source' => 'received_1732155128165064.webp'],
-        ['product_name' => 'Cake Roll', 'category' => 'Cakes', 'price_label' => 'PHP 300.00', 'sizes_available' => 'N/A', 'flavors_available' => 'Ube, Mocha, Choco', 'image_source' => 'received_1732155128165064.webp'],
-        ['product_name' => 'Soft Icing Cakes (Round Cakes Promo)', 'category' => 'Cakes', 'price_label' => 'PHP 2,300.00 - 3,100.00', 'sizes_available' => '6"x6", 8"x4", 8"x6", 10"x4"', 'flavors_available' => 'Mocha Buttercake, Ube Buttercake, Buttercake, Pandan, Dark Chocolate Moist (+PHP 100)', 'image_source' => 'received_1378296820985078.jpeg'],
-        ['product_name' => 'Sheet Cakes & Number Cakes', 'category' => 'Cakes', 'price_label' => 'PHP 1,850.00 - 2,300.00', 'sizes_available' => '8"x12", 12"x12"', 'flavors_available' => 'Chocolate Chiffon, Mocha Chiffon, Ube Chiffon, Plain Vanilla Chiffon, Funfetti, Pandan Chiffon', 'image_source' => 'received_26342431045415063.jpeg'],
-        ['product_name' => 'Fondant Cakes', 'category' => 'Cakes', 'price_label' => 'PHP 2,500.00 - 3,500.00', 'sizes_available' => '6"x6", 8"x4", 8"x6", 10"x5"', 'flavors_available' => 'Moist Chocolate, Mocha Buttercake, Ube Buttercake, Plain Buttercake, Funfetti (+PHP 50), Redvelvet (+PHP 100), Carrot (+PHP 100)', 'image_source' => 'received_975113635046519.jpeg'],
-        ['product_name' => '2-Tier Floral Naked Cake', 'category' => 'Cakes', 'price_label' => 'PHP 3,950.00', 'sizes_available' => 'Bottom: 8"x5", Top: 6"x5"', 'flavors_available' => 'N/A', 'image_source' => 'received_1971047923537159.jpeg'],
-        ['product_name' => '2-Tier Fondant Raffles', 'category' => 'Cakes', 'price_label' => 'PHP 4,300.00', 'sizes_available' => 'Bottom: 8"x5", Top: 6"x5"', 'flavors_available' => 'N/A', 'image_source' => 'received_1971047923537159.jpeg'],
-        ['product_name' => '2-Tier Full Fondant with 3D Characters', 'category' => 'Cakes', 'price_label' => 'PHP 4,600.00', 'sizes_available' => 'Bottom: 8"x5", Top: 6"x5"', 'flavors_available' => 'N/A', 'image_source' => 'received_1971047923537159.jpeg'],
-        ['product_name' => '3-Tier Vintage with Few Fondant', 'category' => 'Cakes', 'price_label' => 'PHP 5,600.00', 'sizes_available' => 'Bottom: 10"x5", Middle: 8"x6", Top: 6"x6"', 'flavors_available' => 'N/A', 'image_source' => 'received_1971047923537159.jpeg'],
-        ['product_name' => '3-Tier Full Fondant with Floral', 'category' => 'Cakes', 'price_label' => 'PHP 5,800.00', 'sizes_available' => 'Bottom: 10"x5", Middle: 8"x6", Top: 6"x6"', 'flavors_available' => 'N/A', 'image_source' => 'received_1971047923537159.jpeg'],
-        ['product_name' => '3-Tier Full Fondant Wedding Cake', 'category' => 'Cakes', 'price_label' => 'PHP 6,500.00+', 'sizes_available' => 'Bottom: 10"x5", Middle: 8"x6", Top: 6"x6"', 'flavors_available' => 'N/A', 'image_source' => 'received_1971047923537159.jpeg'],
-        ['product_name' => 'Money Cake Add-on', 'category' => 'Customization', 'price_label' => '+ PHP 250.00', 'sizes_available' => 'N/A', 'flavors_available' => 'N/A', 'image_source' => 'received_1378296820985078.jpeg, received_975113635046519.jpeg'],
-        ['product_name' => 'Soft Icing with Fondant Details', 'category' => 'Customization', 'price_label' => 'Rates to be discussed', 'sizes_available' => 'N/A', 'flavors_available' => 'N/A', 'image_source' => 'received_1378296820985078.jpeg'],
-        ['product_name' => 'Additional Fondant Details & Edible Print', 'category' => 'Customization', 'price_label' => 'Additional fee applies', 'sizes_available' => 'N/A', 'flavors_available' => 'N/A', 'image_source' => 'received_26342431045415063.jpeg'],
-    ];
-
-    private ?array $catalogImageCandidates = null;
-
     public function run(): void
     {
-        $activeSignatures = [];
+        $products = array_merge(
+            $this->breadProducts(),
+            $this->pastryProducts(),
+            $this->tartProducts(),
+            $this->brazosAndCakesProducts(),
+        );
 
-        foreach (self::PRODUCTS as $row) {
-            $category = $this->normalizeCategory($row['category']);
-            $signature = $this->signature($category, $row['product_name']);
-            $activeSignatures[$signature] = true;
-
+        foreach ($products as $product) {
             Product::query()->updateOrCreate(
-                [
-                    'category' => $category,
-                    'product_name' => $row['product_name'],
-                ],
-                [
-                    'description' => $this->buildDescription($category, $row['sizes_available'], $row['flavors_available']),
-                    'price' => $this->extractBasePrice($row['price_label']),
-                    'price_label' => $row['price_label'],
-                    'sizes_available' => $this->nullableValue($row['sizes_available']),
-                    'flavors_available' => $this->nullableValue($row['flavors_available']),
-                    'image_url' => $this->resolveImageUrl($category, $row['product_name']),
-                    'image_source' => $row['image_source'],
-                    'is_active' => true,
-                ],
+                ['product_name' => $product['product_name'], 'category' => $product['category']],
+                $product,
             );
         }
-
-        Product::query()->get()->each(function (Product $product) use ($activeSignatures): void {
-            $signature = $this->signature($product->category, $product->product_name);
-
-            if (!isset($activeSignatures[$signature])) {
-                $product->delete();
-            }
-        });
     }
 
-    private function normalizeCategory(string $category): string
+    private function breadProducts(): array
     {
-        return match ($category) {
-            'Breads' => 'Bread',
-            'Customization' => 'Customize',
-            default => $category,
-        };
+        return [
+            [
+                'category' => 'Bread',
+                'product_name' => 'Korean Garlic Creamcheese Bun (KBUN)',
+                'description' => 'Classic Bestseller. Available in Mini (45g) Box of 12, Regular (90g) Box of 6, Big (130g) Box of 4.',
+                'price_label' => 'PHP 395.00 - 410.00',
+                'price' => 395.00,
+                'sizes_available' => 'Mini (45g) - Box of 12 | Regular (90g) - Box of 6 | Big (130g) - Box of 4',
+                'flavors_available' => 'Classic',
+                'image_url' => '/images/bakerdan/bread/Creme_Cheese_Garlic.png',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Bread',
+                'product_name' => 'Cinnamon Rolls w/ Creamcheese',
+                'description' => 'Soft cinnamon rolls topped with creamcheese. Mini Box of 12 or Big Box of 6.',
+                'price_label' => 'PHP 395.00 - 405.00',
+                'price' => 395.00,
+                'sizes_available' => 'Mini - Box of 12 pcs | Big - Box of 6 pcs',
+                'flavors_available' => null,
+                'image_url' => '/images/bakerdan/pastries/cinnamon_rolls_with_creamcheese.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Bread',
+                'product_name' => 'Filipino Ensaymada',
+                'description' => 'Classic, Bacon, or Ube. Mini (45g) Box of 12 or Regular (90g) Box of 6.',
+                'price_label' => 'PHP 275.00 - 295.00',
+                'price' => 275.00,
+                'sizes_available' => 'Mini (45g) - Box of 12 pcs | Regular (90g) - Box of 6 pcs',
+                'flavors_available' => 'Classic | Bacon | Ube',
+                'image_url' => '/images/bakerdan/bread/filipino_ensaymada.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Bread',
+                'product_name' => 'Ube Cheese Pandesal',
+                'description' => 'Box of 10 pcs.',
+                'price_label' => 'PHP 275.00',
+                'price' => 275.00,
+                'sizes_available' => 'Box of 10 pcs',
+                'flavors_available' => 'Ube Cheese',
+                'image_url' => '/images/bakerdan/bread/ube_pandesal.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Bread',
+                'product_name' => 'Corned Beef Pandesal',
+                'description' => 'Box of 6 pcs. Made with Highlands Corned Beef.',
+                'price_label' => 'PHP 350.00',
+                'price' => 350.00,
+                'sizes_available' => 'Box of 6 pcs',
+                'flavors_available' => null,
+                'image_url' => '/images/bakerdan/bread/cornbeef_pandesal.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Bread',
+                'product_name' => 'Bread Loaves - Choco Banana Almond',
+                'description' => 'Choco Banana Almond Loaf.',
+                'price_label' => 'PHP 220.00',
+                'price' => 220.00,
+                'sizes_available' => null,
+                'flavors_available' => 'Choco Banana Almond',
+                'image_url' => '/images/bakerdan/bread/bread_loaves.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Bread',
+                'product_name' => 'Bread Loaves - Cheesy Garlic',
+                'description' => 'Cheesy Garlic Loaf.',
+                'price_label' => 'PHP 200.00',
+                'price' => 200.00,
+                'sizes_available' => null,
+                'flavors_available' => 'Cheesy Garlic',
+                'image_url' => '/images/bakerdan/bread/bread_loaves.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Bread',
+                'product_name' => 'Bread Loaves - Pizza Loaf',
+                'description' => 'Pizza Loaf.',
+                'price_label' => 'PHP 200.00',
+                'price' => 200.00,
+                'sizes_available' => null,
+                'flavors_available' => 'Pizza',
+                'image_url' => '/images/bakerdan/bread/bread_loaves.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Bread',
+                'product_name' => 'Bread Loaves - Carrot w/ Creamcheese',
+                'description' => 'Carrot Loaf with Creamcheese.',
+                'price_label' => 'PHP 250.00',
+                'price' => 250.00,
+                'sizes_available' => null,
+                'flavors_available' => 'Carrot w/ Creamcheese',
+                'image_url' => '/images/bakerdan/bread/bread_loaves.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+        ];
     }
 
-    private function nullableValue(?string $value): ?string
+    private function pastryProducts(): array
     {
-        $normalized = trim((string) $value);
-
-        return $normalized === '' || strtoupper($normalized) === 'N/A'
-            ? null
-            : $normalized;
+        return [
+            [
+                'category' => 'Pastries',
+                'product_name' => 'Creampuffs - Caramel Puff',
+                'description' => 'Bestseller. Caramel Puff, Box of 12 pcs.',
+                'price_label' => 'PHP 285.00',
+                'price' => 285.00,
+                'sizes_available' => 'Box of 12 pcs',
+                'flavors_available' => 'Caramel',
+                'image_url' => '/images/bakerdan/pastries/Creme_Puffs.png',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Pastries',
+                'product_name' => 'Creampuffs - Strawberry Puff',
+                'description' => 'Strawberry Puff, Box of 12 pcs.',
+                'price_label' => 'PHP 300.00',
+                'price' => 300.00,
+                'sizes_available' => 'Box of 12 pcs',
+                'flavors_available' => 'Strawberry',
+                'image_url' => '/images/bakerdan/pastries/cream_puff.png',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Pastries',
+                'product_name' => 'Creampuffs - Matcha Puff',
+                'description' => 'Matcha Puff, Box of 12 pcs.',
+                'price_label' => 'PHP 300.00',
+                'price' => 300.00,
+                'sizes_available' => 'Box of 12 pcs',
+                'flavors_available' => 'Matcha',
+                'image_url' => '/images/bakerdan/pastries/cream_puff.png',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Pastries',
+                'product_name' => 'Creampuffs - Mix Puff',
+                'description' => 'Mix Puff, Box of 12 pcs.',
+                'price_label' => 'PHP 310.00',
+                'price' => 310.00,
+                'sizes_available' => 'Box of 12 pcs',
+                'flavors_available' => 'Mix',
+                'image_url' => '/images/bakerdan/pastries/creampuff_mix.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Pastries',
+                'product_name' => 'Eclairs - Dark Chocolate',
+                'description' => 'Dark Chocolate Eclairs, Box of 12 pcs.',
+                'price_label' => 'PHP 310.00',
+                'price' => 310.00,
+                'sizes_available' => 'Box of 12 pcs',
+                'flavors_available' => 'Dark Chocolate',
+                'image_url' => '/images/bakerdan/pastries/eclair.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Pastries',
+                'product_name' => 'Eclairs - Strawberry',
+                'description' => 'Strawberry Eclairs, Box of 12 pcs.',
+                'price_label' => 'PHP 310.00',
+                'price' => 310.00,
+                'sizes_available' => 'Box of 12 pcs',
+                'flavors_available' => 'Strawberry',
+                'image_url' => '/images/bakerdan/pastries/eclair.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Pastries',
+                'product_name' => 'Eclairs - Mix Eclairs',
+                'description' => 'Mix Eclairs, Box of 12 pcs.',
+                'price_label' => 'PHP 320.00',
+                'price' => 320.00,
+                'sizes_available' => 'Box of 12 pcs',
+                'flavors_available' => 'Mix',
+                'image_url' => '/images/bakerdan/pastries/eclair.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Pastries',
+                'product_name' => 'Muffins - Chocolate',
+                'description' => 'Chocolate Muffins, Box of 6 pcs.',
+                'price_label' => 'PHP 350.00',
+                'price' => 350.00,
+                'sizes_available' => 'Box of 6 pcs',
+                'flavors_available' => 'Chocolate',
+                'image_url' => '/images/bakerdan/pastries/muffins.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Pastries',
+                'product_name' => 'Muffins - Blueberry',
+                'description' => 'Blueberry Muffins, Box of 6 pcs.',
+                'price_label' => 'PHP 340.00',
+                'price' => 340.00,
+                'sizes_available' => 'Box of 6 pcs',
+                'flavors_available' => 'Blueberry',
+                'image_url' => '/images/bakerdan/pastries/muffins.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Pastries',
+                'product_name' => 'Muffins - Corn Muffin',
+                'description' => 'Corn Muffin, Box of 6 pcs.',
+                'price_label' => 'PHP 340.00',
+                'price' => 340.00,
+                'sizes_available' => 'Box of 6 pcs',
+                'flavors_available' => 'Corn',
+                'image_url' => '/images/bakerdan/pastries/muffins.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Pastries',
+                'product_name' => 'Muffins - Pumpkin w/ Streusel',
+                'description' => 'Pumpkin Muffin with Streusel, Box of 6 pcs.',
+                'price_label' => 'PHP 420.00',
+                'price' => 420.00,
+                'sizes_available' => 'Box of 6 pcs',
+                'flavors_available' => 'Pumpkin w/ Streusel',
+                'image_url' => '/images/bakerdan/pastries/muffins.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Pastries',
+                'product_name' => 'Golden Eggpies',
+                'description' => '8" Round Golden Eggpies.',
+                'price_label' => 'PHP 300.00',
+                'price' => 300.00,
+                'sizes_available' => '8" Round',
+                'flavors_available' => null,
+                'image_url' => '/images/bakerdan/pastries/golden_eggpies.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Pastries',
+                'product_name' => 'Coconut Macaroons',
+                'description' => 'Box of 40 pcs.',
+                'price_label' => 'PHP 330.00',
+                'price' => 330.00,
+                'sizes_available' => 'Box of 40 pcs',
+                'flavors_available' => null,
+                'image_url' => '/images/bakerdan/pastries/coconut_macaroons.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Pastries',
+                'product_name' => 'Walnut Brownies',
+                'description' => 'Bestseller. Box of 15 pcs.',
+                'price_label' => 'PHP 320.00',
+                'price' => 320.00,
+                'sizes_available' => 'Box of 15 pcs',
+                'flavors_available' => null,
+                'image_url' => '/images/bakerdan/pastries/Brownies.png',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Pastries',
+                'product_name' => 'Glass Dessert Cups - Cheesecake',
+                'description' => 'Glass dessert cups cheesecake collection. Available in Biscoff, Mango, Strawberry, and Oreo flavors. Box of 6 pcs.',
+                'price_label' => 'PHP 450.00 - 480.00',
+                'price' => 450.00,
+                'sizes_available' => 'Box of 6 pcs',
+                'flavors_available' => 'Biscoff | Mango | Strawberry | Oreo',
+                'image_url' => '/images/bakerdan/pastries/glass_dessert_cups_cheescake_biscoff.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Pastries',
+                'product_name' => 'Glass Dessert Cups - Mousse',
+                'description' => 'Glass dessert cups mousse collection. Available in Biscoff, Cookies & Cream, Mango, and Strawberry flavors. Box of 6 pcs.',
+                'price_label' => 'PHP 450.00 - 480.00',
+                'price' => 450.00,
+                'sizes_available' => 'Box of 6 pcs',
+                'flavors_available' => 'Biscoff | Cookies & Cream | Mango | Strawberry',
+                'image_url' => '/images/bakerdan/pastries/glass_dessert_cups_mousse_biscoff.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+        ];
     }
 
-    private function extractBasePrice(string $priceLabel): float
+    private function tartProducts(): array
     {
-        preg_match('/\d[\d,]*\.?\d*/', $priceLabel, $matches);
-
-        if (!isset($matches[0])) {
-            return 0.0;
-        }
-
-        return (float) str_replace(',', '', $matches[0]);
+        return [
+            [
+                'category' => 'Tarts',
+                'product_name' => 'Blueberry Tart',
+                'description' => 'Box of 12 pcs.',
+                'price_label' => 'PHP 350.00',
+                'price' => 350.00,
+                'sizes_available' => 'Box of 12 pcs',
+                'flavors_available' => 'Blueberry',
+                'image_url' => '/images/bakerdan/tarts/blueberry_tart.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Tarts',
+                'product_name' => 'Caramel Tart',
+                'description' => 'Box of 12 pcs.',
+                'price_label' => 'PHP 350.00',
+                'price' => 350.00,
+                'sizes_available' => 'Box of 12 pcs',
+                'flavors_available' => 'Caramel',
+                'image_url' => '/images/bakerdan/tarts/caramel_tart.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Tarts',
+                'product_name' => 'Egg Tart',
+                'description' => 'Box of 12 pcs.',
+                'price_label' => 'PHP 350.00',
+                'price' => 350.00,
+                'sizes_available' => 'Box of 12 pcs',
+                'flavors_available' => 'Egg',
+                'image_url' => '/images/bakerdan/tarts/egg_tart.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Tarts',
+                'product_name' => 'Apple Crumble',
+                'description' => 'Box of 12 pcs.',
+                'price_label' => 'PHP 360.00',
+                'price' => 360.00,
+                'sizes_available' => 'Box of 12 pcs',
+                'flavors_available' => 'Apple',
+                'image_url' => '/images/bakerdan/tarts/apple_tart.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Tarts',
+                'product_name' => 'Mango Flower Tart',
+                'description' => 'Bestseller. Box of 12 pcs.',
+                'price_label' => 'PHP 370.00',
+                'price' => 370.00,
+                'sizes_available' => 'Box of 12 pcs',
+                'flavors_available' => 'Mango',
+                'image_url' => '/images/bakerdan/tarts/mango_flower_tart.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Tarts',
+                'product_name' => 'Pineapple Tart',
+                'description' => 'Box of 12 pcs.',
+                'price_label' => 'PHP 350.00',
+                'price' => 350.00,
+                'sizes_available' => 'Box of 12 pcs',
+                'flavors_available' => 'Pineapple',
+                'image_url' => '/images/bakerdan/tarts/pineapple_tart.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Tarts',
+                'product_name' => 'Strawberry Tart',
+                'description' => 'Box of 12 pcs.',
+                'price_label' => 'PHP 350.00',
+                'price' => 350.00,
+                'sizes_available' => 'Box of 12 pcs',
+                'flavors_available' => 'Strawberry',
+                'image_url' => '/images/bakerdan/tarts/strawberry_tart.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Tarts',
+                'product_name' => 'Mix Fruit Tarts',
+                'description' => 'Box of 12 pcs.',
+                'price_label' => 'PHP 350.00',
+                'price' => 350.00,
+                'sizes_available' => 'Box of 12 pcs',
+                'flavors_available' => 'Mix Fruit',
+                'image_url' => '/images/bakerdan/tarts/mix_fruit_tart.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Tarts',
+                'product_name' => 'Assorted Fruit Tart',
+                'description' => 'Bestseller. Blueberry, Strawberry, Mango, Mixfruit. Box of 12 pcs.',
+                'price_label' => 'PHP 380.00',
+                'price' => 380.00,
+                'sizes_available' => 'Box of 12 pcs',
+                'flavors_available' => 'Blueberry | Strawberry | Mango | Mixfruit',
+                'image_url' => '/images/bakerdan/tarts/assorted_fruit_tart.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+        ];
     }
 
-    private function buildDescription(string $category, ?string $sizes, ?string $flavors): string
+    private function brazosAndCakesProducts(): array
     {
-        $parts = [];
-
-        if ($this->nullableValue($sizes)) {
-            $parts[] = 'Sizes: ' . $this->nullableValue($sizes);
-        }
-
-        if ($this->nullableValue($flavors)) {
-            $parts[] = 'Flavors/Notes: ' . $this->nullableValue($flavors);
-        }
-
-        if ($parts === []) {
-            return match ($category) {
-                'Bread' => 'Fresh bakery bread available from the catalog database.',
-                'Pastries' => 'Bakerdan pastry item available from the catalog database.',
-                'Cakes' => 'Bakerdan cake item available from the catalog database.',
-                'Customize' => 'Customization add-on with pricing handled according to the catalog details.',
-                default => 'Bakerdan catalog item available from the database.',
-            };
-        }
-
-        return implode(' ', $parts);
-    }
-
-    private function resolveImageUrl(string $category, string $productName): string
-    {
-        $normalizedProductName = $this->normalizeProductName($productName);
-
-        foreach ($this->catalogImageCandidates() as $candidate) {
-            if ($candidate['normalized'] === $normalizedProductName) {
-                return $candidate['path'];
-            }
-        }
-
-        foreach ($this->catalogImageCandidates() as $candidate) {
-            if (strlen($candidate['normalized']) < 8) {
-                continue;
-            }
-
-            if (str_contains($normalizedProductName, $candidate['normalized'])) {
-                return $candidate['path'];
-            }
-        }
-
-        return match ($category) {
-            'Bread' => '/images/bakerdan/Bread.png',
-            'Pastries' => '/images/bakerdan/Customized_Cookies.png',
-            'Cakes', 'Customize' => '/images/bakerdan/Cake_Celebration.png',
-            default => '/images/bakerdan/Bread.png',
-        };
-    }
-
-    private function normalizeProductName(string $productName): string
-    {
-        $normalized = strtolower($productName);
-        $normalized = preg_replace('/[^a-z0-9]+/', ' ', $normalized) ?? $normalized;
-
-        return trim($normalized);
-    }
-
-    private function catalogImageCandidates(): array
-    {
-        if ($this->catalogImageCandidates !== null) {
-            return $this->catalogImageCandidates;
-        }
-
-        $directory = public_path('images/bakerdan');
-
-        if (!is_dir($directory)) {
-            return $this->catalogImageCandidates = [];
-        }
-
-        return $this->catalogImageCandidates = collect(File::files($directory))
-            ->filter(fn ($file) => in_array(strtolower($file->getExtension()), ['png', 'jpg', 'jpeg', 'webp'], true))
-            ->map(function ($file): array {
-                $filename = pathinfo($file->getFilename(), PATHINFO_FILENAME);
-
-                return [
-                    'normalized' => $this->normalizeProductName($filename),
-                    'path' => '/images/bakerdan/' . $file->getFilename(),
-                ];
-            })
-            ->filter(fn (array $candidate): bool => $candidate['normalized'] !== '')
-            ->sortByDesc(fn (array $candidate): int => strlen($candidate['normalized']))
-            ->values()
-            ->all();
-    }
-
-    private function signature(string $category, string $productName): string
-    {
-        return $category . '|' . $productName;
+        return [
+            [
+                'category' => 'Brazos and Cakes',
+                'product_name' => 'Brazo Cups - Classic',
+                'description' => 'Bestseller. Brazo de Mercedes cups, Box of 24 pcs.',
+                'price_label' => 'PHP 590.00',
+                'price' => 590.00,
+                'sizes_available' => 'Box of 24 pcs',
+                'flavors_available' => 'Classic',
+                'image_url' => '/images/bakerdan/brazo and cakes/brazo_cups.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Brazos and Cakes',
+                'product_name' => 'Brazo Cups - Mix',
+                'description' => 'Mix Brazo de Mercedes cups, Box of 24 pcs.',
+                'price_label' => 'PHP 620.00',
+                'price' => 620.00,
+                'sizes_available' => 'Box of 24 pcs',
+                'flavors_available' => 'Mix',
+                'image_url' => '/images/bakerdan/brazo and cakes/brazo_cups.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Brazos and Cakes',
+                'product_name' => 'Brazo Roll - Classic',
+                'description' => 'Classic Brazo Roll.',
+                'price_label' => 'PHP 500.00',
+                'price' => 500.00,
+                'sizes_available' => null,
+                'flavors_available' => 'Classic',
+                'image_url' => '/images/bakerdan/brazo and cakes/brazo-roll_classic.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Brazos and Cakes',
+                'product_name' => 'Brazo Roll - Ube',
+                'description' => 'Ube Brazo Roll.',
+                'price_label' => 'PHP 520.00',
+                'price' => 520.00,
+                'sizes_available' => null,
+                'flavors_available' => 'Ube',
+                'image_url' => '/images/bakerdan/brazo and cakes/brazo-roll_classic.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Brazos and Cakes',
+                'product_name' => 'Brazo Roll - Tsokolate',
+                'description' => 'Tsokolate Brazo Roll.',
+                'price_label' => 'PHP 530.00',
+                'price' => 530.00,
+                'sizes_available' => null,
+                'flavors_available' => 'Tsokolate',
+                'image_url' => '/images/bakerdan/brazo and cakes/brazo-roll_chocolate.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Brazos and Cakes',
+                'product_name' => 'Brazo Roll - Mocha',
+                'description' => 'Mocha Brazo Roll.',
+                'price_label' => 'PHP 520.00',
+                'price' => 520.00,
+                'sizes_available' => null,
+                'flavors_available' => 'Mocha',
+                'image_url' => '/images/bakerdan/brazo and cakes/brazo-roll_classic.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Brazos and Cakes',
+                'product_name' => 'Brazo Slice Box - Classic',
+                'description' => 'Classic Brazo Slices, Box of 24-28 pcs.',
+                'price_label' => 'PHP 690.00',
+                'price' => 690.00,
+                'sizes_available' => 'Box of 24-28 pcs',
+                'flavors_available' => 'Classic',
+                'image_url' => '/images/bakerdan/brazo and cakes/brazo_slice.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Brazos and Cakes',
+                'product_name' => 'Brazo Slice Box - Ube/Mocha',
+                'description' => 'Ube or Mocha Brazo Slices, Box of 24-28 pcs.',
+                'price_label' => 'PHP 700.00',
+                'price' => 700.00,
+                'sizes_available' => 'Box of 24-28 pcs',
+                'flavors_available' => 'Ube | Mocha',
+                'image_url' => '/images/bakerdan/brazo and cakes/brazo_slice.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Brazos and Cakes',
+                'product_name' => 'Brazo Slice Box - Tsokolate',
+                'description' => 'Tsokolate Brazo Slices, Box of 24-28 pcs.',
+                'price_label' => 'PHP 710.00',
+                'price' => 710.00,
+                'sizes_available' => 'Box of 24-28 pcs',
+                'flavors_available' => 'Tsokolate',
+                'image_url' => '/images/bakerdan/brazo and cakes/brazo_slice.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Brazos and Cakes',
+                'product_name' => 'Mocha Blueberry Cake (8x12)',
+                'description' => '8x12 cake slices, 24-28 pcs.',
+                'price_label' => 'PHP 730.00',
+                'price' => 730.00,
+                'sizes_available' => '8x12 (24-28 cake slices)',
+                'flavors_available' => 'Mocha Blueberry',
+                'image_url' => '/images/bakerdan/brazo and cakes/mocha_blueberry_sliced_cake.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Brazos and Cakes',
+                'product_name' => 'Mocha Brittle Cake (8x12)',
+                'description' => '8x12 cake slices, 24-28 pcs.',
+                'price_label' => 'PHP 730.00',
+                'price' => 730.00,
+                'sizes_available' => '8x12 (24-28 cake slices)',
+                'flavors_available' => 'Mocha Brittle',
+                'image_url' => '/images/bakerdan/brazo and cakes/mocha_brittle_sliced_cake.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Brazos and Cakes',
+                'product_name' => 'Ube Macapuno Cake (8x12)',
+                'description' => '8x12 cake slices, 24-28 pcs. Also available: Ube Custard.',
+                'price_label' => 'PHP 750.00',
+                'price' => 750.00,
+                'sizes_available' => '8x12 (24-28 cake slices)',
+                'flavors_available' => 'Ube Macapuno | Ube Custard',
+                'image_url' => '/images/bakerdan/brazo and cakes/ube_macapuno_sliced_cake.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Brazos and Cakes',
+                'product_name' => 'Chocolate Cake (8x12)',
+                'description' => '8x12 cake slices, 24-28 pcs.',
+                'price_label' => 'PHP 850.00',
+                'price' => 850.00,
+                'sizes_available' => '8x12 (24-28 cake slices)',
+                'flavors_available' => 'Chocolate',
+                'image_url' => '/images/bakerdan/brazo and cakes/mocha_brittle_sliced_cake.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+            [
+                'category' => 'Brazos and Cakes',
+                'product_name' => 'Red Velvet w/ Creamcheese Frosting (8x12)',
+                'description' => '8x12 cake slices, 24-28 pcs.',
+                'price_label' => 'PHP 1,200.00',
+                'price' => 1200.00,
+                'sizes_available' => '8x12 (24-28 cake slices)',
+                'flavors_available' => 'Red Velvet w/ Creamcheese Frosting',
+                'image_url' => '/images/bakerdan/brazo and cakes/red_velvet&strawberry_sliced_cake.jpg',
+                'image_source' => 'local',
+                'is_active' => true,
+            ],
+        ];
     }
 }

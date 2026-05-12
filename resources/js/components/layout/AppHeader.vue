@@ -1,26 +1,40 @@
 <template>
-  <header class="bg-white border-b border-gray-200 px-8 py-4">
+  <header class="bg-white border-b border-gray-200 px-4 py-3 md:px-8 md:py-4">
     <div class="flex items-center justify-between">
-      <!-- Logo -->
-      <a href="/customer" @click.prevent="navigateTo('/customer')" class="flex items-center gap-3">
-        <img
-          :src="logoSrc"
-          alt="Bakerdan logo"
-          class="h-12 w-12 rounded-full object-cover shadow-md ring-2 ring-[#F4E2D3]"
-        />
-        <h1 class="text-2xl font-bold tracking-wider text-gray-800" style="font-family: 'Urbanist', sans-serif;">
-          BAKERDAN
-        </h1>
-      </a>
+      <div class="flex items-center gap-2 md:gap-3">
+        <!-- Hamburger (mobile) -->
+        <button
+          type="button"
+          aria-label="Toggle sidebar"
+          class="rounded-lg p-2 text-gray-600 transition-colors hover:bg-[#F7F2EC] lg:hidden"
+          @click="$emit('toggle-sidebar')"
+        >
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
+        <!-- Logo -->
+        <a href="/customer" @click.prevent="navigateTo('/customer')" class="flex items-center gap-2 md:gap-3">
+          <img
+            :src="logoSrc"
+            alt="Bakerdan logo"
+            class="h-9 w-9 md:h-12 md:w-12 rounded-full object-cover shadow-md ring-2 ring-[#F4E2D3]"
+          />
+          <h1 class="text-lg md:text-2xl font-bold tracking-wider text-gray-800" style="font-family: 'Urbanist', sans-serif;">
+            BAKERDAN
+          </h1>
+        </a>
+      </div>
 
       <!-- Nav Icons -->
-      <div class="flex items-center gap-6">
+      <div class="flex items-center gap-3 md:gap-6">
         <!-- Notifications -->
         <button
           type="button"
           aria-label="Open notifications"
           @click="navigateTo('/customer/notifications')"
-          class="relative rounded-full p-1 transition-transform hover:scale-110"
+          class="relative hidden rounded-full p-1 transition-transform hover:scale-110 sm:block"
           :class="isNotificationsRoute ? 'bg-[#FFF2E8] text-[#B76539]' : 'text-gray-600'"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -39,7 +53,7 @@
           type="button"
           aria-label="Open messages"
           @click="navigateTo('/customer/messages')"
-          class="relative rounded-full p-1 transition-transform hover:scale-110"
+          class="relative hidden rounded-full p-1 transition-transform hover:scale-110 sm:block"
           :class="isMessagesRoute ? 'bg-[#FFF2E8] text-[#B76539]' : 'text-gray-600'"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,7 +85,7 @@
           type="button"
           aria-label="Open orders"
           @click="navigateTo('/customer/orders')"
-          class="relative rounded-full p-1 transition-transform hover:scale-110"
+          class="relative hidden rounded-full p-1 transition-transform hover:scale-110 sm:block"
           :class="isOrdersRoute ? 'bg-[#FFF2E8] text-[#B76539]' : 'text-gray-600'"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -82,15 +96,15 @@
         <!-- User Profile -->
         <button 
           @click="$emit('toggle-user-menu')"
-          class="flex items-center gap-3 hover:bg-gray-50 rounded-full px-3 py-2 transition-colors user-menu"
+          class="flex items-center gap-1 md:gap-3 hover:bg-gray-50 rounded-full px-2 py-1.5 md:px-3 md:py-2 transition-colors user-menu"
         >
-          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#C9876C] to-[#B8765B] flex items-center justify-center text-white font-semibold shadow-md">
+          <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-[#C9876C] to-[#B8765B] flex items-center justify-center text-white text-sm md:text-base font-semibold shadow-md">
             {{ user.avatar }}
           </div>
           <div class="text-left hidden lg:block">
             <p class="text-sm font-semibold text-gray-800">{{ user.name }}</p>
           </div>
-          <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-4 h-4 text-gray-500 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
           </svg>
         </button>
@@ -100,7 +114,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { navigate, useSpaRouter } from '../../router'
 import { useCartStore } from '../../services/cartStore'
 import { useNotificationStore } from '../../services/notificationStore'
@@ -112,7 +126,7 @@ defineProps({
   }
 })
 
-defineEmits(['toggle-user-menu'])
+defineEmits(['toggle-user-menu', 'toggle-sidebar'])
 
 const logoSrc = '/images/logo/BAKERDAN%20LOGO.jpg'
 const { currentRoute } = useSpaRouter()
@@ -123,9 +137,43 @@ const isMessagesRoute = computed(() => currentRoute.value.name === 'customer.mes
 const isCartRoute = computed(() => currentRoute.value.name === 'customer.cart')
 const isOrdersRoute = computed(() => currentRoute.value.name === 'customer.orders')
 const navigateTo = (path) => navigate(path)
+let headerPrefetchHandle = null
+let headerPrefetchMode = null
 
-onMounted(() => {
+const prefetchHeaderData = () => {
   loadCart().catch(() => {})
   loadNotifications().catch(() => {})
+}
+
+onMounted(() => {
+  if (typeof window.requestIdleCallback === 'function') {
+    headerPrefetchMode = 'idle'
+    headerPrefetchHandle = window.requestIdleCallback(() => {
+      prefetchHeaderData()
+      headerPrefetchHandle = null
+      headerPrefetchMode = null
+    }, { timeout: 1200 })
+    return
+  }
+
+  headerPrefetchMode = 'timeout'
+  headerPrefetchHandle = window.setTimeout(() => {
+    prefetchHeaderData()
+    headerPrefetchHandle = null
+    headerPrefetchMode = null
+  }, 250)
+})
+
+onUnmounted(() => {
+  if (!headerPrefetchHandle) {
+    return
+  }
+
+  if (headerPrefetchMode === 'idle' && typeof window.cancelIdleCallback === 'function') {
+    window.cancelIdleCallback(headerPrefetchHandle)
+    return
+  }
+
+  window.clearTimeout(headerPrefetchHandle)
 })
 </script>
