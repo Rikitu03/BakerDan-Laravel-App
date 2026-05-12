@@ -30,9 +30,12 @@
 
         <div class="mb-6 overflow-hidden rounded-[28px] border border-[#EADFD6] bg-[#FBF8F5] p-3">
           <img
-            :src="featuredProduct.image"
+            :src="featuredImage"
             :alt="featuredProduct.name"
+            loading="eager"
+            decoding="async"
             class="aspect-[4/3] w-full rounded-[22px] object-cover"
+            @error="handleFeaturedImageError"
           />
         </div>
 
@@ -49,15 +52,27 @@
           {{ featuredProduct.name }}
         </h2>
         <p class="mt-3 text-gray-600">
-          {{ featuredProduct.description }}
+          {{ featuredDescription }}
         </p>
 
         <div class="mt-8 text-5xl font-bold text-gray-800">
-          PHP {{ formatPrice(featuredProduct.price) }}
+          PHP {{ formatPrice(featuredUnitPrice) }}
         </div>
 
         <div class="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div>
+          <div v-if="optionChoices.length > 1">
+            <label class="mb-2 block text-sm text-gray-600">Flavor / Option</label>
+            <select
+              v-model="selectedOptionId"
+              class="h-12 w-full rounded-full border border-[#DED4CB] bg-[#FCFBF9] px-5 text-sm font-medium text-[#58514B] outline-none focus:ring-2 focus:ring-[#C9876C]"
+            >
+              <option v-for="option in optionChoices" :key="option.id" :value="option.id">
+                {{ option.label }} - {{ option.price_label }}
+              </option>
+            </select>
+          </div>
+
+          <div v-else>
             <label class="mb-2 block text-sm text-gray-600">Size / Option</label>
             <select
               v-if="sizeOptions.length > 1"
@@ -86,8 +101,8 @@
               <input
                 :value="isPreviewMode ? previewQuantity : featuredProduct.quantity"
                 type="number"
-                min="1"
                 class="flex-1 bg-transparent py-3 text-center outline-none"
+                :min="minimumQuantity"
                 @change="setQuantity($event.target.value)"
               />
               <button
@@ -117,9 +132,24 @@
           <button
             type="button"
             @click="addFeaturedToCart"
-            class="w-full rounded-full bg-[#C9876C] py-4 font-semibold text-white shadow-md transition-colors hover:bg-[#B8765B]"
+            :disabled="isAddButtonDisabled"
+            class="w-full rounded-full py-4 font-semibold text-white shadow-md transition-colors"
+            :class="isAddButtonDisabled
+              ? 'cursor-not-allowed bg-[#CFA48F] opacity-80'
+              : 'bg-[#C9876C] hover:bg-[#B8765B]'"
           >
-            Add to cart
+            <span class="inline-flex items-center justify-center gap-2">
+              <svg
+                v-if="isAddingFeaturedToCart"
+                class="h-4 w-4 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+              </svg>
+              {{ addToCartButtonLabel }}
+            </span>
           </button>
           <button
             type="button"
@@ -260,11 +290,13 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useSpaRouter } from '../../router';
 import api from '../../services/api';
 import { useCartStore } from '../../services/cartStore';
 import CartItem from '../shared/CartItem.vue';
+
+const ADD_TO_CART_COOLDOWN_MS = 1800;
 
 const props = defineProps({
   added: {
@@ -281,6 +313,10 @@ const props = defineProps({
   },
   preview: {
     type: [String, Number],
+    default: null,
+  },
+  option: {
+    type: String,
     default: null,
   },
 });
@@ -309,6 +345,12 @@ const paymentSyncError = ref('');
 const previewProduct = ref(null);
 const previewQuantity = ref(1);
 const selectedSize = ref('');
+const selectedOptionId = ref('');
+const featuredImageFailed = ref(false);
+const isAddingFeaturedToCart = ref(false);
+const isAddCooldownActive = ref(false);
+let addCooldownHandle = null;
+const NEUTRAL_FALLBACK_IMAGE = '/images/logo/BAKERDAN%20LOGO.jpg';
 
 const isPreviewMode = computed(() => Boolean(previewProduct.value));
 
@@ -326,19 +368,27 @@ const loadPreviewProduct = async () => {
       previewProduct.value = {
         id: p.id,
         product_id: p.product_id ?? p.id,
+        category: p.category || 'Bread',
         name: p.name ?? p.product_name,
         description: p.description ?? '',
         price: Number(p.price ?? 0),
-        image: p.image_url || p.image || '/images/bakerdan/Bread.png',
+        image: p.image_url || p.image || p.category_fallback_image || NEUTRAL_FALLBACK_IMAGE,
+        fallbackImage: p.category_fallback_image || NEUTRAL_FALLBACK_IMAGE,
         tag: p.is_active ? 'Available' : 'Inactive',
         source: 'catalog',
         quantity: 1,
         sizesAvailable: p.sizes_available || '',
         flavorsAvailable: p.flavors_available || '',
+        options: normalizeOptions(p.options),
+        minimumQuantity: Number(p.minimum_quantity || 1),
       };
-      previewQuantity.value = 1;
+      const firstOptionId = previewProduct.value.options[0]?.id || '';
+      selectedOptionId.value = previewProduct.value.options.some((option) => option.id === props.option)
+        ? props.option
+        : firstOptionId;
+      previewQuantity.value = Math.max(1, selectedOption.value?.minimum_quantity || previewProduct.value.minimumQuantity || 1);
       const sizes = parseSizes(previewProduct.value.sizesAvailable);
-      selectedSize.value = sizes[0] || 'Standard';
+      selectedSize.value = selectedOption.value?.size || sizes[0] || 'Standard';
     }
   } catch (error) {
     previewProduct.value = null;
@@ -348,6 +398,16 @@ const loadPreviewProduct = async () => {
 const parseSizes = (sizesStr) => {
   if (!sizesStr) return [];
   return sizesStr.split('|').map((s) => s.trim()).filter(Boolean);
+};
+
+const normalizeOptions = (options = []) => {
+  if (!Array.isArray(options)) return [];
+
+  return options.map((option) => ({
+    ...option,
+    price: Number(option.price || 0),
+    minimum_quantity: Number(option.minimum_quantity || 1),
+  }));
 };
 
 const addedItemId = computed(() => Number(props.added) || Number(lastAddedId.value) || null);
@@ -402,8 +462,53 @@ const featuredProduct = computed(() => {
   return cartItems.value.find((item) => item.id === activeFeaturedId.value) || cartItems.value[0] || null;
 });
 
+const optionChoices = computed(() => featuredProduct.value?.options || []);
+
+const selectedOption = computed(() => {
+  if (!optionChoices.value.length) return null;
+
+  return optionChoices.value.find((option) => option.id === selectedOptionId.value)
+    || optionChoices.value[0];
+});
+
+const minimumQuantity = computed(() => {
+  if (!isPreviewMode.value) return 1;
+
+  return Number(selectedOption.value?.minimum_quantity || featuredProduct.value?.minimumQuantity || 1);
+});
+
+const featuredFallbackImage = computed(() => {
+  if (featuredProduct.value?.fallbackImage) return featuredProduct.value.fallbackImage;
+  return NEUTRAL_FALLBACK_IMAGE;
+});
+
+const rawFeaturedImage = computed(() => {
+  return selectedOption.value?.image_url || featuredProduct.value?.image || NEUTRAL_FALLBACK_IMAGE;
+});
+
+const featuredImage = computed(() => {
+  return featuredImageFailed.value ? featuredFallbackImage.value : rawFeaturedImage.value;
+});
+
+const featuredDescription = computed(() => {
+  if (!selectedOption.value) {
+    return featuredProduct.value?.description || '';
+  }
+
+  return [
+    featuredProduct.value?.description || '',
+    selectedOption.value.size ? `Size: ${selectedOption.value.size}` : '',
+    selectedOption.value.flavor ? `Flavor: ${selectedOption.value.flavor}` : '',
+  ].filter(Boolean).join(' | ');
+});
+
+const featuredUnitPrice = computed(() => {
+  return Number(selectedOption.value?.price ?? featuredProduct.value?.price ?? 0);
+});
+
 const sizeOptions = computed(() => {
   if (!featuredProduct.value) return [];
+  if (selectedOption.value?.size) return [selectedOption.value.size];
   const raw = featuredProduct.value.sizesAvailable || featuredProduct.value.size || '';
   const sizes = parseSizes(raw);
   return sizes.length ? sizes : ['Standard'];
@@ -415,6 +520,49 @@ watch(featuredProduct, (prod) => {
     selectedSize.value = sizes[0] || prod.size || 'Standard';
   }
 }, { immediate: true });
+
+watch(selectedOption, (option) => {
+  if (!option || !isPreviewMode.value) {
+    return;
+  }
+
+  selectedSize.value = option.size || selectedSize.value || 'Standard';
+  previewQuantity.value = Math.max(previewQuantity.value, Number(option.minimum_quantity || 1));
+});
+
+watch(rawFeaturedImage, () => {
+  featuredImageFailed.value = false;
+});
+
+const handleFeaturedImageError = () => {
+  if (featuredImage.value !== featuredFallbackImage.value) {
+    featuredImageFailed.value = true;
+  }
+};
+
+const isAddButtonDisabled = computed(() => (
+  !featuredProduct.value || isAddingFeaturedToCart.value || isAddCooldownActive.value
+));
+
+const addToCartButtonLabel = computed(() => {
+  if (isAddingFeaturedToCart.value) return 'Adding...';
+  if (isAddCooldownActive.value) return 'Added to cart';
+
+  return 'Add to cart';
+});
+
+const startAddCooldown = () => {
+  isAddCooldownActive.value = true;
+
+  if (addCooldownHandle) {
+    window.clearTimeout(addCooldownHandle);
+  }
+
+  addCooldownHandle = window.setTimeout(() => {
+    isAddCooldownActive.value = false;
+    addCooldownHandle = null;
+  }, ADD_TO_CART_COOLDOWN_MS);
+};
 
 const addedItem = computed(() => cartItems.value.find((item) => item.id === addedItemId.value) || null);
 const allSelected = computed(() => selectedItems.value.length === cartItems.value.length && cartItems.value.length > 0);
@@ -539,7 +687,7 @@ const incrementQuantity = async () => {
   if (!featuredProduct.value) return;
 
   if (isPreviewMode.value) {
-    previewQuantity.value += 1;
+    previewQuantity.value = Math.max(minimumQuantity.value, previewQuantity.value + 1);
     return;
   }
 
@@ -554,7 +702,7 @@ const decrementQuantity = async () => {
   if (!featuredProduct.value) return;
 
   if (isPreviewMode.value) {
-    previewQuantity.value = Math.max(1, previewQuantity.value - 1);
+    previewQuantity.value = Math.max(minimumQuantity.value, previewQuantity.value - 1);
     return;
   }
 
@@ -568,7 +716,7 @@ const decrementQuantity = async () => {
 const setQuantity = async (value) => {
   if (!featuredProduct.value) return;
 
-  const normalizedQuantity = Math.max(1, Number(value) || 1);
+  const normalizedQuantity = Math.max(minimumQuantity.value, Number(value) || minimumQuantity.value);
 
   if (isPreviewMode.value) {
     previewQuantity.value = normalizedQuantity;
@@ -583,9 +731,11 @@ const setQuantity = async (value) => {
 };
 
 const addFeaturedToCart = async () => {
-  if (!featuredProduct.value) {
+  if (isAddButtonDisabled.value) {
     return;
   }
+
+  isAddingFeaturedToCart.value = true;
 
   try {
     if (featuredProduct.value.source === 'custom') {
@@ -603,6 +753,7 @@ const addFeaturedToCart = async () => {
       previewProduct.value = null;
 
       if (addedItem?.id) {
+        startAddCooldown();
         push(`/customer/cart?added=${addedItem.id}`);
       }
 
@@ -611,18 +762,22 @@ const addFeaturedToCart = async () => {
 
     const productId = featuredProduct.value.product_id || featuredProduct.value.id;
     const addedItem = await addCatalogItem(productId, {
-      quantity: isPreviewMode.value ? previewQuantity.value : 1,
-      size: selectedSize.value || featuredProduct.value.size,
-      flavor: featuredProduct.value.flavor,
+      quantity: isPreviewMode.value ? Math.max(minimumQuantity.value, previewQuantity.value) : 1,
+      option_id: selectedOption.value?.id || null,
+      size: selectedOption.value?.size || selectedSize.value || featuredProduct.value.size,
+      flavor: selectedOption.value?.flavor || featuredProduct.value.flavor,
     });
 
     previewProduct.value = null;
 
     if (addedItem?.id) {
+      startAddCooldown();
       push(`/customer/cart?added=${addedItem.id}`);
     }
   } catch (error) {
-    window.alert('Unable to add this item to the cart right now.');
+    window.alert(error.response?.data?.message || 'Unable to add this item to the cart right now.');
+  } finally {
+    isAddingFeaturedToCart.value = false;
   }
 };
 
@@ -707,5 +862,11 @@ watch(
 onMounted(() => {
   refreshCart();
   loadPreviewProduct();
+});
+
+onBeforeUnmount(() => {
+  if (addCooldownHandle) {
+    window.clearTimeout(addCooldownHandle);
+  }
 });
 </script>

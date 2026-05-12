@@ -128,19 +128,44 @@
     </section>
 
     <section class="mt-6">
-      <div v-if="paginatedProducts.length" class="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
+      <div v-if="isCatalogLoading" class="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3" aria-live="polite">
+        <div
+          v-for="index in 6"
+          :key="`catalog-skeleton-${index}`"
+          class="overflow-hidden rounded-[26px] border border-[#E9DDD2] bg-white p-3 shadow-[0_18px_40px_-32px_rgba(118,79,49,0.25)]"
+        >
+          <div class="aspect-[4/3] animate-pulse rounded-[22px] bg-[#EFE5DC]"></div>
+          <div class="space-y-3 px-2 pb-2 pt-4">
+            <div class="h-5 w-28 animate-pulse rounded-full bg-[#F1E7DE]"></div>
+            <div class="h-6 w-3/4 animate-pulse rounded-full bg-[#E9DDD2]"></div>
+            <div class="h-4 w-full animate-pulse rounded-full bg-[#F1E7DE]"></div>
+            <div class="h-4 w-2/3 animate-pulse rounded-full bg-[#F1E7DE]"></div>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="paginatedProducts.length" class="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
         <ProductCard
-          v-for="product in paginatedProducts"
+          v-for="(product, index) in paginatedProducts"
           :key="product.id"
           :product="product"
+          :eager="currentPage === 1 && index < 3"
           @add-to-cart="handleAddToCart"
           @toggle-like="handleToggleLike"
         />
       </div>
 
       <div v-else class="mt-6 rounded-[28px] border border-dashed border-[#E1D4C8] bg-[#FCF8F4] px-6 py-12 text-center text-[#756A63]">
-        <h2 class="text-2xl font-bold text-[#4C4641]" style="font-family: 'Urbanist', sans-serif;">No products available</h2>
-        <p class="mt-2 text-sm">The catalog is waiting for products from the database.</p>
+        <h2 class="text-2xl font-bold text-[#4C4641]" style="font-family: 'Urbanist', sans-serif;">{{ emptyStateTitle }}</h2>
+        <p class="mt-2 text-sm">{{ emptyStateMessage }}</p>
+        <button
+          v-if="catalogError"
+          type="button"
+          @click="loadProducts({ force: true })"
+          class="mt-5 rounded-full bg-[#C9876C] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#B8765B]"
+        >
+          Retry
+        </button>
       </div>
     </section>
 
@@ -196,9 +221,10 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useSpaRouter } from '../../router';
 import api from '../../services/api';
+import { cacheImages, preloadImages } from '../../services/imageCache';
 import ProductCard from '../shared/ProductCard.vue';
 
-const PRODUCT_CACHE_TTL = 5 * 60 * 1000;
+const PRODUCT_CACHE_TTL = 45 * 1000;
 const SEARCH_DEBOUNCE_DELAY = 250;
 
 let cachedCatalogPayload = null;
@@ -220,10 +246,12 @@ const aiHistory = ref([]);
 const aiLoading = ref(false);
 const aiPrompt = ref('');
 const aiResponse = ref('');
+const catalogError = ref('');
 const searchQuery = ref('');
 const debouncedSearchQuery = ref('');
 const sortBy = ref('popularity');
 const currentPage = ref(1);
+const isCatalogLoading = ref(true);
 const perPage = 10;
 let searchDebounceHandle = null;
 
@@ -234,35 +262,80 @@ const sortModes = [
 ];
 
 const products = ref([]);
+const NEUTRAL_FALLBACK_IMAGE = '/images/logo/BAKERDAN%20LOGO.jpg';
 
-const mapProduct = (product) => ({
-  id: product.id ?? product.product_id,
-  category: product.category ?? 'Bread',
-  name: product.name ?? product.product_name ?? 'Untitled Product',
-  description: product.description ?? '',
-  price: Number(product.price ?? 0),
-  priceLabel: product.price_label ?? '',
-  image: product.image_url || product.image || '/images/bakerdan/Bread.png',
-  liked: false,
-  tag: product.order_mode === 'custom' ? 'Custom Order' : (product.is_active ? 'Available' : 'Inactive'),
-  rating: '5.0/5',
-  orderMode: product.order_mode || 'catalog',
-  orderingGuide: product.ordering_guide || null,
-  flavorsAvailable: product.flavors_available || '',
-  sizesAvailable: product.sizes_available || '',
-  sourceProductIds: [product.id ?? product.product_id],
-  searchableText: [
-    product.name ?? product.product_name ?? '',
-    product.description ?? '',
-    product.category ?? '',
-    product.order_mode === 'custom' ? 'Custom Order' : (product.is_active ? 'Available' : 'Inactive'),
-    product.flavors_available || '',
-    product.sizes_available || '',
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase(),
-});
+const categoryFallbackImage = (category) => {
+  return NEUTRAL_FALLBACK_IMAGE;
+};
+
+const versionedImage = (image, cacheKey = '') => {
+  if (!image || !cacheKey || image.startsWith('data:') || image.startsWith('blob:')) {
+    return image;
+  }
+
+  if (image.startsWith('http://') || image.startsWith('https://')) {
+    return image;
+  }
+
+  return `${image}${image.includes('?') ? '&' : '?'}v=${encodeURIComponent(cacheKey)}`;
+};
+
+const normalizeImage = (image, category, cacheKey = '') => versionedImage(image || categoryFallbackImage(category), cacheKey);
+
+const normalizeOptions = (options = [], category = 'Bread', productImage = '', cacheKey = '') => {
+  if (!Array.isArray(options)) {
+    return [];
+  }
+
+  return options.map((option) => ({
+    ...option,
+    price: Number(option.price || 0),
+    minimum_quantity: Number(option.minimum_quantity || 1),
+    image_url: option.image_url
+      ? normalizeImage(option.image_url, category, cacheKey)
+      : (productImage || normalizeImage(categoryFallbackImage(category), category, cacheKey)),
+  }));
+};
+
+const mapProduct = (product) => {
+  const category = product.category ?? 'Bread';
+  const cacheKey = product.image_cache_key || product.updated_at || product.id || '';
+  const image = normalizeImage(product.image_url || product.image || product.category_fallback_image, category, cacheKey);
+  const options = normalizeOptions(product.options, category, image, cacheKey);
+
+  return {
+    id: product.id ?? product.product_id,
+    category,
+    name: product.name ?? product.product_name ?? 'Untitled Product',
+    description: product.description ?? '',
+    price: Number(product.price ?? 0),
+    priceLabel: product.price_label ?? '',
+    image,
+    fallbackImage: normalizeImage(product.category_fallback_image, category, cacheKey),
+    liked: false,
+    tag: product.order_mode === 'custom' ? 'Custom Order' : (product.is_active ? 'Available' : 'Inactive'),
+    rating: '5.0/5',
+    orderMode: product.order_mode || 'catalog',
+    orderingGuide: product.ordering_guide || null,
+    flavorsAvailable: product.flavors_available || '',
+    sizesAvailable: product.sizes_available || '',
+    options,
+    minimumQuantity: Number(product.minimum_quantity || 1),
+    sourceProductIds: [product.id ?? product.product_id],
+    searchableText: [
+      product.name ?? product.product_name ?? '',
+      product.description ?? '',
+      category,
+      product.order_mode === 'custom' ? 'Custom Order' : (product.is_active ? 'Available' : 'Inactive'),
+      product.flavors_available || '',
+      product.sizes_available || '',
+      options.map((option) => `${option.label} ${option.flavor || ''} ${option.size || ''} ${option.price_label || ''}`).join(' '),
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase(),
+  };
+};
 
 const groupProducts = (items) => {
   const grouped = new Map();
@@ -361,6 +434,8 @@ const matchesSidebarCategory = (product) => {
       return product.category === 'Pastries';
     case 'Tarts':
       return product.category === 'Tarts';
+    case 'Sugar Cookies':
+      return product.category === 'Sugar Cookies';
     case 'Brazos and Cakes':
       return product.category === 'Brazos and Cakes';
     case 'Customize Order':
@@ -370,18 +445,60 @@ const matchesSidebarCategory = (product) => {
   }
 };
 
-const loadProducts = async () => {
+const collectCatalogImageSources = (items) => {
+  return [...new Set(
+    (items || []).flatMap((product) => [
+      product.image,
+      NEUTRAL_FALLBACK_IMAGE,
+      ...(product.options || []).map((option) => option.image_url),
+      ...(product.variants || []).map((variant) => variant.image),
+    ]),
+  )].filter(Boolean);
+};
+
+const preloadCatalogImages = (items) => {
+  const firstPageImages = collectCatalogImageSources((items || []).slice(0, perPage));
+  const allImages = collectCatalogImageSources(items);
+
+  preloadImages(firstPageImages, {
+    concurrency: 6,
+    limit: 24,
+  });
+
+  cacheImages(allImages, {
+    limit: 140,
+  });
+
+  preloadImages(
+    allImages.filter((image) => !firstPageImages.includes(image)),
+    {
+      concurrency: 3,
+      idle: true,
+      limit: 48,
+      timeout: 1600,
+    },
+  );
+};
+
+const loadProducts = async ({ force = false } = {}) => {
+  isCatalogLoading.value = products.value.length === 0;
+  catalogError.value = '';
+
   try {
     const now = Date.now();
-    if (!Array.isArray(cachedCatalogPayload) || now >= cachedCatalogExpiresAt) {
+    if (force || !Array.isArray(cachedCatalogPayload) || now >= cachedCatalogExpiresAt) {
       const response = await api.getProducts();
       cachedCatalogPayload = Array.isArray(response.data?.data) ? response.data.data : [];
       cachedCatalogExpiresAt = Date.now() + PRODUCT_CACHE_TTL;
     }
 
     products.value = cachedCatalogPayload.map(mapProduct);
+    preloadCatalogImages(products.value);
   } catch (error) {
+    catalogError.value = error.response?.data?.message || 'Unable to load the catalog right now.';
     products.value = [];
+  } finally {
+    isCatalogLoading.value = false;
   }
 };
 
@@ -440,12 +557,38 @@ const filteredProducts = computed(() => {
   return groupedProducts.value.filter((product) => product.searchableText?.includes(query));
 });
 
+const emptyStateTitle = computed(() => {
+  if (catalogError.value) return 'Unable to load products';
+  if (debouncedSearchQuery.value.trim() || props.activeCategory !== 'All') return 'No matching products';
+
+  return 'No products available';
+});
+
+const emptyStateMessage = computed(() => {
+  if (catalogError.value) return catalogError.value;
+  if (debouncedSearchQuery.value.trim()) return 'Try another keyword, flavor, or option name.';
+  if (props.activeCategory !== 'All') return 'This category has no active products right now.';
+
+  return 'The catalog is waiting for products from the database.';
+});
+
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredProducts.value.length / perPage)));
 
 const paginatedProducts = computed(() => {
   const start = (currentPage.value - 1) * perPage;
   return filteredProducts.value.slice(start, start + perPage);
 });
+
+watch(
+  paginatedProducts,
+  (visibleProducts) => {
+    preloadImages(collectCatalogImageSources(visibleProducts), {
+      concurrency: 5,
+      limit: 24,
+    });
+  },
+  { immediate: true },
+);
 
 const paginationTokens = computed(() => {
   if (totalPages.value <= 7) {
@@ -568,8 +711,16 @@ const submitSearch = () => {
   currentPage.value = 1;
 };
 
-const handleAddToCart = (productId) => {
-  push(`/customer/cart?preview=${productId}`);
+const handleAddToCart = (payload) => {
+  const productId = typeof payload === 'object' ? payload.productId : payload;
+  const optionId = typeof payload === 'object' ? payload.optionId : null;
+  const query = new URLSearchParams({ preview: String(productId) });
+
+  if (optionId) {
+    query.set('option', optionId);
+  }
+
+  push(`/customer/cart?${query.toString()}`);
 };
 
 const handleToggleLike = (productId) => {

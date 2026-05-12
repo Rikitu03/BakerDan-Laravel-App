@@ -145,4 +145,44 @@ class GeminiChatController extends Controller
             ], 500);
         }
     }
+
+    private function productContext($products): string
+    {
+        if ($products->isEmpty()) {
+            return "Current product catalog: no active products are available right now.";
+        }
+
+        $catalog = $products
+            ->groupBy('category')
+            ->map(function ($categoryProducts, string $category): string {
+                $items = $categoryProducts
+                    ->map(function (Product $product): string {
+                        $details = array_filter([
+                            $product->price_label ?: 'PHP ' . number_format((float) $product->price, 2),
+                            $product->sizes_available ? 'Sizes: ' . $product->sizes_available : null,
+                            $product->flavors_available ? 'Flavors: ' . $product->flavors_available : null,
+                            $product->description ? 'Description: ' . $product->description : null,
+                        ]);
+
+                        return '- ' . $product->product_name . ': ' . implode('; ', $details);
+                    })
+                    ->implode("\n");
+
+                return $category . ":\n" . $items;
+            })
+            ->implode("\n\n");
+
+        return "\n\nCurrent BakerDan product catalog:\n" . $catalog;
+    }
+
+    private function modelPath(string $model): string
+    {
+        $model = trim($model, " \t\n\r\0\x0B/");
+
+        if (Str::startsWith($model, ['models/', 'tunedModels/'])) {
+            return $model;
+        }
+
+        return 'models/' . $model;
+    }
 }

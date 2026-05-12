@@ -4,11 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Services\ProductOptionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
+    public function __construct(private ProductOptionService $productOptions)
+    {
+    }
+
     /**
      * Get all products with optional filtering
      */
@@ -28,6 +33,7 @@ class ProductController extends Controller
                 'image_url',
                 'image_source',
                 'is_active',
+                'updated_at',
             ])
             ->where('is_active', true);
 
@@ -39,34 +45,17 @@ class ProductController extends Controller
             $builder->where(function ($nested) use ($search): void {
                 $nested->where('product_name', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%")
-                    ->orWhere('category', 'like', "%{$search}%");
+                    ->orWhere('category', 'like', "%{$search}%")
+                    ->orWhere('sizes_available', 'like', "%{$search}%")
+                    ->orWhere('flavors_available', 'like', "%{$search}%");
             });
         });
 
-        $products = $query->orderByDesc('id')->get()->map(function (Product $product): array {
-            $imageUrl = $this->resolveImageUrl($product->image_url);
-            return [
-                'id' => $product->id,
-                'product_id' => $product->product_id ?? $product->id,
-                'name' => $product->product_name,
-                'product_name' => $product->product_name,
-                'description' => $product->description,
-                'price' => (float) $product->price,
-                'price_label' => $product->price_label ?: null,
-                'category' => $product->category,
-                'sizes_available' => $product->sizes_available,
-                'flavors_available' => $product->flavors_available,
-                'image' => $imageUrl,
-                'image_url' => $imageUrl,
-                'image_source' => $product->image_source,
-                'in_stock' => true,
-                'is_active' => (bool) $product->is_active,
-                'is_custom_only' => false,
-                'liked' => false,
-                'order_mode' => 'catalog',
-                'ordering_guide' => null,
-            ];
-        });
+        $products = $query
+            ->orderBy('category')
+            ->orderBy('product_name')
+            ->get()
+            ->map(fn (Product $product): array => $this->serializeProduct($product));
 
         return response()->json([
             'success' => true,
@@ -77,7 +66,7 @@ class ProductController extends Controller
                 'current_page' => 1,
                 'last_page' => 1,
             ]
-        ])->header('Cache-Control', 'public, max-age=300');
+        ])->header('Cache-Control', 'no-store, max-age=0');
     }
 
     /**
@@ -87,28 +76,9 @@ class ProductController extends Controller
     {
         $product = Product::query()->whereKey($id)->where('is_active', true)->firstOrFail();
 
-        $imageUrl = $this->resolveImageUrl($product->image_url);
         return response()->json([
             'success' => true,
-            'data' => [
-                'id' => $product->id,
-                'product_id' => $product->product_id ?? $product->id,
-                'name' => $product->product_name,
-                'product_name' => $product->product_name,
-                'description' => $product->description,
-                'price' => (float) $product->price,
-                'price_label' => $product->price_label ?: null,
-                'category' => $product->category,
-                'sizes_available' => $product->sizes_available,
-                'flavors_available' => $product->flavors_available,
-                'image' => $imageUrl,
-                'image_url' => $imageUrl,
-                'in_stock' => true,
-                'is_active' => (bool) $product->is_active,
-                'is_custom_only' => false,
-                'order_mode' => 'catalog',
-                'ordering_guide' => null,
-            ]
+            'data' => $this->serializeProduct($product),
         ]);
     }
 
@@ -147,5 +117,44 @@ class ProductController extends Controller
         }
 
         return asset('storage/' . ltrim($imagePath, '/'));
+    }
+
+    private function serializeProduct(Product $product): array
+    {
+        $imageUrl = $this->resolveImageUrl($product->image_url);
+
+        return [
+            'id' => $product->id,
+            'product_id' => $product->product_id ?? $product->id,
+            'name' => $product->product_name,
+            'product_name' => $product->product_name,
+            'description' => $product->description,
+            'price' => (float) $product->price,
+            'price_label' => $product->price_label ?: null,
+            'category' => $product->category,
+            'sizes_available' => $product->sizes_available,
+            'flavors_available' => $product->flavors_available,
+            'options' => array_map(function (array $option): array {
+                $option['image_url'] = $this->resolveImageUrl($option['image_url'] ?? null);
+                return $option;
+            }, $this->productOptions->optionsFor($product)),
+            'minimum_quantity' => $this->productOptions->minimumQuantityFor($product),
+            'category_fallback_image' => $this->categoryFallbackImage($product->category),
+            'image_cache_key' => $product->updated_at?->timestamp ?? $product->id,
+            'image' => $imageUrl,
+            'image_url' => $imageUrl,
+            'image_source' => $product->image_source,
+            'in_stock' => true,
+            'is_active' => (bool) $product->is_active,
+            'is_custom_only' => false,
+            'liked' => false,
+            'order_mode' => 'catalog',
+            'ordering_guide' => null,
+        ];
+    }
+
+    private function categoryFallbackImage(?string $category): string
+    {
+        return '/images/logo/BAKERDAN%20LOGO.jpg';
     }
 }

@@ -49,6 +49,7 @@ const resolveRoute = () => {
         added: params.get('added') || null,
         ordered: params.get('ordered') || null,
         paymentReturn: params.get('payment_return') || null,
+        option: params.get('option') || null,
         preview: params.get('preview') || null,
       });
     case '/customer/checkout':

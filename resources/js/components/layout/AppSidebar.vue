@@ -200,6 +200,7 @@ const getCategoryIcon = (name) => {
     Bread: 'bread',
     Pastries: 'pastry',
     Tarts: 'tart',
+    'Sugar Cookies': 'star',
     'Brazos and Cakes': 'cake',
     'Customize Order': 'customize',
   };

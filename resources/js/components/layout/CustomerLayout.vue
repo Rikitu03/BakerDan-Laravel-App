@@ -143,6 +143,7 @@ const categories = ref([
   { name: 'Bread', active: false },
   { name: 'Pastries', active: false },
   { name: 'Tarts', active: false },
+  { name: 'Sugar Cookies', active: false },
   { name: 'Brazos and Cakes', active: false },
   { name: 'Customize Order', active: false },
 ]);

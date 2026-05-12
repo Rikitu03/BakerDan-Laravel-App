@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Services\CustomOrderImageService;
 use App\Services\PendingOrderService;
 use App\Services\PayMongoService;
+use App\Services\ProductOptionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -27,6 +28,10 @@ class CartController extends Controller
     private const PICKUP_SHOP_ADDRESS = 'Bakerdan Shop, 28 Market Avenue, San Nicolas, Pasig City, Metro Manila';
     private const PICKUP_SHOP_PIN_LINK = 'https://maps.app.goo.gl/bakerdan-pickup-placeholder';
 
+    public function __construct(private ProductOptionService $productOptions)
+    {
+    }
+
     public function index(): JsonResponse
     {
         return response()->json([
@@ -39,6 +44,7 @@ class CartController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'quantity' => 'required|integer|min:1|max:99',
+            'option_id' => 'nullable|string|max:120',
             'size' => 'nullable|string|max:100',
             'flavor' => 'nullable|string|max:100',
         ]);
@@ -64,10 +70,28 @@ class CartController extends Controller
 
         $cart = $this->userCart(true);
         $validated = $validator->validated();
-        $size = $validated['size'] ?? null;
-        $flavor = $validated['flavor'] ?? null;
+        $option = $this->productOptions->optionFor($product, $validated['option_id'] ?? null);
 
-        $cartItem = DB::transaction(function () use ($cart, $product, $validated, $size, $flavor): CartItem {
+        if (filled($validated['option_id'] ?? null) && !$option) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please choose a valid option for this product.',
+            ], 422);
+        }
+
+        $minimumQuantity = (int) ($option['minimum_quantity'] ?? 1);
+        if ((int) $validated['quantity'] < $minimumQuantity) {
+            return response()->json([
+                'success' => false,
+                'message' => "This option requires a minimum quantity of {$minimumQuantity}.",
+            ], 422);
+        }
+
+        $size = $option['size'] ?? ($validated['size'] ?? null);
+        $flavor = $option['flavor'] ?? ($validated['flavor'] ?? null);
+        $unitPrice = (float) ($option['price'] ?? $product->price);
+
+        $cartItem = DB::transaction(function () use ($cart, $product, $validated, $size, $flavor, $unitPrice): CartItem {
             $existingItem = $cart->items()
                 ->where('item_type', 'catalog')
                 ->where('product_id', $product->id)
@@ -84,7 +108,7 @@ class CartController extends Controller
                 'product_id' => $product->id,
                 'item_type' => 'catalog',
                 'quantity' => (int) $validated['quantity'],
-                'unit_price' => (float) $product->price,
+                'unit_price' => $unitPrice,
                 'product_name' => $product->product_name,
                 'description' => $product->description,
                 'image_url' => $product->image_url,
