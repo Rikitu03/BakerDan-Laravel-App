@@ -118,32 +118,47 @@
               class="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,#fffaf5_0%,#f8f1e8_58%,#f3e8dd_100%)] px-4 py-5 md:px-6"
             >
               <div class="mx-auto flex min-h-full max-w-4xl flex-col justify-end gap-4">
-                <div class="self-center rounded-full bg-white/85 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#B7A08F] shadow-sm">
-                  Today
-                </div>
-
-                <div
-                  v-for="message in activeConversation.messages"
-                  :key="message.id"
-                  class="flex"
-                  :class="message.sender === 'me' ? 'justify-end' : 'justify-start'"
-                >
-                  <div
-                    class="max-w-[85%] rounded-[24px] px-4 py-3 shadow-[0_18px_36px_-32px_rgba(95,59,35,0.5)] md:max-w-[70%]"
-                    :class="message.sender === 'me'
-                      ? 'rounded-br-[8px] bg-[#C9876C] text-white'
-                      : 'rounded-bl-[8px] bg-white text-[#5D534D] ring-1 ring-[#E9DDD3]'"
-                  >
-                    <p class="text-sm leading-6">
-                      {{ message.text }}
-                    </p>
-                    <p
-                      class="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em]"
-                      :class="message.sender === 'me' ? 'text-white/75' : 'text-[#B49A89]'"
-                    >
-                      {{ message.time }}
-                    </p>
+                <template v-if="activeConversation.messages.length > 0">
+                  <div class="self-center rounded-full bg-white/85 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#B7A08F] shadow-sm">
+                    Today
                   </div>
+
+                  <div
+                    v-for="message in activeConversation.messages"
+                    :key="message.id"
+                    class="flex"
+                    :class="message.sender === 'me' ? 'justify-end' : 'justify-start'"
+                  >
+                    <div
+                      class="max-w-[85%] rounded-[24px] px-4 py-3 shadow-[0_18px_36px_-32px_rgba(95,59,35,0.5)] md:max-w-[70%]"
+                      :class="message.sender === 'me'
+                        ? 'rounded-br-[8px] bg-[#C9876C] text-white'
+                        : 'rounded-bl-[8px] bg-white text-[#5D534D] ring-1 ring-[#E9DDD3]'"
+                    >
+                      <p class="text-sm leading-6">
+                        {{ message.text }}
+                      </p>
+                      <p
+                        class="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em]"
+                        :class="message.sender === 'me' ? 'text-white/75' : 'text-[#B49A89]'"
+                      >
+                        {{ message.time }}
+                      </p>
+                    </div>
+                  </div>
+                </template>
+                <div v-else class="flex flex-1 flex-col items-center justify-center py-20 text-center">
+                  <div class="flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-[#E8D7CA]">
+                    <svg class="h-10 w-10 text-[#C9876C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                  <h3 class="mt-6 text-xl font-bold text-[#4E3527]" style="font-family: 'Urbanist', sans-serif;">
+                    Start a conversation
+                  </h3>
+                  <p class="mt-2 max-w-xs text-sm text-[#8A7A6E]">
+                    Our team is here to help with your orders, custom cake designs, or any questions you have.
+                  </p>
                 </div>
               </div>
             </div>
@@ -155,6 +170,7 @@
                   <textarea
                     v-model="draftMessage"
                     rows="3"
+                    @keydown.enter.prevent="sendMessage"
                     placeholder="Write a message to the bakery team"
                     class="w-full rounded-[24px] border border-[#E1D5CA] bg-[#FCFAF8] px-5 py-4 text-sm text-[#4F4944] outline-none transition focus:border-transparent focus:ring-2 focus:ring-[#C9876C]"
                   ></textarea>
@@ -203,111 +219,241 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import axios from 'axios';
+
+const props = defineProps({
+  user: {
+    type: Object,
+    required: true,
+  },
+});
 
 const searchQuery = ref('');
 const draftMessage = ref('');
 const messageScroller = ref(null);
+const conversations = ref([]);
+const activeConversationId = ref(null);
+const isLoadingConversations = ref(true);
+const isLoadingMessages = ref(false);
 
-const conversations = ref([
-  {
-    id: 1,
-    name: 'Bakerdan Support',
-    avatar: 'BS',
-    label: 'Order Help',
-    subtitle: 'Replies within the day',
-    time: '2m',
-    unread: true,
-    preview: 'We can reserve your cake slot for Saturday pickup.',
-    messages: [
-      { id: 1, sender: 'them', text: 'Hi! We saw your inquiry about the custom cake design.', time: '9:14 AM' },
-      { id: 2, sender: 'me', text: 'Yes please, I wanted to confirm if Saturday pickup is still available.', time: '9:18 AM' },
-      { id: 3, sender: 'them', text: 'We can reserve your cake slot for Saturday pickup. Just send the preferred theme and size.', time: '9:20 AM' },
-    ],
-  },
-  {
-    id: 2,
-    name: 'Bakerdan Orders',
-    avatar: 'BO',
-    label: 'Order Status',
-    subtitle: 'Tracking and updates',
-    time: '18m',
-    unread: true,
-    preview: 'Order #145 is now being prepared by the kitchen.',
-    messages: [
-      { id: 1, sender: 'them', text: 'Order #145 is now being prepared by the kitchen.', time: '8:56 AM' },
-      { id: 2, sender: 'me', text: 'Thank you. Please let me know once it is ready for dispatch.', time: '9:01 AM' },
-    ],
-  },
-  {
-    id: 3,
-    name: 'Bakerdan Promos',
-    avatar: 'BP',
-    label: 'Bakery News',
-    subtitle: 'Fresh releases and bundles',
-    time: '1h',
-    unread: false,
-    preview: 'New pastry bundle launches tomorrow morning.',
-    messages: [
-      { id: 1, sender: 'them', text: 'New pastry bundle launches tomorrow morning with cream puffs and cinnamon rolls.', time: '8:02 AM' },
-    ],
-  },
-]);
+// Placeholder for new conversations
+const newConversationPlaceholder = {
+  id: 'new',
+  name: 'BakerDan Admin',
+  avatar: 'AD',
+  label: 'Customer Support',
+  subtitle: 'Replies within the day',
+  time: 'Now',
+  unread: false,
+  preview: 'Start a new conversation with our team.',
+  messages: [],
+  loaded: true
+};
 
-const activeConversationId = ref(conversations.value[0]?.id ?? null);
+const fetchConversations = async () => {
+  try {
+    const response = await axios.get('/api/conversations');
+    conversations.value = response.data.map(conv => ({
+      id: conv.id,
+      name: 'BakerDan Admin',
+      avatar: 'AD',
+      label: 'Customer Support',
+      subtitle: 'Replies within the day',
+      time: conv.last_message_at_human,
+      unread: conv.unread_count > 0,
+      preview: conv.last_message_content,
+      messages: [],
+      loaded: false
+    }));
+    
+    if (conversations.value.length > 0) {
+      if (!activeConversationId.value) {
+        activeConversationId.value = conversations.value[0].id;
+      }
+    } else {
+      activeConversationId.value = 'new';
+    }
+  } catch (error) {
+    console.error('Failed to fetch conversations:', error);
+  } finally {
+    isLoadingConversations.value = false;
+  }
+};
+
+const fetchMessages = async (conversationId) => {
+  if (conversationId === 'new') return;
+  
+  const conversation = conversations.value.find(c => c.id === conversationId);
+  if (!conversation || conversation.loaded) return;
+
+  isLoadingMessages.value = true;
+  try {
+    const response = await axios.get(`/api/conversations/${conversationId}/messages`);
+    conversation.messages = response.data.map(msg => ({
+      id: msg.id,
+      sender: Number(msg.sender_id) === Number(props.user.id) ? 'me' : 'them',
+      text: msg.content,
+      time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }));
+    conversation.loaded = true;
+    scrollMessagesToBottom();
+  } catch (error) {
+    console.error('Failed to fetch messages:', error);
+  } finally {
+    isLoadingMessages.value = false;
+  }
+};
+
+const displayedConversations = computed(() => {
+  if (conversations.value.length === 0) {
+    return [newConversationPlaceholder];
+  }
+  return conversations.value;
+});
 
 const filteredConversations = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();
+  if (!query) return displayedConversations.value;
 
-  if (!query) {
-    return conversations.value;
-  }
-
-  return conversations.value.filter((conversation) =>
+  return displayedConversations.value.filter((conversation) =>
     conversation.name.toLowerCase().includes(query)
     || conversation.label.toLowerCase().includes(query)
-    || conversation.preview.toLowerCase().includes(query),
+    || conversation.preview?.toLowerCase().includes(query)
   );
 });
 
-const activeConversation = computed(() =>
-  conversations.value.find((conversation) => conversation.id === activeConversationId.value) || null,
-);
+const activeConversation = computed(() => {
+  if (activeConversationId.value === 'new') {
+    return newConversationPlaceholder;
+  }
+  return conversations.value.find((conversation) => conversation.id === activeConversationId.value) || null;
+});
 
 const unreadCount = computed(() => conversations.value.filter((conversation) => conversation.unread).length);
 
 const scrollMessagesToBottom = () => {
   nextTick(() => {
-    if (!messageScroller.value) {
-      return;
+    if (messageScroller.value) {
+      messageScroller.value.scrollTop = messageScroller.value.scrollHeight;
     }
-
-    messageScroller.value.scrollTop = messageScroller.value.scrollHeight;
   });
 };
 
-watch(activeConversationId, () => {
-  scrollMessagesToBottom();
+watch(activeConversationId, (newId) => {
+  if (newId && newId !== 'new') {
+    fetchMessages(newId);
+    markAsRead(newId);
+  }
 }, { immediate: true });
 
-const sendMessage = () => {
-  const message = draftMessage.value.trim();
+const markAsRead = async (conversationId) => {
+  if (conversationId === 'new') return;
+  try {
+    await axios.post(`/api/conversations/${conversationId}/read`);
+    const conversation = conversations.value.find(c => c.id === conversationId);
+    if (conversation) conversation.unread = false;
+  } catch (error) {
+    console.error('Failed to mark as read:', error);
+  }
+};
 
-  if (!message || !activeConversation.value) {
+const sendMessage = async () => {
+  const text = draftMessage.value.trim();
+  if (!text || !activeConversation.value) return;
+
+  const tempId = Date.now();
+  const currentConvId = activeConversationId.value;
+  const isNew = currentConvId === 'new';
+
+  // Optimistic update
+  activeConversation.value.messages.push({
+    id: tempId,
+    sender: 'me',
+    text: text,
+    time: 'Sending...',
+  });
+  
+  const messageContent = text;
+  draftMessage.value = '';
+  scrollMessagesToBottom();
+
+  try {
+    const payload = {
+      content: messageContent,
+    };
+    if (!isNew) {
+      payload.conversation_id = currentConvId;
+    }
+
+    const response = await axios.post('/api/messages', payload);
+    
+    if (isNew) {
+      // If it was a new conversation, we need to refresh the list to get the real ID
+      await fetchConversations();
+      activeConversationId.value = response.data.conversation_id;
+    } else {
+      // Update temp message with real data
+      const msgIndex = activeConversation.value.messages.findIndex(m => m.id === tempId);
+      if (msgIndex !== -1) {
+        activeConversation.value.messages[msgIndex].id = response.data.id;
+        activeConversation.value.messages[msgIndex].time = new Date(response.data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      activeConversation.value.preview = messageContent;
+      activeConversation.value.time = 'Just now';
+    }
+  } catch (error) {
+    console.error('Failed to send message:', error);
+    // Remove optimistic message on error
+    activeConversation.value.messages = activeConversation.value.messages.filter(m => m.id !== tempId);
+    draftMessage.value = messageContent; // Restore draft
+  }
+};
+
+const handleIncomingMessage = (event) => {
+  const message = event.message;
+  let conversation = conversations.value.find(c => c.id === message.conversation_id);
+  
+  if (!conversation) {
+    fetchConversations();
     return;
   }
 
-  activeConversation.value.messages.push({
-    id: Date.now(),
-    sender: 'me',
-    text: message,
-    time: 'Just now',
-  });
+  // Update preview
+  conversation.preview = message.content;
+  conversation.time = 'Just now';
 
-  activeConversation.value.preview = message;
-  activeConversation.value.time = 'now';
-  activeConversation.value.unread = false;
-  draftMessage.value = '';
-  scrollMessagesToBottom();
+  // If it's the active conversation, add to feed
+  if (conversation.id === activeConversationId.value) {
+    if (!conversation.messages.find(m => m.id === message.id)) {
+      conversation.messages.push({
+        id: message.id,
+        sender: Number(message.sender_id) === Number(props.user.id) ? 'me' : 'them',
+        text: message.content,
+        time: new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+      scrollMessagesToBottom();
+      markAsRead(conversation.id);
+    }
+  } else {
+    conversation.unread = true;
+  }
 };
+
+onMounted(() => {
+  fetchConversations();
+
+  if (window.Echo) {
+    window.Echo.private(`user.${props.user.user_id}`)
+      .listen('.message.sent', (e) => {
+        handleIncomingMessage(e);
+      });
+  }
+});
+
+onUnmounted(() => {
+  if (window.Echo) {
+    window.Echo.leave(`user.${props.user.user_id}`);
+  }
+});
 </script>

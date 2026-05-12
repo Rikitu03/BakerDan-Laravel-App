@@ -367,6 +367,10 @@ class AdminController extends Controller
             'weeklyCompletions' => $weeklyCompletions,
             'productTypeBreakdown' => $productTypeBreakdown,
             'reportPayload' => [
+                'user' => [
+                    'user_id' => auth()->id(),
+                    'name' => auth()->user()->detail?->name,
+                ],
                 'metrics' => $metrics,
                 'products' => $productCards,
                 'orders' => $orderCards,
@@ -555,98 +559,31 @@ class AdminController extends Controller
      */
     private function adminMessages(EloquentCollection $orders, EloquentCollection $customers): array
     {
-        $latestOrder = $orders->first();
-        $customOrder = $orders->first(fn (Order $order) => $order->items->contains(fn (OrderItem $item) => $item->item_type === 'custom'));
-        $latestCustomer = $customers->first();
+        $conversations = \App\Models\Conversation::with(['customer.detail', 'lastMessage'])
+            ->latest('last_message_at')
+            ->get();
 
-        $conversations = collect([
-            [
-                'id' => 1,
-                'name' => 'Customer Support Queue',
-                'avatar' => 'CS',
-                'label' => 'Order Help',
-                'subtitle' => 'Questions from customers waiting for reply',
-                'time' => '3m',
-                'unread' => true,
-                'preview' => $latestCustomer
-                    ? ($latestCustomer->detail?->name ?? 'Customer') . ' is asking if Saturday pickup is still available.'
-                    : 'A customer is asking if Saturday pickup is still available.',
-                'messages' => [
-                    [
-                        'id' => 1,
-                        'sender' => 'them',
-                        'text' => $latestCustomer
-                            ? 'Hi admin, can you still reserve a pickup slot for my cake order this weekend?'
-                            : 'Hi admin, can you still reserve a pickup slot for my cake order this weekend?',
-                        'time' => '9:12 AM',
-                    ],
-                    [
-                        'id' => 2,
-                        'sender' => 'me',
-                        'text' => 'Yes, we can reserve a slot once the order details are confirmed.',
-                        'time' => '9:15 AM',
-                    ],
-                ],
-            ],
-            [
-                'id' => 2,
-                'name' => 'Order Verification Desk',
-                'avatar' => 'OV',
-                'label' => 'Payment Review',
-                'subtitle' => 'Orders that need confirmation or release',
-                'time' => '14m',
-                'unread' => (bool) $latestOrder,
-                'preview' => $latestOrder
-                    ? 'Order #' . $latestOrder->id . ' is ready for payment and workflow confirmation.'
-                    : 'New customer orders will appear here for payment confirmation.',
-                'messages' => [
-                    [
-                        'id' => 1,
-                        'sender' => 'them',
-                        'text' => $latestOrder
-                            ? 'Order #' . $latestOrder->id . ' was sent from the storefront and is waiting for admin review.'
-                            : 'The storefront is ready to forward the next order for review.',
-                        'time' => '8:56 AM',
-                    ],
-                    [
-                        'id' => 2,
-                        'sender' => 'me',
-                        'text' => 'We will confirm the payment status and move the order to production once verified.',
-                        'time' => '9:01 AM',
-                    ],
-                ],
-            ],
-            [
-                'id' => 3,
-                'name' => 'Custom Cake Briefs',
-                'avatar' => 'CC',
-                'label' => 'Custom Orders',
-                'subtitle' => 'Design notes, themes, and bake coordination',
-                'time' => '1h',
-                'unread' => (bool) $customOrder,
-                'preview' => $customOrder
-                    ? 'Custom order #' . $customOrder->id . ' includes a new design brief for review.'
-                    : 'Incoming custom cake requests will be summarized here.',
-                'messages' => [
-                    [
-                        'id' => 1,
-                        'sender' => 'them',
-                        'text' => $customOrder
-                            ? 'Custom order #' . $customOrder->id . ' includes design notes that need bakery approval before production.'
-                            : 'No custom brief is waiting right now, but new requests will appear here.',
-                        'time' => '7:40 AM',
-                    ],
-                    [
-                        'id' => 2,
-                        'sender' => 'me',
-                        'text' => 'Please review the theme, colors, and dedication details before approving the kitchen queue.',
-                        'time' => '7:48 AM',
-                    ],
-                ],
-            ],
-        ]);
-
-        return $conversations->values()->all();
+        return $conversations->map(function ($conversation) {
+            $customerName = $conversation->customer->detail?->name ?? 'Customer';
+            return [
+                'id' => $conversation->id,
+                'name' => $customerName,
+                'avatar' => strtoupper(substr($customerName, 0, 2)),
+                'label' => 'Direct Message',
+                'subtitle' => 'Customer since ' . $conversation->customer->created_at->format('M Y'),
+                'time' => $conversation->last_message_at ? $conversation->last_message_at->diffForHumans() : 'No messages',
+                'unread' => $conversation->messages()->where('sender_id', '!=', auth()->id())->where('is_read', false)->exists(),
+                'preview' => $conversation->lastMessage?->content ?? 'No messages yet',
+                'messages' => $conversation->messages->map(function ($message) {
+                    return [
+                        'id' => $message->id,
+                        'sender' => $message->sender_id === auth()->id() ? 'me' : 'them',
+                        'text' => $message->content,
+                        'time' => $message->created_at->format('h:i A'),
+                    ];
+                })->all(),
+            ];
+        })->all();
     }
 
     /**

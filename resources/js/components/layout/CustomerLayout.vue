@@ -113,6 +113,8 @@ const bootUser = window.Laravel?.customer || window.Laravel?.user || {};
 const rawUserName = bootUser.name || 'Guest Explorer';
 
 const user = ref({
+  id: bootUser.id || bootUser.user_id || 0,
+  user_id: bootUser.id || bootUser.user_id || 0, // Fallback for components still using user_id
   name: rawUserName,
   email: bootUser.email || 'customer@bakerdan.local',
   avatar: bootUser.avatar || rawUserName

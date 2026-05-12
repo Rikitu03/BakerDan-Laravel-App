@@ -41,6 +41,18 @@
             Hello! I'm your BakerDan Assistant. How can I help you today?
           </div>
         </div>
+        
+        <!-- Human Support Option -->
+        <div class="flex flex-col space-y-2 mt-4 items-start">
+          <p class="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Need human help?</p>
+          <a 
+            href="/customer/messages" 
+            class="bg-white border border-[#8b5a2b] text-[#8b5a2b] rounded-full px-4 py-1.5 text-xs font-semibold hover:bg-[#8b5a2b] hover:text-white transition-colors shadow-sm inline-flex items-center gap-2"
+          >
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+            Chat with Admin
+          </a>
+        </div>
       </div>
 
       <!-- Loading Indicator -->

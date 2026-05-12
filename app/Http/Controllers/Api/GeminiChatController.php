@@ -39,8 +39,10 @@ class GeminiChatController extends Controller
             "Be polite, enthusiastic, and concise. " .
             "Do not answer questions completely unrelated to the bakery or general knowledge if it strays too far from baking/food. " .
             "talk less and be specific or straight to the point, don't be too wordy or verbose. for example don't say 'Oh wow our walnut brownies are simply divine, crafted with the finest cocoa and loaded with premium walnuts, offering a delightful crunch with every bite!' instead just say 'Walnut Brownies: Rich, fudgy, and packed with crunchy walnuts. A customer favorite!'" .
-            "format the text properly, remove the asterisks from the text then use a proper newline." .
-            "when listing a products or any items, use a bullet point format." .
+            "format the text properly, remove the asterisks from the text then use a proper newline. " . 
+            "do not list the products yet if it is only a simple greetings, just introduce too and greet. " .
+            "when listing a products or any items, use a bullet point format. " . 
+            "if the customer wants to list the product, add new lines on each product displayed after each text. " .
             $productContext;
 
         // Format history for Gemini API
