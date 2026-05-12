@@ -22,5 +22,6 @@
             customer: @json($customer),
         };
     </script>
+    <x-chat-assistant />
 </body>
 </html>

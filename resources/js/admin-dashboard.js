@@ -700,7 +700,14 @@ if (dashboard) {
         renderAdminMessageList();
     });
 
-    adminMessageSend?.addEventListener('click', () => {
+    adminMessageDraft?.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            adminMessageSend?.click();
+        }
+    });
+
+    adminMessageSend?.addEventListener('click', async () => {
         const draft = adminMessageDraft?.value.trim();
         const conversation = getActiveAdminMessage();
 
@@ -708,29 +715,61 @@ if (dashboard) {
             return;
         }
 
+        const currentConvId = activeAdminMessageId;
+        const tempId = Date.now();
+
+        // Optimistic update
         conversation.messages.push({
-            id: Date.now(),
+            id: tempId,
             sender: 'me',
             text: draft,
-            time: 'Just now',
+            time: 'Sending...',
         });
-        conversation.preview = draft;
-        conversation.time = 'now';
-        conversation.unread = false;
+        
+        const messageContent = draft;
         adminMessageDraft.value = '';
-        renderAdminMessages();
+        renderAdminMessageFeed();
+
+        try {
+            const response = await axios.post('/api/messages', {
+                conversation_id: currentConvId,
+                content: messageContent,
+            });
+            
+            // Update temp message with real data
+            const msgIndex = conversation.messages.findIndex(m => m.id === tempId);
+            if (msgIndex !== -1) {
+                conversation.messages[msgIndex].id = response.data.id;
+                conversation.messages[msgIndex].time = new Date(response.data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+            
+            conversation.preview = messageContent;
+            conversation.time = 'Just now';
+            renderAdminMessages();
+        } catch (error) {
+            console.error('Failed to send message:', error);
+            // Remove optimistic message on error
+            conversation.messages = conversation.messages.filter(m => m.id !== tempId);
+            adminMessageDraft.value = messageContent; // Restore draft
+            renderAdminMessageFeed();
+        }
     });
 
-    adminMessageMarkRead?.addEventListener('click', () => {
+    adminMessageMarkRead?.addEventListener('click', async () => {
         const conversation = getActiveAdminMessage();
 
         if (!conversation) {
             return;
         }
 
-        conversation.unread = false;
-        renderAdminMessages();
-        updateNavCounts();
+        try {
+            await axios.post(`/api/conversations/${conversation.id}/read`);
+            conversation.unread = false;
+            renderAdminMessages();
+            updateNavCounts();
+        } catch (error) {
+            console.error('Failed to mark as read:', error);
+        }
     });
 
     dashboard.addEventListener('click', (event) => {
@@ -771,7 +810,10 @@ if (dashboard) {
             activeAdminMessageId = Number(messageThread.dataset.adminMessageThread);
             const conversation = getActiveAdminMessage();
             if (conversation) {
-                conversation.unread = false;
+                if (conversation.unread) {
+                    axios.post(`/api/conversations/${conversation.id}/read`).catch(console.error);
+                    conversation.unread = false;
+                }
             }
             renderAdminMessages();
             updateNavCounts();
@@ -1058,6 +1100,46 @@ if (dashboard) {
     renderLineChart();
     renderTypeBars();
     renderAdminMessages();
+
+    // Echo Real-time listeners
+    if (window.Echo) {
+        window.Echo.private('admin.messages')
+            .listen('.message.sent', (event) => {
+                const message = event.message;
+                let conversation = adminMessages.find(c => c.id === message.conversation_id);
+                
+                if (!conversation) {
+                    // New conversation, reload data (or we could fetch just the new conversation)
+                    window.location.reload();
+                    return;
+                }
+
+                // Update preview
+                conversation.preview = message.content;
+                conversation.time = 'Just now';
+
+                // If it's the active conversation, add to feed
+                if (conversation.id === activeAdminMessageId) {
+                    if (!conversation.messages.find(m => m.id === message.id)) {
+                        conversation.messages.push({
+                            id: message.id,
+                            sender: message.sender_id === (reportData?.user?.user_id || 0) ? 'me' : 'them',
+                            text: message.content,
+                            time: new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        });
+                        if (message.sender_id !== (reportData?.user?.user_id || 0)) {
+                            axios.post(`/api/conversations/${conversation.id}/read`).catch(console.error);
+                            conversation.unread = false;
+                        }
+                    }
+                } else if (message.sender_id !== (reportData?.user?.user_id || 0)) {
+                    conversation.unread = true;
+                }
+                
+                renderAdminMessages();
+                updateNavCounts();
+            });
+    }
 
     paginationKeys.forEach((key) => renderPagination(key));
     updateNavCounts();

@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\OrderPaymentController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\GeminiChatController;
+use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\PayMongoWebhookController;
 
 /*
@@ -141,4 +142,12 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('/orders/walkin', [AdminController::class, 'storeWalkinOrder'])->name('admin.orders.walkin');
     Route::patch('/orders/{order}/status', [AdminController::class, 'updateOrderStatus'])->name('admin.orders.status');
     Route::patch('/orders/{order}/payment-status', [AdminController::class, 'updateOrderPaymentStatus'])->name('admin.orders.payment-status');
+});
+
+// Shared Messaging Routes
+Route::prefix('api')->middleware(['auth'])->group(function () {
+    Route::get('/conversations', [MessageController::class, 'getConversations']);
+    Route::get('/conversations/{id}/messages', [MessageController::class, 'getMessages']);
+    Route::post('/conversations/{id}/read', [MessageController::class, 'markAsRead']);
+    Route::post('/messages', [MessageController::class, 'sendMessage']);
 });

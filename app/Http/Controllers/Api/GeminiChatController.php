@@ -48,7 +48,11 @@ class GeminiChatController extends Controller
             "Your job is to answer customer questions about our products, help them choose, and provide information. " .
             "Be polite, enthusiastic, and concise. " .
             "Do not answer questions completely unrelated to the bakery or general knowledge if it strays too far from baking/food. " .
-            "Talk less and be specific or straight to the point. " .
+            "talk less and be specific or straight to the point, don't be too wordy or verbose. for example don't say 'Oh wow our walnut brownies are simply divine, crafted with the finest cocoa and loaded with premium walnuts, offering a delightful crunch with every bite!' instead just say 'Walnut Brownies: Rich, fudgy, and packed with crunchy walnuts. A customer favorite!'" .
+            "format the text properly, remove the asterisks from the text then use a proper newline. " . 
+            "do not list the products yet if it is only a simple greetings, just introduce too and greet. " .
+            "when listing a products or any items, use a bullet point format. " . 
+            "if the customer wants to list the product, add new lines on each product displayed after each text. " .
             $productContext;
 
         $contents = [];
@@ -140,43 +144,5 @@ class GeminiChatController extends Controller
                 'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
-    }
-
-    private function modelPath(string $model): string
-    {
-        $model = $model !== '' ? $model : 'gemini-2.5-flash';
-
-        if (Str::startsWith($model, 'models/')) {
-            return $model;
-        }
-
-        return 'models/' . $model;
-    }
-
-    private function productContext($products): string
-    {
-        if ($products->isEmpty()) {
-            return "No active products are currently listed in BakerDan's catalog.";
-        }
-
-        $lines = $products->map(function (Product $product): string {
-            $details = collect([
-                $product->description,
-                $product->sizes_available ? 'Sizes: ' . $product->sizes_available : null,
-                $product->flavors_available ? 'Flavors: ' . $product->flavors_available : null,
-            ])->filter()->implode(' ');
-
-            $price = $product->price_label ?: ('PHP ' . number_format((float) $product->price, 2));
-
-            return sprintf(
-                '- %s (Category: %s, Price: %s): %s',
-                $product->product_name,
-                $product->category,
-                $price,
-                $details ?: 'No description provided.'
-            );
-        })->implode("\n");
-
-        return "Current active products at BakerDan:\n{$lines}";
     }
 }
