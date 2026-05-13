@@ -14,6 +14,8 @@ const lastCheckoutOrderId = ref(null);
 
 let loadPromise = null;
 
+const isPendingOrderId = (orderId) => String(orderId || '').startsWith('pending-');
+
 const syncCart = (cart = {}) => {
   const items = Array.isArray(cart.items) ? cart.items : [];
 
@@ -21,7 +23,7 @@ const syncCart = (cart = {}) => {
   subtotal.value = Number(cart.subtotal || 0);
   tax.value = Number(cart.tax || 0);
   total.value = Number(cart.total || 0);
-  itemCount.value = Number(cart.item_count || items.reduce((sum, item) => sum + Number(item.quantity || 0), 0));
+  itemCount.value = Number(cart.item_count ?? items.length);
 
   if (lastAddedId.value && !items.some((item) => item.id === lastAddedId.value)) {
     lastAddedId.value = null;
@@ -184,7 +186,9 @@ const checkout = async (itemIds, data = {}) => {
 };
 
 const syncOrderPaymentStatus = async (orderId) => {
-  const response = await api.getOrderPaymentStatus(orderId);
+  const response = isPendingOrderId(orderId)
+    ? await api.getPendingOrderPaymentStatus(orderId)
+    : await api.getOrderPaymentStatus(orderId);
 
   return response.data?.data || null;
 };

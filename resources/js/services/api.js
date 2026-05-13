@@ -33,8 +33,8 @@ api.interceptors.response.use(
 
 export default {
   // Products
-  getProducts(params = {}) {
-    return api.get('/products', { params })
+  getProducts(params = {}, config = {}) {
+    return api.get('/products', { ...config, params })
   },
   
   getProduct(id) {

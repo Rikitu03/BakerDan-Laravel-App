@@ -28,6 +28,11 @@
           <p class="mt-1 text-sm font-medium">{{ addedItem.name }} is now in your cart.</p>
         </div>
 
+        <div v-if="addError" class="mb-5 rounded-[22px] border border-[#F0DCCC] bg-[#FFF4EB] px-5 py-4 text-[#8E5632] shadow-sm">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#C9876C]">Cart update</p>
+          <p class="mt-1 text-sm font-medium">{{ addError }}</p>
+        </div>
+
         <div class="mb-6 overflow-hidden rounded-[28px] border border-[#EADFD6] bg-[#FBF8F5] p-3">
           <img
             :src="featuredImage"
@@ -87,34 +92,45 @@
           </div>
 
           <div>
-            <label class="mb-2 block text-sm text-gray-600">Quantity</label>
+            <div class="mb-2 flex items-center justify-between gap-3">
+              <label class="block text-sm text-gray-600">Quantity</label>
+              <span v-if="minimumQuantity > 1" class="text-xs font-semibold text-[#A06F50]">
+                Min. {{ minimumQuantity }} pcs
+              </span>
+            </div>
             <div class="flex items-center overflow-hidden rounded-full border border-[#DED4CB] bg-[#FCFBF9]">
               <button
                 type="button"
                 @click="decrementQuantity"
-                class="px-4 py-3 transition-colors hover:bg-[#F2ECE5]"
+                :disabled="!canDecreaseQuantity"
+                aria-label="Decrease quantity"
+                class="flex h-12 w-12 items-center justify-center transition-colors"
+                :class="canDecreaseQuantity
+                  ? 'text-[#5C534D] hover:bg-[#F2ECE5]'
+                  : 'cursor-not-allowed text-[#C9BCB1] opacity-60'"
               >
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
                 </svg>
               </button>
-              <input
-                :value="isPreviewMode ? previewQuantity : featuredProduct.quantity"
-                type="number"
-                class="flex-1 bg-transparent py-3 text-center outline-none"
-                :min="minimumQuantity"
-                @change="setQuantity($event.target.value)"
-              />
+              <output class="flex min-w-0 flex-1 flex-col items-center justify-center px-2 py-2 text-center">
+                <span class="text-base font-bold leading-5 text-[#4D4742]">{{ currentQuantity }}</span>
+                <span class="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#A99A8D]">pcs</span>
+              </output>
               <button
                 type="button"
                 @click="incrementQuantity"
-                class="px-4 py-3 transition-colors hover:bg-[#F2ECE5]"
+                aria-label="Increase quantity"
+                class="m-1 flex h-10 w-10 items-center justify-center rounded-full bg-[#C9876C] text-white shadow-sm transition-colors hover:bg-[#B8765B]"
               >
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
               </button>
             </div>
+            <p v-if="minimumQuantity > 1" class="mt-2 text-xs leading-5 text-[#8A7464]">
+              Use the plus button to add pieces above the {{ minimumQuantity }} pcs minimum.
+            </p>
           </div>
         </div>
 
@@ -129,7 +145,43 @@
         </div>
 
         <div class="mt-6 space-y-3">
+          <form
+            v-if="canUseNativeCatalogAdd"
+            :action="catalogAddAction"
+            method="POST"
+            class="w-full"
+            @submit="handleNativeCatalogAdd"
+          >
+            <input type="hidden" name="_token" :value="csrfToken" />
+            <input type="hidden" name="return_to" :value="currentCustomerPath" />
+            <input type="hidden" name="quantity" :value="catalogAddQuantity" />
+            <input v-if="catalogAddOptionId" type="hidden" name="option_id" :value="catalogAddOptionId" />
+            <input v-if="catalogAddSize" type="hidden" name="size" :value="catalogAddSize" />
+            <input v-if="catalogAddFlavor" type="hidden" name="flavor" :value="catalogAddFlavor" />
+            <button
+              type="submit"
+              :disabled="isAddButtonDisabled"
+              class="w-full rounded-full py-4 font-semibold text-white shadow-md transition-colors"
+              :class="isAddButtonDisabled
+                ? 'cursor-not-allowed bg-[#CFA48F] opacity-80'
+                : 'bg-[#C9876C] hover:bg-[#B8765B]'"
+            >
+              <span class="inline-flex items-center justify-center gap-2">
+                <svg
+                  v-if="isAddingFeaturedToCart"
+                  class="h-4 w-4 animate-spin"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+                {{ addToCartButtonLabel }}
+              </span>
+            </button>
+          </form>
           <button
+            v-else
             type="button"
             @click="addFeaturedToCart"
             :disabled="isAddButtonDisabled"
@@ -290,13 +342,13 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useSpaRouter } from '../../router';
 import api from '../../services/api';
 import { useCartStore } from '../../services/cartStore';
 import CartItem from '../shared/CartItem.vue';
 
-const ADD_TO_CART_COOLDOWN_MS = 1800;
+const PREVIEW_PRODUCT_CACHE_TTL_MS = 60 * 1000;
 
 const props = defineProps({
   added: {
@@ -327,7 +379,6 @@ const {
   lastAddedId,
   lastCheckoutOrderId,
   loadCart,
-  addCatalogItem,
   addCustomItem,
   updateCartItemQuantity,
   removeCartItem,
@@ -348,52 +399,11 @@ const selectedSize = ref('');
 const selectedOptionId = ref('');
 const featuredImageFailed = ref(false);
 const isAddingFeaturedToCart = ref(false);
-const isAddCooldownActive = ref(false);
-let addCooldownHandle = null;
 const NEUTRAL_FALLBACK_IMAGE = '/images/logo/BAKERDAN%20LOGO.jpg';
+const csrfToken = window.Laravel?.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+const addError = ref(window.Laravel?.flash?.cartError || '');
 
 const isPreviewMode = computed(() => Boolean(previewProduct.value));
-
-const loadPreviewProduct = async () => {
-  const previewId = Number(props.preview);
-  if (!previewId) {
-    previewProduct.value = null;
-    return;
-  }
-
-  try {
-    const response = await api.getProduct(previewId);
-    const p = response.data?.data;
-    if (p) {
-      previewProduct.value = {
-        id: p.id,
-        product_id: p.product_id ?? p.id,
-        category: p.category || 'Bread',
-        name: p.name ?? p.product_name,
-        description: p.description ?? '',
-        price: Number(p.price ?? 0),
-        image: p.image_url || p.image || p.category_fallback_image || NEUTRAL_FALLBACK_IMAGE,
-        fallbackImage: p.category_fallback_image || NEUTRAL_FALLBACK_IMAGE,
-        tag: p.is_active ? 'Available' : 'Inactive',
-        source: 'catalog',
-        quantity: 1,
-        sizesAvailable: p.sizes_available || '',
-        flavorsAvailable: p.flavors_available || '',
-        options: normalizeOptions(p.options),
-        minimumQuantity: Number(p.minimum_quantity || 1),
-      };
-      const firstOptionId = previewProduct.value.options[0]?.id || '';
-      selectedOptionId.value = previewProduct.value.options.some((option) => option.id === props.option)
-        ? props.option
-        : firstOptionId;
-      previewQuantity.value = Math.max(1, selectedOption.value?.minimum_quantity || previewProduct.value.minimumQuantity || 1);
-      const sizes = parseSizes(previewProduct.value.sizesAvailable);
-      selectedSize.value = selectedOption.value?.size || sizes[0] || 'Standard';
-    }
-  } catch (error) {
-    previewProduct.value = null;
-  }
-};
 
 const parseSizes = (sizesStr) => {
   if (!sizesStr) return [];
@@ -410,8 +420,85 @@ const normalizeOptions = (options = []) => {
   }));
 };
 
+const previewCacheKey = (productId) => `bakerdan.cartPreview.${productId}`;
+
+const mapPreviewProduct = (p = {}) => ({
+  id: p.id,
+  product_id: p.product_id ?? p.productId ?? p.id,
+  category: p.category || 'Bread',
+  name: p.name ?? p.product_name ?? 'Bakerdan Product',
+  description: p.description ?? '',
+  price: Number(p.price ?? 0),
+  image: p.image_url || p.image || p.category_fallback_image || p.fallbackImage || NEUTRAL_FALLBACK_IMAGE,
+  fallbackImage: p.category_fallback_image || p.fallbackImage || NEUTRAL_FALLBACK_IMAGE,
+  tag: p.is_active === false ? 'Inactive' : (p.tag || 'Available'),
+  source: 'catalog',
+  quantity: 1,
+  sizesAvailable: p.sizes_available || p.sizesAvailable || '',
+  flavorsAvailable: p.flavors_available || p.flavorsAvailable || '',
+  options: normalizeOptions(p.options),
+  minimumQuantity: Number(p.minimum_quantity || p.minimumQuantity || 1),
+});
+
+const applyPreviewProduct = (payload) => {
+  previewProduct.value = mapPreviewProduct(payload);
+
+  const firstOptionId = previewProduct.value.options[0]?.id || '';
+  selectedOptionId.value = previewProduct.value.options.some((option) => option.id === props.option)
+    ? props.option
+    : firstOptionId;
+  previewQuantity.value = Math.max(1, selectedOption.value?.minimum_quantity || previewProduct.value.minimumQuantity || 1);
+  const sizes = parseSizes(previewProduct.value.sizesAvailable);
+  selectedSize.value = selectedOption.value?.size || sizes[0] || 'Standard';
+};
+
+const loadCachedPreviewProduct = (previewId) => {
+  try {
+    const raw = window.sessionStorage.getItem(previewCacheKey(previewId));
+    if (!raw) return false;
+
+    const cached = JSON.parse(raw);
+    if (!cached?.cachedAt || Date.now() - Number(cached.cachedAt) > PREVIEW_PRODUCT_CACHE_TTL_MS) {
+      window.sessionStorage.removeItem(previewCacheKey(previewId));
+      return false;
+    }
+
+    applyPreviewProduct(cached);
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
+const loadPreviewProduct = async () => {
+  const previewId = Number(props.preview);
+  if (!previewId) {
+    previewProduct.value = null;
+    return;
+  }
+
+  const hasCachedPreview = loadCachedPreviewProduct(previewId);
+
+  try {
+    const response = await api.getProduct(previewId);
+    const product = response.data?.data;
+    if (product) {
+      applyPreviewProduct(product);
+    }
+  } catch (error) {
+    if (!hasCachedPreview) {
+      previewProduct.value = null;
+    }
+  }
+};
+
 const addedItemId = computed(() => Number(props.added) || Number(lastAddedId.value) || null);
-const checkoutOrderId = computed(() => Number(props.ordered) || Number(lastCheckoutOrderId.value) || null);
+const checkoutOrderId = computed(() => {
+  const routeOrderId = String(props.ordered || '').trim();
+  const recentOrderId = String(lastCheckoutOrderId.value || '').trim();
+
+  return routeOrderId || recentOrderId || null;
+});
 
 watch(
   cartItems,
@@ -471,11 +558,38 @@ const selectedOption = computed(() => {
     || optionChoices.value[0];
 });
 
-const minimumQuantity = computed(() => {
-  if (!isPreviewMode.value) return 1;
+const catalogAddProductId = computed(() => featuredProduct.value?.product_id || featuredProduct.value?.id || null);
+const catalogAddAction = computed(() => (
+  catalogAddProductId.value
+    ? `/customer/cart/add/${encodeURIComponent(String(catalogAddProductId.value))}`
+    : ''
+));
+const catalogAddQuantity = computed(() => (
+  isPreviewMode.value
+    ? Math.max(minimumQuantity.value, previewQuantity.value)
+    : 1
+));
+const catalogAddOptionId = computed(() => selectedOption.value?.id || featuredProduct.value?.optionId || '');
+const catalogAddSize = computed(() => selectedOption.value?.size || selectedSize.value || featuredProduct.value?.size || '');
+const catalogAddFlavor = computed(() => selectedOption.value?.flavor || featuredProduct.value?.flavor || '');
+const canUseNativeCatalogAdd = computed(() => (
+  Boolean(featuredProduct.value)
+    && featuredProduct.value.source !== 'custom'
+    && Boolean(catalogAddAction.value)
+));
+const currentCustomerPath = computed(() => `${window.location.pathname}${window.location.search}`);
 
+const minimumQuantity = computed(() => {
   return Number(selectedOption.value?.minimum_quantity || featuredProduct.value?.minimumQuantity || 1);
 });
+
+const currentQuantity = computed(() => {
+  if (!featuredProduct.value) return minimumQuantity.value;
+
+  return Number(isPreviewMode.value ? previewQuantity.value : featuredProduct.value.quantity) || minimumQuantity.value;
+});
+
+const canDecreaseQuantity = computed(() => currentQuantity.value > minimumQuantity.value);
 
 const featuredFallbackImage = computed(() => {
   if (featuredProduct.value?.fallbackImage) return featuredProduct.value.fallbackImage;
@@ -541,28 +655,14 @@ const handleFeaturedImageError = () => {
 };
 
 const isAddButtonDisabled = computed(() => (
-  !featuredProduct.value || isAddingFeaturedToCart.value || isAddCooldownActive.value
+  !featuredProduct.value || isAddingFeaturedToCart.value
 ));
 
 const addToCartButtonLabel = computed(() => {
   if (isAddingFeaturedToCart.value) return 'Adding...';
-  if (isAddCooldownActive.value) return 'Added to cart';
 
   return 'Add to cart';
 });
-
-const startAddCooldown = () => {
-  isAddCooldownActive.value = true;
-
-  if (addCooldownHandle) {
-    window.clearTimeout(addCooldownHandle);
-  }
-
-  addCooldownHandle = window.setTimeout(() => {
-    isAddCooldownActive.value = false;
-    addCooldownHandle = null;
-  }, ADD_TO_CART_COOLDOWN_MS);
-};
 
 const addedItem = computed(() => cartItems.value.find((item) => item.id === addedItemId.value) || null);
 const allSelected = computed(() => selectedItems.value.length === cartItems.value.length && cartItems.value.length > 0);
@@ -656,6 +756,33 @@ const checkoutNotice = computed(() => {
 const formatPrice = (price) => Number(price).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 const formatPaymentMethod = (value) => (value === 'maya' ? 'Maya' : 'GCash');
 
+const redirectToAddedCart = (itemId) => {
+  window.location.replace(`/customer/cart?added=${encodeURIComponent(String(itemId))}`);
+};
+
+const addCatalogItemForRedirect = async (productId, data = {}) => {
+  try {
+    const response = await api.addToCart(productId, {
+      ...data,
+      include_cart: false,
+    });
+
+    return response.data?.data?.item || null;
+  } catch (error) {
+    if (error.response?.status === 401) {
+      window.location.href = '/login';
+      return null;
+    }
+
+    throw error;
+  }
+};
+
+const handleNativeCatalogAdd = () => {
+  addError.value = '';
+  isAddingFeaturedToCart.value = true;
+};
+
 const refreshCart = async () => {
   try {
     await loadCart({ force: true });
@@ -707,24 +834,7 @@ const decrementQuantity = async () => {
   }
 
   try {
-    await updateCartItemQuantity(featuredProduct.value.id, Math.max(1, featuredProduct.value.quantity - 1));
-  } catch (error) {
-    window.alert('Unable to update the cart quantity right now.');
-  }
-};
-
-const setQuantity = async (value) => {
-  if (!featuredProduct.value) return;
-
-  const normalizedQuantity = Math.max(minimumQuantity.value, Number(value) || minimumQuantity.value);
-
-  if (isPreviewMode.value) {
-    previewQuantity.value = normalizedQuantity;
-    return;
-  }
-
-  try {
-    await updateCartItemQuantity(featuredProduct.value.id, normalizedQuantity);
+    await updateCartItemQuantity(featuredProduct.value.id, Math.max(minimumQuantity.value, featuredProduct.value.quantity - 1));
   } catch (error) {
     window.alert('Unable to update the cart quantity right now.');
   }
@@ -750,32 +860,26 @@ const addFeaturedToCart = async () => {
         basePrice: featuredProduct.value.basePrice || featuredProduct.value.price,
       });
 
-      previewProduct.value = null;
-
       if (addedItem?.id) {
-        startAddCooldown();
-        push(`/customer/cart?added=${addedItem.id}`);
+        redirectToAddedCart(addedItem.id);
       }
 
       return;
     }
 
     const productId = featuredProduct.value.product_id || featuredProduct.value.id;
-    const addedItem = await addCatalogItem(productId, {
+    const addedItem = await addCatalogItemForRedirect(productId, {
       quantity: isPreviewMode.value ? Math.max(minimumQuantity.value, previewQuantity.value) : 1,
       option_id: selectedOption.value?.id || null,
       size: selectedOption.value?.size || selectedSize.value || featuredProduct.value.size,
       flavor: selectedOption.value?.flavor || featuredProduct.value.flavor,
     });
 
-    previewProduct.value = null;
-
     if (addedItem?.id) {
-      startAddCooldown();
-      push(`/customer/cart?added=${addedItem.id}`);
+      redirectToAddedCart(addedItem.id);
     }
   } catch (error) {
-    window.alert(error.response?.data?.message || 'Unable to add this item to the cart right now.');
+    addError.value = error.response?.data?.message || 'Unable to add this item to the cart right now.';
   } finally {
     isAddingFeaturedToCart.value = false;
   }
@@ -864,9 +968,4 @@ onMounted(() => {
   loadPreviewProduct();
 });
 
-onBeforeUnmount(() => {
-  if (addCooldownHandle) {
-    window.clearTimeout(addCooldownHandle);
-  }
-});
 </script>

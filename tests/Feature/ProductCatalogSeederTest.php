@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Product;
+use App\Models\CartItem;
 use App\Models\User;
 use Database\Seeders\ProductCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -69,27 +70,42 @@ class ProductCatalogSeederTest extends TestCase
             ->assertOk()
             ->assertHeader('Cache-Control', 'max-age=0, no-store, private')
             ->assertJsonPath('success', true)
-            ->assertJsonCount(35, 'data')
+            ->assertJsonCount(10, 'data')
+            ->assertJsonPath('pagination.total', 35)
+            ->assertJsonPath('pagination.per_page', 10)
+            ->assertJsonPath('pagination.current_page', 1)
+            ->assertJsonPath('pagination.last_page', 4)
             ->assertJsonFragment([
                 'product_name' => 'Brazo Roll',
                 'image_url' => '/images/bakerdan/brazo and cakes/brazo-roll_classic.jpg',
-            ])
+            ]);
+
+        $this
+            ->actingAs($customer)
+            ->getJson('/api/products?page=2&per_page=99')
+            ->assertOk()
+            ->assertJsonCount(10, 'data')
+            ->assertJsonPath('pagination.per_page', 10)
+            ->assertJsonPath('pagination.current_page', 2);
+
+        $this
+            ->actingAs($customer)
+            ->getJson('/api/products?category=Sugar%20Cookies')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
             ->assertJsonFragment([
                 'product_name' => 'Sugar Cookies',
                 'image_url' => '/images/bakerdan/sugar cookies/sugar_cookies.jpg',
-            ])
+            ]);
+
+        $this
+            ->actingAs($customer)
+            ->getJson('/api/products?category=Pastries&page=1&per_page=10&sort=popularity')
+            ->assertOk()
+            ->assertJsonPath('pagination.per_page', 10)
+            ->assertJsonPath('pagination.current_page', 1)
             ->assertJsonFragment([
-                'product_name' => 'Eclairs',
-                'image_url' => '/images/bakerdan/pastries/eclair.jpg',
-            ])
-            ->assertJsonFragment([
-                'product_name' => 'Golden Eggpies',
-                'image_url' => '/images/bakerdan/pastries/golden_eggpies.jpg',
-                'category_fallback_image' => '/images/logo/BAKERDAN%20LOGO.jpg',
-            ])
-            ->assertJsonFragment([
-                'product_name' => 'Corned Beef Pandesal',
-                'image_url' => '/images/bakerdan/bread/cornbeef_pandesal.jpg',
+                'category' => 'Pastries',
             ]);
     }
 
@@ -182,5 +198,46 @@ class ProductCatalogSeederTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonPath('message', 'This option requires a minimum quantity of 25.');
+
+        $this
+            ->actingAs($customer)
+            ->postJson("/api/cart/add/{$sugarCookies->id}", [
+                'quantity' => 25,
+                'option_id' => 'edible-print',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.cart.item_count', 1)
+            ->assertJsonPath('data.cart.quantity_count', 25)
+            ->assertJsonPath('data.item.optionId', 'edible-print')
+            ->assertJsonPath('data.item.minimumQuantity', 25)
+            ->assertJsonPath('data.item.quantity', 25);
+    }
+
+    public function test_customer_cart_native_add_redirects_after_catalog_option_add(): void
+    {
+        $this->seed(ProductCatalogSeeder::class);
+
+        $customer = User::query()->create([
+            'role' => 'customer',
+            'is_active' => true,
+        ]);
+        $brazoCups = Product::query()->where('product_name', 'Brazo Cups')->firstOrFail();
+
+        $response = $this
+            ->actingAs($customer)
+            ->from("/customer/cart?preview={$brazoCups->id}&option=classic")
+            ->post("/customer/cart/add/{$brazoCups->id}", [
+                'quantity' => 1,
+                'option_id' => 'classic',
+                'return_to' => "/customer/cart?preview={$brazoCups->id}&option=classic",
+            ]);
+
+        $cartItem = CartItem::query()->firstOrFail();
+
+        $response->assertRedirect("/customer/cart?added={$cartItem->id}");
+        $this->assertSame($brazoCups->id, $cartItem->product_id);
+        $this->assertSame(1, $cartItem->quantity);
+        $this->assertSame('Box of 24 pcs', $cartItem->size);
+        $this->assertSame('Classic', $cartItem->flavor);
     }
 }

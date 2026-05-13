@@ -14,6 +14,7 @@ use App\Services\PendingOrderService;
 use App\Services\PayMongoService;
 use App\Services\ProductOptionService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -45,6 +46,7 @@ class CartController extends Controller
         $validator = Validator::make($request->all(), [
             'quantity' => 'required|integer|min:1|max:99',
             'option_id' => 'nullable|string|max:120',
+            'include_cart' => 'nullable|boolean',
             'size' => 'nullable|string|max:100',
             'flavor' => 'nullable|string|max:100',
         ]);
@@ -117,14 +119,47 @@ class CartController extends Controller
             ])->load('product');
         });
 
+        $includeCart = $request->boolean('include_cart', true);
+        $data = [
+            'item' => $this->serializeCartItem($cartItem),
+        ];
+
+        if ($includeCart) {
+            $data['cart'] = $this->cartSummary($cart->fresh());
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Item added to cart successfully.',
-            'data' => [
-                'item' => $this->serializeCartItem($cartItem),
-                'cart' => $this->cartSummary($cart->fresh()),
-            ],
+            'data' => $data,
         ]);
+    }
+
+    public function addAndRedirect(Request $request, int $productId): RedirectResponse
+    {
+        $returnTo = $this->safeCustomerReturnPath((string) $request->input('return_to', '/customer/cart'));
+        $request->merge(['include_cart' => false]);
+
+        try {
+            $response = $this->add($request, $productId);
+            $payload = $response->getData(true);
+
+            if (! $response->isSuccessful()) {
+                return redirect($returnTo)->with('cart_error', $this->cartErrorMessage($payload));
+            }
+
+            $itemId = data_get($payload, 'data.item.id');
+
+            if (! $itemId) {
+                return redirect($returnTo)->with('cart_error', 'The item was added, but the cart could not identify it.');
+            }
+
+            return redirect('/customer/cart?added=' . urlencode((string) $itemId));
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return redirect($returnTo)->with('cart_error', 'Unable to add this item to the cart right now.');
+        }
     }
 
     public function addCustom(Request $request, CustomOrderImageService $customOrderImageService): JsonResponse
@@ -361,6 +396,31 @@ class CartController extends Controller
         ]);
     }
 
+    private function safeCustomerReturnPath(string $path): string
+    {
+        if (str_starts_with($path, '/customer/')) {
+            return $path;
+        }
+
+        return '/customer/cart';
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function cartErrorMessage(array $payload): string
+    {
+        if (filled($payload['message'] ?? null)) {
+            return (string) $payload['message'];
+        }
+
+        $firstValidationError = collect($payload['errors'] ?? [])
+            ->flatten()
+            ->first();
+
+        return $firstValidationError ?: 'Unable to add this item to the cart right now.';
+    }
+
     private function userCart(bool $create = false): ?Cart
     {
         if ($create) {
@@ -390,6 +450,7 @@ class CartController extends Controller
                 'tax' => 0,
                 'total' => 0,
                 'item_count' => 0,
+                'quantity_count' => 0,
             ];
         }
 
@@ -402,18 +463,21 @@ class CartController extends Controller
             'subtotal' => round($subtotal, 2),
             'tax' => 0,
             'total' => round($subtotal, 2),
-            'item_count' => $serializedItems->sum('quantity'),
+            'item_count' => $serializedItems->count(),
+            'quantity_count' => $serializedItems->sum('quantity'),
         ];
     }
 
     private function serializeCartItem(CartItem $item): array
     {
         $unitPrice = $this->cartItemUnitPrice($item);
+        $selectedOption = $this->selectedCartItemOption($item);
 
         return [
             'basePrice' => $unitPrice,
             'id' => $item->id,
             'product_id' => $item->product_id,
+            'optionId' => $selectedOption['id'] ?? null,
             'productName' => $this->cartItemName($item),
             'source' => $item->item_type === 'custom' ? 'custom' : 'catalog',
             'name' => $this->cartItemName($item),
@@ -424,6 +488,7 @@ class CartController extends Controller
             'flavor' => $item->flavor,
             'image' => $this->cartItemImageUrl($item),
             'tag' => $item->item_type === 'custom' ? 'Custom Order' : ($item->product?->is_active ? 'Available' : 'Unavailable'),
+            'minimumQuantity' => (int) ($selectedOption['minimum_quantity'] ?? 1),
             'designDescription' => $item->design_description,
             'dedicationMessage' => $item->dedication_message,
             'line_total' => round($unitPrice * $item->quantity, 2),
@@ -545,6 +610,24 @@ class CartController extends Controller
         }
 
         return asset('storage/' . $publicRelativePath);
+    }
+
+    private function selectedCartItemOption(CartItem $item): ?array
+    {
+        if (! $item->product) {
+            return null;
+        }
+
+        foreach ($this->productOptions->optionsFor($item->product) as $option) {
+            $sizeMatches = blank($item->size) || ($option['size'] ?? null) === $item->size;
+            $flavorMatches = blank($item->flavor) || ($option['flavor'] ?? null) === $item->flavor;
+
+            if ($sizeMatches && $flavorMatches) {
+                return $option;
+            }
+        }
+
+        return null;
     }
 
     private function cartItemImageUrl(CartItem $item): string

@@ -127,24 +127,25 @@
       </div>
     </section>
 
-    <section class="mt-6">
-      <div v-if="isCatalogLoading" class="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3" aria-live="polite">
-        <div
-          v-for="index in 6"
-          :key="`catalog-skeleton-${index}`"
-          class="overflow-hidden rounded-[26px] border border-[#E9DDD2] bg-white p-3 shadow-[0_18px_40px_-32px_rgba(118,79,49,0.25)]"
-        >
-          <div class="aspect-[4/3] animate-pulse rounded-[22px] bg-[#EFE5DC]"></div>
-          <div class="space-y-3 px-2 pb-2 pt-4">
-            <div class="h-5 w-28 animate-pulse rounded-full bg-[#F1E7DE]"></div>
-            <div class="h-6 w-3/4 animate-pulse rounded-full bg-[#E9DDD2]"></div>
-            <div class="h-4 w-full animate-pulse rounded-full bg-[#F1E7DE]"></div>
-            <div class="h-4 w-2/3 animate-pulse rounded-full bg-[#F1E7DE]"></div>
-          </div>
+    <section class="relative mt-6 min-h-[420px]" aria-live="polite" :aria-busy="isCatalogLoading">
+      <div
+        v-if="isCatalogLoading && paginatedProducts.length"
+        class="absolute inset-0 z-10 flex items-start justify-center rounded-[28px] bg-[#FBF8F4]/70 pt-16 backdrop-blur-[2px]"
+      >
+        <div class="flex items-center gap-3 rounded-full border border-[#E4D6CB] bg-white px-5 py-3 text-sm font-semibold text-[#7A5C48] shadow-[0_18px_42px_-28px_rgba(118,79,49,0.45)]">
+          <svg class="h-5 w-5 animate-spin text-[#C9876C]" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+          </svg>
+          Loading products
         </div>
       </div>
 
-      <div v-else-if="paginatedProducts.length" class="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
+      <div
+        v-if="paginatedProducts.length"
+        class="grid grid-cols-1 gap-5 transition duration-150 md:grid-cols-2 2xl:grid-cols-3"
+        :class="isCatalogLoading ? 'pointer-events-none opacity-45' : 'opacity-100'"
+      >
         <ProductCard
           v-for="(product, index) in paginatedProducts"
           :key="product.id"
@@ -153,6 +154,18 @@
           @add-to-cart="handleAddToCart"
           @toggle-like="handleToggleLike"
         />
+      </div>
+
+      <div v-else-if="isCatalogLoading" class="flex min-h-[420px] items-center justify-center rounded-[28px] border border-dashed border-[#E1D4C8] bg-[#FCF8F4] px-6 py-12 text-center text-[#756A63]">
+        <div>
+          <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-[0_18px_34px_-24px_rgba(118,79,49,0.55)]">
+            <svg class="h-7 w-7 animate-spin text-[#C9876C]" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+          </div>
+          <p class="mt-4 text-sm font-semibold text-[#695F57]">Loading products</p>
+        </div>
       </div>
 
       <div v-else class="mt-6 rounded-[28px] border border-dashed border-[#E1D4C8] bg-[#FCF8F4] px-6 py-12 text-center text-[#756A63]">
@@ -219,16 +232,17 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { useSpaRouter } from '../../router';
 import api from '../../services/api';
-import { cacheImages, preloadImages } from '../../services/imageCache';
+import { preloadImages } from '../../services/imageCache';
 import ProductCard from '../shared/ProductCard.vue';
 
 const PRODUCT_CACHE_TTL = 45 * 1000;
+const PRODUCT_PAGE_SIZE = 10;
 const SEARCH_DEBOUNCE_DELAY = 250;
 
-let cachedCatalogPayload = null;
-let cachedCatalogExpiresAt = 0;
+const cachedCatalogPages = new Map();
+let productLoadSequence = 0;
+let productAbortController = null;
 
 const props = defineProps({
   activeCategory: {
@@ -236,8 +250,6 @@ const props = defineProps({
     default: 'All',
   },
 });
-
-const { push } = useSpaRouter();
 
 const attachmentInput = ref(null);
 const attachmentName = ref('');
@@ -252,7 +264,7 @@ const debouncedSearchQuery = ref('');
 const sortBy = ref('popularity');
 const currentPage = ref(1);
 const isCatalogLoading = ref(true);
-const perPage = 10;
+const perPage = PRODUCT_PAGE_SIZE;
 let searchDebounceHandle = null;
 
 const sortModes = [
@@ -262,6 +274,14 @@ const sortModes = [
 ];
 
 const products = ref([]);
+const catalogPagination = ref({
+  total: 0,
+  per_page: PRODUCT_PAGE_SIZE,
+  current_page: 1,
+  last_page: 1,
+  from: null,
+  to: null,
+});
 const NEUTRAL_FALLBACK_IMAGE = '/images/logo/BAKERDAN%20LOGO.jpg';
 
 const categoryFallbackImage = (category) => {
@@ -424,27 +444,6 @@ const groupProducts = (items) => {
   return result;
 };
 
-const matchesSidebarCategory = (product) => {
-  switch (props.activeCategory) {
-    case 'All':
-      return true;
-    case 'Bread':
-      return product.category === 'Bread';
-    case 'Pastries':
-      return product.category === 'Pastries';
-    case 'Tarts':
-      return product.category === 'Tarts';
-    case 'Sugar Cookies':
-      return product.category === 'Sugar Cookies';
-    case 'Brazos and Cakes':
-      return product.category === 'Brazos and Cakes';
-    case 'Customize Order':
-      return false;
-    default:
-      return true;
-  }
-};
-
 const collectCatalogImageSources = (items) => {
   return [...new Set(
     (items || []).flatMap((product) => [
@@ -456,49 +455,196 @@ const collectCatalogImageSources = (items) => {
   )].filter(Boolean);
 };
 
-const preloadCatalogImages = (items) => {
-  const firstPageImages = collectCatalogImageSources((items || []).slice(0, perPage));
-  const allImages = collectCatalogImageSources(items);
+const productCategoryParam = () => {
+  if (props.activeCategory === 'All') {
+    return null;
+  }
 
-  preloadImages(firstPageImages, {
-    concurrency: 6,
-    limit: 24,
-  });
+  return props.activeCategory;
+};
 
-  cacheImages(allImages, {
-    limit: 140,
-  });
+const shouldLoadCatalog = () => props.activeCategory !== 'Customize Order';
 
-  preloadImages(
-    allImages.filter((image) => !firstPageImages.includes(image)),
-    {
-      concurrency: 3,
-      idle: true,
-      limit: 48,
-      timeout: 1600,
+const runWhenBrowserIdle = (callback, timeout = 900) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(callback, { timeout });
+    return;
+  }
+
+  window.setTimeout(callback, 120);
+};
+
+const productRequestParams = () => {
+  const params = {
+    page: currentPage.value,
+    per_page: perPage,
+    sort: sortBy.value,
+  };
+  const category = productCategoryParam();
+  const search = debouncedSearchQuery.value.trim();
+
+  if (category) {
+    params.category = category;
+  }
+
+  if (search) {
+    params.search = search;
+  }
+
+  return params;
+};
+
+const productCacheKey = (params) => JSON.stringify(
+  Object.keys(params)
+    .sort()
+    .reduce((payload, key) => {
+      payload[key] = params[key];
+      return payload;
+    }, {}),
+);
+
+const normalizePagination = (pagination = {}) => ({
+  total: Number(pagination.total || 0),
+  per_page: Number(pagination.per_page || perPage),
+  current_page: Number(pagination.current_page || currentPage.value),
+  last_page: Math.max(1, Number(pagination.last_page || 1)),
+  from: pagination.from ?? null,
+  to: pagination.to ?? null,
+});
+
+const cacheProductPayload = (cacheKey, data, pagination) => {
+  cachedCatalogPages.set(cacheKey, {
+    payload: {
+      data,
+      pagination: normalizePagination(pagination),
     },
-  );
+    expiresAt: Date.now() + PRODUCT_CACHE_TTL,
+  });
+};
+
+const applyProductPayload = (payload) => {
+  products.value = payload.data.map(mapProduct);
+  catalogPagination.value = normalizePagination(payload.pagination);
+};
+
+const prefetchProductPage = (page) => {
+  if (!shouldLoadCatalog() || page < 1 || page > totalPages.value) {
+    return;
+  }
+
+  const params = {
+    ...productRequestParams(),
+    page,
+  };
+  const cacheKey = productCacheKey(params);
+  const cached = cachedCatalogPages.get(cacheKey);
+
+  if (cached?.payload && Date.now() < cached.expiresAt) {
+    return;
+  }
+
+  runWhenBrowserIdle(async () => {
+    const latestCached = cachedCatalogPages.get(cacheKey);
+
+    if (latestCached?.payload && Date.now() < latestCached.expiresAt) {
+      return;
+    }
+
+    try {
+      const response = await api.getProducts(params);
+      cacheProductPayload(
+        cacheKey,
+        Array.isArray(response.data?.data) ? response.data.data : [],
+        response.data?.pagination,
+      );
+    } catch (error) {
+      // Adjacent-page prefetch is an optimization only.
+    }
+  });
+};
+
+const prefetchAdjacentProductPages = () => {
+  prefetchProductPage(currentPage.value + 1);
+  prefetchProductPage(currentPage.value - 1);
+};
+
+const resetAndLoadProducts = () => {
+  if (currentPage.value !== 1) {
+    currentPage.value = 1;
+    return;
+  }
+
+  loadProducts();
 };
 
 const loadProducts = async ({ force = false } = {}) => {
-  isCatalogLoading.value = products.value.length === 0;
+  if (!shouldLoadCatalog()) {
+    products.value = [];
+    catalogPagination.value = normalizePagination({ total: 0, per_page: perPage, current_page: 1, last_page: 1 });
+    isCatalogLoading.value = false;
+    return;
+  }
+
+  const params = productRequestParams();
+  const cacheKey = productCacheKey(params);
+  const cached = cachedCatalogPages.get(cacheKey);
+  const requestId = ++productLoadSequence;
+  const now = Date.now();
+  const hasFreshCache = Boolean(cached?.payload && now < cached.expiresAt && !force);
+
   catalogError.value = '';
 
+  if (hasFreshCache) {
+    applyProductPayload(cached.payload);
+    isCatalogLoading.value = false;
+    prefetchAdjacentProductPages();
+    return;
+  }
+
+  isCatalogLoading.value = true;
+
+  if (productAbortController) {
+    productAbortController.abort();
+  }
+  productAbortController = new AbortController();
+
   try {
-    const now = Date.now();
-    if (force || !Array.isArray(cachedCatalogPayload) || now >= cachedCatalogExpiresAt) {
-      const response = await api.getProducts();
-      cachedCatalogPayload = Array.isArray(response.data?.data) ? response.data.data : [];
-      cachedCatalogExpiresAt = Date.now() + PRODUCT_CACHE_TTL;
+    const response = await api.getProducts(params, { signal: productAbortController.signal });
+    cacheProductPayload(
+      cacheKey,
+      Array.isArray(response.data?.data) ? response.data.data : [],
+      response.data?.pagination,
+    );
+    const payload = cachedCatalogPages.get(cacheKey)?.payload || { data: [], pagination: normalizePagination() };
+
+    if (requestId !== productLoadSequence) {
+      return;
     }
 
-    products.value = cachedCatalogPayload.map(mapProduct);
-    preloadCatalogImages(products.value);
+    applyProductPayload(payload);
+    prefetchAdjacentProductPages();
   } catch (error) {
-    catalogError.value = error.response?.data?.message || 'Unable to load the catalog right now.';
-    products.value = [];
+    if (error.code === 'ERR_CANCELED' || error.name === 'CanceledError' || error.name === 'AbortError') {
+      return;
+    }
+
+    if (requestId === productLoadSequence) {
+      catalogError.value = error.response?.data?.message || 'Unable to load the catalog right now.';
+      products.value = [];
+      catalogPagination.value = normalizePagination();
+    }
   } finally {
-    isCatalogLoading.value = false;
+    if (requestId === productLoadSequence) {
+      isCatalogLoading.value = false;
+    }
+
+    if (requestId === productLoadSequence || productAbortController?.signal.aborted) {
+      productAbortController = null;
+    }
   }
 };
 
@@ -509,6 +655,10 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (searchDebounceHandle) {
     clearTimeout(searchDebounceHandle);
+  }
+
+  if (productAbortController) {
+    productAbortController.abort();
   }
 });
 
@@ -528,33 +678,22 @@ watch(
 
 watch(
   [() => props.activeCategory, sortBy, debouncedSearchQuery],
+  resetAndLoadProducts,
+);
+
+watch(
+  currentPage,
   () => {
-    currentPage.value = 1;
+    loadProducts();
   },
 );
 
 const groupedProducts = computed(() => {
-  let result = groupProducts(products.value.filter(matchesSidebarCategory));
-
-  if (sortBy.value === 'low-to-high') {
-    result = [...result].sort((a, b) => a.price - b.price);
-  } else if (sortBy.value === 'price') {
-    result = [...result].sort((a, b) => b.price - a.price);
-  } else {
-    result = [...result].sort((a, b) => Number(b.liked) - Number(a.liked));
-  }
-
-  return result;
+  return groupProducts(products.value);
 });
 
 const filteredProducts = computed(() => {
-  const query = debouncedSearchQuery.value.trim().toLowerCase();
-
-  if (!query) {
-    return groupedProducts.value;
-  }
-
-  return groupedProducts.value.filter((product) => product.searchableText?.includes(query));
+  return groupedProducts.value;
 });
 
 const emptyStateTitle = computed(() => {
@@ -572,11 +711,10 @@ const emptyStateMessage = computed(() => {
   return 'The catalog is waiting for products from the database.';
 });
 
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredProducts.value.length / perPage)));
+const totalPages = computed(() => Math.max(1, Number(catalogPagination.value.last_page || 1)));
 
 const paginatedProducts = computed(() => {
-  const start = (currentPage.value - 1) * perPage;
-  return filteredProducts.value.slice(start, start + perPage);
+  return filteredProducts.value;
 });
 
 watch(
@@ -720,7 +858,23 @@ const handleAddToCart = (payload) => {
     query.set('option', optionId);
   }
 
-  push(`/customer/cart?${query.toString()}`);
+  const product = productLookup.value.get(productId) || displayProductLookup.value.get(productId);
+
+  if (product) {
+    try {
+      window.sessionStorage.setItem(
+        `bakerdan.cartPreview.${productId}`,
+        JSON.stringify({
+          ...product,
+          cachedAt: Date.now(),
+        }),
+      );
+    } catch (error) {
+      // Session storage is only a speed hint; navigation should continue if it is unavailable.
+    }
+  }
+
+  window.location.assign(`/customer/cart?${query.toString()}`);
 };
 
 const handleToggleLike = (productId) => {

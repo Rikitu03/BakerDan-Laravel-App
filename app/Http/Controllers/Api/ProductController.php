@@ -15,10 +15,11 @@ class ProductController extends Controller
     }
 
     /**
-     * Get all products with optional filtering
+     * Get products with optional filtering and server-side pagination.
      */
     public function index(Request $request): JsonResponse
     {
+        $perPage = max(1, min(10, (int) $request->input('per_page', 10)));
         $query = Product::query()
             ->select([
                 'id',
@@ -37,11 +38,11 @@ class ProductController extends Controller
             ])
             ->where('is_active', true);
 
-        $query->when($request->filled('category'), fn ($builder) => $builder->where('category', $request->string('category')));
+        $query->when($request->filled('category'), fn ($builder) => $builder->where('category', (string) $request->string('category')));
         $query->when($request->filled('min_price'), fn ($builder) => $builder->where('price', '>=', (float) $request->input('min_price')));
         $query->when($request->filled('max_price'), fn ($builder) => $builder->where('price', '<=', (float) $request->input('max_price')));
         $query->when($request->filled('search'), function ($builder) use ($request): void {
-            $search = $request->string('search');
+            $search = (string) $request->string('search');
             $builder->where(function ($nested) use ($search): void {
                 $nested->where('product_name', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%")
@@ -51,20 +52,27 @@ class ProductController extends Controller
             });
         });
 
-        $products = $query
-            ->orderBy('category')
-            ->orderBy('product_name')
-            ->get()
-            ->map(fn (Product $product): array => $this->serializeProduct($product));
+        match ($request->input('sort')) {
+            'price' => $query->orderByDesc('price')->orderBy('product_name'),
+            'low-to-high' => $query->orderBy('price')->orderBy('product_name'),
+            default => $query->orderBy('category')->orderBy('product_name'),
+        };
+
+        $paginator = $query->paginate($perPage);
+        $products = $paginator->getCollection()
+            ->map(fn (Product $product): array => $this->serializeProduct($product))
+            ->values();
 
         return response()->json([
             'success' => true,
             'data' => $products,
             'pagination' => [
-                'total' => $products->count(),
-                'per_page' => $products->count() ?: 1,
-                'current_page' => 1,
-                'last_page' => 1,
+                'total' => $paginator->total(),
+                'per_page' => $paginator->perPage(),
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'from' => $paginator->firstItem(),
+                'to' => $paginator->lastItem(),
             ]
         ])->header('Cache-Control', 'no-store, max-age=0');
     }

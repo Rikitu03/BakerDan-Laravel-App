@@ -40,6 +40,6 @@ class DemoAccountsSeederTest extends TestCase
 
         $this->assertSame(1, UserDetail::query()->where('username', 'demo_customer')->count());
         $this->assertSame(1, UserDetail::query()->where('username', 'demo_admin')->count());
-        $this->assertSame(2, User::query()->whereIn('user_id', [$customerDetail->user_id, $adminDetail->user_id])->count());
+        $this->assertSame(2, User::query()->whereIn('user_id', [$customerDetail->user_id, $adminDetail->user_id], 'and', false)->count());
     }
 }

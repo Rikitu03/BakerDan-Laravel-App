@@ -69,6 +69,9 @@ Route::get('/cart', [CustomerController::class, 'spa'])->name('cart');
 
 // Protected customer routes
 Route::middleware(['auth', 'role:customer'])->group(function () {
+    Route::post('/customer/cart/add/{productId}', [CartController::class, 'addAndRedirect'])
+        ->name('customer.cart.add');
+
     // All customer routes return the SPA
     Route::get('/customer/{any?}', [CustomerController::class, 'spa'])
         ->where('any', '.*')
