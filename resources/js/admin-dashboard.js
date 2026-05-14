@@ -86,6 +86,13 @@ if (dashboard) {
 
     let modalAction = null;
     let activeAdminMessageId = adminMessages[0]?.id || null;
+    let adminMessagePollTimer = null;
+    let adminConversationPollTimer = null;
+    let adminConversationsRequest = null;
+    let adminMessagesRequest = null;
+    const adminUserId = Number(reportData?.user?.user_id || reportData?.user?.id || 0);
+    const ADMIN_ACTIVE_MESSAGE_POLL_MS = 1000;
+    const ADMIN_CONVERSATION_POLL_MS = 1500;
 
     const sectionLabels = navButtons.reduce((acc, button) => {
         const key = button.dataset.nav;
@@ -112,6 +119,178 @@ if (dashboard) {
         });
 
         return lines.join('\n');
+    };
+
+    const escapeHtml = (value) => String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+    const formatMessageTime = (dateValue) => {
+        if (!dateValue) {
+            return 'Now';
+        }
+
+        return new Date(dateValue).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const newestAdminMessageId = (conversation) => Math.max(
+        0,
+        ...(conversation?.messages || []).map((message) => Number(message.id) || 0),
+    );
+
+    const normalizeAdminMessage = (message) => ({
+        id: message.id,
+        sender: Number(message.sender_id) === adminUserId ? 'me' : 'them',
+        text: message.content,
+        time: formatMessageTime(message.created_at),
+    });
+
+    const normalizeAdminConversation = (conversation, existing = null) => ({
+        id: conversation.id,
+        name: conversation.name || 'Customer',
+        avatar: conversation.avatar || String(conversation.name || 'Customer').slice(0, 2).toUpperCase(),
+        label: conversation.label || 'Direct Message',
+        subtitle: conversation.subtitle || 'Customer support',
+        time: conversation.last_message_at_human || conversation.time || 'No messages',
+        unread: Number(conversation.unread_count || 0) > 0 || Boolean(conversation.unread),
+        preview: conversation.last_message_content || conversation.preview || 'No messages yet',
+        messages: existing?.messages || (Array.isArray(conversation.messages) ? conversation.messages : []),
+        loaded: existing?.loaded ?? Array.isArray(conversation.messages),
+        latestMessageId: Number(conversation.latest_message_id || existing?.latestMessageId || newestAdminMessageId(existing || conversation)) || 0,
+    });
+
+    adminMessages.forEach((conversation) => {
+        conversation.loaded = true;
+        conversation.latestMessageId = newestAdminMessageId(conversation);
+    });
+
+    const sortAdminConversations = () => {
+        adminMessages.sort((first, second) => Number(second.latestMessageId || 0) - Number(first.latestMessageId || 0));
+    };
+
+    const mergeAdminMessages = (conversation, incomingMessages = []) => {
+        if (!conversation || !incomingMessages.length) {
+            return false;
+        }
+
+        const seen = new Set(conversation.messages.map((message) => Number(message.id)));
+        let changed = false;
+
+        incomingMessages.forEach((message) => {
+            const normalized = normalizeAdminMessage(message);
+            if (seen.has(Number(normalized.id))) {
+                return;
+            }
+
+            conversation.messages.push(normalized);
+            conversation.latestMessageId = Math.max(Number(conversation.latestMessageId || 0), Number(normalized.id || 0));
+            conversation.preview = normalized.text;
+            conversation.time = 'Just now';
+            seen.add(Number(normalized.id));
+            changed = true;
+        });
+
+        if (changed) {
+            conversation.messages.sort((first, second) => Number(first.id) - Number(second.id));
+        }
+
+        return changed;
+    };
+
+    const upsertAdminConversation = (summary) => {
+        const existing = adminMessages.find((conversation) => Number(conversation.id) === Number(summary.id));
+        const normalized = normalizeAdminConversation(summary, existing);
+
+        if (existing) {
+            Object.assign(existing, normalized, {
+                messages: existing.messages,
+                loaded: existing.loaded,
+                latestMessageId: Math.max(Number(existing.latestMessageId || 0), Number(normalized.latestMessageId || 0)),
+            });
+            return existing;
+        }
+
+        adminMessages.push(normalized);
+        return normalized;
+    };
+
+    const fetchAdminMessages = async (conversationId, { incremental = false, silent = false } = {}) => {
+        const conversation = adminMessages.find((item) => Number(item.id) === Number(conversationId));
+        if (!conversation || (conversation.loaded && !incremental)) {
+            return;
+        }
+
+        if (adminMessagesRequest) {
+            if (incremental) {
+                return;
+            }
+
+            adminMessagesRequest.abort();
+        }
+
+        adminMessagesRequest = new AbortController();
+
+        try {
+            const response = await axios.get(`/api/conversations/${conversationId}/messages`, {
+                params: incremental ? { after_id: newestAdminMessageId(conversation) } : {},
+                signal: adminMessagesRequest.signal,
+            });
+            const incoming = Array.isArray(response.data) ? response.data : [];
+            const changed = incremental
+                ? mergeAdminMessages(conversation, incoming)
+                : (() => {
+                    conversation.messages = incoming.map(normalizeAdminMessage);
+                    conversation.latestMessageId = newestAdminMessageId(conversation);
+                    return true;
+                })();
+
+            conversation.loaded = true;
+            if (changed && (!silent || Number(conversation.id) === Number(activeAdminMessageId))) {
+                renderAdminMessages();
+                updateNavCounts();
+            }
+        } catch (error) {
+            if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+                console.error('Failed to fetch admin messages:', error);
+            }
+        } finally {
+            adminMessagesRequest = null;
+        }
+    };
+
+    const fetchAdminConversations = async ({ silent = false } = {}) => {
+        if (adminConversationsRequest) {
+            return;
+        }
+
+        adminConversationsRequest = new AbortController();
+
+        try {
+            const response = await axios.get('/api/conversations', {
+                signal: adminConversationsRequest.signal,
+            });
+            const summaries = Array.isArray(response.data) ? response.data : [];
+            summaries.forEach(upsertAdminConversation);
+            sortAdminConversations();
+
+            if (!activeAdminMessageId && adminMessages.length) {
+                activeAdminMessageId = adminMessages[0].id;
+            }
+
+            if (!silent) {
+                renderAdminMessages();
+                updateNavCounts();
+            }
+        } catch (error) {
+            if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+                console.error('Failed to fetch admin conversations:', error);
+            }
+        } finally {
+            adminConversationsRequest = null;
+        }
     };
 
     const downloadContent = (filename, content, mimeType) => {
@@ -318,15 +497,15 @@ if (dashboard) {
                 data-active="${conversation.id === activeAdminMessageId ? 'true' : 'false'}"
             >
                 <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#C9876C] to-[#B8765B] text-sm font-bold text-white shadow-sm">
-                    ${conversation.avatar}
+                    ${escapeHtml(conversation.avatar)}
                 </div>
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center justify-between gap-3">
-                        <p class="truncate text-sm font-semibold text-[#453A35]">${conversation.name}</p>
-                        <span class="shrink-0 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#B79F8F]">${conversation.time}</span>
+                        <p class="truncate text-sm font-semibold text-[#453A35]">${escapeHtml(conversation.name)}</p>
+                        <span class="shrink-0 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#B79F8F]">${escapeHtml(conversation.time)}</span>
                     </div>
-                    <p class="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-[#C68D64]">${conversation.label}</p>
-                    <p class="mt-1 truncate text-sm text-[#796F68]">${conversation.preview}</p>
+                    <p class="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-[#C68D64]">${escapeHtml(conversation.label)}</p>
+                    <p class="mt-1 truncate text-sm text-[#796F68]">${escapeHtml(conversation.preview)}</p>
                 </div>
                 ${conversation.unread ? '<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-[#D96D45]"></span>' : ''}
             </button>
@@ -370,8 +549,8 @@ if (dashboard) {
                         <div class="max-w-[85%] rounded-[24px] px-4 py-3 shadow-[0_18px_36px_-32px_rgba(95,59,35,0.5)] md:max-w-[70%] ${message.sender === 'me'
                             ? 'rounded-br-[8px] bg-[#C9876C] text-white'
                             : 'rounded-bl-[8px] bg-white text-[#5D534D] ring-1 ring-[#E9DDD3]'}">
-                            <p class="text-sm leading-6">${message.text}</p>
-                            <p class="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] ${message.sender === 'me' ? 'text-white/75' : 'text-[#B49A89]'}">${message.time}</p>
+                            <p class="text-sm leading-6">${escapeHtml(message.text)}</p>
+                            <p class="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] ${message.sender === 'me' ? 'text-white/75' : 'text-[#B49A89]'}">${escapeHtml(message.time)}</p>
                         </div>
                     </div>
                 `).join('')}
@@ -707,18 +886,21 @@ if (dashboard) {
         }
     });
 
+    let isAdminSendingMessage = false;
+
     adminMessageSend?.addEventListener('click', async () => {
         const draft = adminMessageDraft?.value.trim();
         const conversation = getActiveAdminMessage();
 
-        if (!draft || !conversation) {
+        if (!draft || !conversation || isAdminSendingMessage) {
             return;
         }
 
         const currentConvId = activeAdminMessageId;
         const tempId = Date.now();
+        isAdminSendingMessage = true;
+        adminMessageSend.disabled = true;
 
-        // Optimistic update
         conversation.messages.push({
             id: tempId,
             sender: 'me',
@@ -735,23 +917,27 @@ if (dashboard) {
                 conversation_id: currentConvId,
                 content: messageContent,
             });
-            
-            // Update temp message with real data
+            const savedMessage = normalizeAdminMessage(response.data);
             const msgIndex = conversation.messages.findIndex(m => m.id === tempId);
             if (msgIndex !== -1) {
-                conversation.messages[msgIndex].id = response.data.id;
-                conversation.messages[msgIndex].time = new Date(response.data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                conversation.messages[msgIndex] = savedMessage;
+            } else {
+                mergeAdminMessages(conversation, [response.data]);
             }
-            
+
+            conversation.latestMessageId = Math.max(Number(conversation.latestMessageId || 0), Number(savedMessage.id || 0));
             conversation.preview = messageContent;
             conversation.time = 'Just now';
+            sortAdminConversations();
             renderAdminMessages();
         } catch (error) {
             console.error('Failed to send message:', error);
-            // Remove optimistic message on error
             conversation.messages = conversation.messages.filter(m => m.id !== tempId);
-            adminMessageDraft.value = messageContent; // Restore draft
+            adminMessageDraft.value = messageContent;
             renderAdminMessageFeed();
+        } finally {
+            isAdminSendingMessage = false;
+            adminMessageSend.disabled = false;
         }
     });
 
@@ -810,6 +996,9 @@ if (dashboard) {
             activeAdminMessageId = Number(messageThread.dataset.adminMessageThread);
             const conversation = getActiveAdminMessage();
             if (conversation) {
+                if (!conversation.loaded) {
+                    fetchAdminMessages(conversation.id, { silent: false });
+                }
                 if (conversation.unread) {
                     axios.post(`/api/conversations/${conversation.id}/read`).catch(console.error);
                     conversation.unread = false;
@@ -1092,6 +1281,60 @@ if (dashboard) {
     });
     downloadBulkTemplateButton?.addEventListener('click', downloadBulkTemplate);
 
+    const pollAdminMessages = () => {
+        if (document.hidden) {
+            return;
+        }
+
+        fetchAdminConversations({ silent: false });
+
+        if (activeAdminMessageId) {
+            fetchAdminMessages(activeAdminMessageId, { incremental: true, silent: false });
+        }
+    };
+
+    const startAdminMessagePolling = () => {
+        if (adminMessagePollTimer || adminConversationPollTimer) {
+            return;
+        }
+
+        adminMessagePollTimer = window.setInterval(() => {
+            if (activeAdminMessageId && !document.hidden) {
+                fetchAdminMessages(activeAdminMessageId, { incremental: true, silent: true });
+            }
+        }, ADMIN_ACTIVE_MESSAGE_POLL_MS);
+
+        adminConversationPollTimer = window.setInterval(() => {
+            if (!document.hidden) {
+                fetchAdminConversations({ silent: false });
+            }
+        }, ADMIN_CONVERSATION_POLL_MS);
+    };
+
+    const stopAdminMessagePolling = () => {
+        if (adminMessagePollTimer) {
+            window.clearInterval(adminMessagePollTimer);
+            adminMessagePollTimer = null;
+        }
+
+        if (adminConversationPollTimer) {
+            window.clearInterval(adminConversationPollTimer);
+            adminConversationPollTimer = null;
+        }
+
+        adminConversationsRequest?.abort();
+        adminMessagesRequest?.abort();
+    };
+
+    const handleAdminMessageVisibility = () => {
+        if (!document.hidden) {
+            pollAdminMessages();
+        }
+    };
+
+    document.addEventListener('visibilitychange', handleAdminMessageVisibility);
+    window.addEventListener('beforeunload', stopAdminMessagePolling);
+
     syncWalkinRows();
     if (walkinItemsContainer && !walkinItemsContainer.children.length) {
         addWalkinItemRow();
@@ -1100,6 +1343,7 @@ if (dashboard) {
     renderLineChart();
     renderTypeBars();
     renderAdminMessages();
+    startAdminMessagePolling();
 
     // Echo Real-time listeners
     if (window.Echo) {
@@ -1109,33 +1353,25 @@ if (dashboard) {
                 let conversation = adminMessages.find(c => c.id === message.conversation_id);
                 
                 if (!conversation) {
-                    // New conversation, reload data (or we could fetch just the new conversation)
-                    window.location.reload();
+                    fetchAdminConversations({ silent: false });
                     return;
                 }
 
-                // Update preview
                 conversation.preview = message.content;
                 conversation.time = 'Just now';
+                conversation.latestMessageId = Math.max(Number(conversation.latestMessageId || 0), Number(message.id || 0));
 
-                // If it's the active conversation, add to feed
                 if (conversation.id === activeAdminMessageId) {
-                    if (!conversation.messages.find(m => m.id === message.id)) {
-                        conversation.messages.push({
-                            id: message.id,
-                            sender: message.sender_id === (reportData?.user?.user_id || 0) ? 'me' : 'them',
-                            text: message.content,
-                            time: new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                        });
-                        if (message.sender_id !== (reportData?.user?.user_id || 0)) {
-                            axios.post(`/api/conversations/${conversation.id}/read`).catch(console.error);
-                            conversation.unread = false;
-                        }
+                    mergeAdminMessages(conversation, [message]);
+                    if (Number(message.sender_id) !== adminUserId) {
+                        axios.post(`/api/conversations/${conversation.id}/read`).catch(console.error);
+                        conversation.unread = false;
                     }
-                } else if (message.sender_id !== (reportData?.user?.user_id || 0)) {
+                } else if (Number(message.sender_id) !== adminUserId) {
                     conversation.unread = true;
                 }
-                
+
+                sortAdminConversations();
                 renderAdminMessages();
                 updateNavCounts();
             });

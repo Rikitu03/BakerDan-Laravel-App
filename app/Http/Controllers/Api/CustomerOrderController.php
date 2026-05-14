@@ -6,18 +6,22 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Services\PendingOrderService;
+use App\Services\PayMongoService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class CustomerOrderController extends Controller
 {
     private const HISTORY_LIMIT = 12;
 
-    public function index(PendingOrderService $pendingOrders): JsonResponse
+    public function index(Request $request, PendingOrderService $pendingOrders, PayMongoService $payMongo): JsonResponse
     {
         $userId = (int) Auth::id();
         $currentStatuses = $this->currentStatuses();
+        $highlightSync = $this->syncHighlightedPaymentReturn($request, $pendingOrders, $payMongo, $userId);
 
         $currentOrders = Order::query()
             ->with(['items.product'])
@@ -56,8 +60,68 @@ class CustomerOrderController extends Controller
                         return ($order['is_current'] ?? false) && in_array($order['payment_status'] ?? null, ['pending', 'unpaid'], true);
                     })->count(),
                 ],
+                'highlight' => $highlightSync,
             ],
         ]);
+    }
+
+    private function syncHighlightedPaymentReturn(
+        Request $request,
+        PendingOrderService $pendingOrders,
+        PayMongoService $payMongo,
+        int $userId,
+    ): ?array {
+        $pendingOrderId = trim((string) $request->query('highlight', ''));
+
+        if ($request->query('payment_return') !== 'success' || ! str_starts_with($pendingOrderId, 'pending-')) {
+            return null;
+        }
+
+        $resolvedOrderId = $pendingOrders->resolveMaterializedOrderId($pendingOrderId);
+        if ($resolvedOrderId) {
+            return [
+                'materialized' => true,
+                'order_id' => $resolvedOrderId,
+                'replaced_pending_order_id' => $pendingOrderId,
+            ];
+        }
+
+        $pendingOrder = $pendingOrders->findForUser($userId, $pendingOrderId);
+        if (! $pendingOrder || blank($pendingOrder['payment_session_id'] ?? null)) {
+            return null;
+        }
+
+        try {
+            $checkoutSession = $payMongo->retrieveCheckoutSession((string) $pendingOrder['payment_session_id'], 6);
+            $paymentStatus = $payMongo->checkoutSessionPaymentStatus($checkoutSession);
+
+            if ($paymentStatus === 'paid') {
+                $order = $pendingOrders->materializePaidOrder($pendingOrder, $checkoutSession, $payMongo);
+
+                return [
+                    'materialized' => true,
+                    'order_id' => (int) $order->id,
+                    'replaced_pending_order_id' => $pendingOrderId,
+                ];
+            }
+
+            $pendingOrders->syncCheckoutSession($pendingOrder, $checkoutSession, $paymentStatus);
+
+            return [
+                'materialized' => false,
+                'order_id' => null,
+                'replaced_pending_order_id' => null,
+            ];
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return [
+                'materialized' => false,
+                'order_id' => null,
+                'replaced_pending_order_id' => null,
+                'sync_error' => $exception->getMessage(),
+            ];
+        }
     }
 
     public function purchaseHistory(): JsonResponse

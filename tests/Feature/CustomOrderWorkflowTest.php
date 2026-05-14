@@ -367,4 +367,108 @@ class CustomOrderWorkflowTest extends TestCase
         $this->assertSame($pickupAddress, $capturedPendingOrder['shipping_address']);
         $this->assertDatabaseCount('cart_items', 0);
     }
+
+    public function test_orders_index_materializes_paid_pending_order_on_payment_return(): void
+    {
+        $this->withoutMiddleware();
+
+        $customer = User::query()->create([
+            'role' => 'customer',
+            'is_active' => true,
+        ]);
+
+        $product = Product::query()->create([
+            'category' => 'Bread',
+            'product_name' => 'Classic Sourdough',
+            'description' => 'Naturally leavened loaf.',
+            'price' => 500,
+            'price_label' => 'PHP 500',
+            'is_active' => true,
+        ]);
+
+        $addResponse = $this
+            ->actingAs($customer)
+            ->postJson("/api/cart/add/{$product->id}", [
+                'quantity' => 1,
+            ]);
+
+        $addResponse->assertOk();
+
+        $session = [
+            'id' => 'cs_test_paid_return',
+            'attributes' => [
+                'checkout_url' => 'https://paymongo.test/checkout/paid-return',
+                'reference_number' => 'BD-PND-PAID',
+                'status' => 'paid',
+                'payment_intent' => [
+                    'id' => 'pi_test_paid_return',
+                    'attributes' => [
+                        'status' => 'succeeded',
+                    ],
+                ],
+                'payments' => [
+                    [
+                        'id' => 'pay_test_paid_return',
+                        'attributes' => [
+                            'paid_at' => now()->timestamp,
+                            'status' => 'paid',
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $this->mock(PayMongoService::class, function (MockInterface $mock) use ($session): void {
+            $mock->shouldReceive('createCheckoutSessionFromPendingOrder')
+                ->once()
+                ->andReturn($session);
+            $mock->shouldReceive('retrieveCheckoutSession')
+                ->once()
+                ->with('cs_test_paid_return', 6)
+                ->andReturn($session);
+            $mock->shouldReceive('checkoutSessionPaymentStatus')
+                ->once()
+                ->with($session)
+                ->andReturn('paid');
+            $mock->shouldReceive('syncOrderPayment')
+                ->once()
+                ->andReturnUsing(function (Order $order, array $checkoutSession): Order {
+                    $order->forceFill([
+                        'payment_status' => 'paid',
+                        'payment_paid_at' => now(),
+                        'payment_reference' => data_get($checkoutSession, 'attributes.reference_number'),
+                        'payment_session_id' => $checkoutSession['id'],
+                        'payment_checkout_url' => data_get($checkoutSession, 'attributes.checkout_url'),
+                    ])->save();
+
+                    return $order->fresh(['items.product']);
+                });
+        });
+
+        $checkoutResponse = $this
+            ->actingAs($customer)
+            ->postJson('/api/checkout', [
+                'item_ids' => [$addResponse->json('data.item.id')],
+                'payment_method' => 'gcash',
+                'fulfillment_method' => 'pickup',
+            ]);
+
+        $checkoutResponse->assertOk();
+        $pendingOrderId = $checkoutResponse->json('data.order.id');
+
+        $this
+            ->actingAs($customer)
+            ->getJson("/api/orders?highlight={$pendingOrderId}&payment_return=success")
+            ->assertOk()
+            ->assertJsonPath('data.highlight.materialized', true)
+            ->assertJsonPath('data.highlight.replaced_pending_order_id', $pendingOrderId)
+            ->assertJsonPath('data.orders.0.payment_status', 'paid')
+            ->assertJsonPath('data.orders.0.is_pending_checkout', null);
+
+        $this->assertDatabaseHas('orders', [
+            'user_id' => $customer->user_id,
+            'payment_status' => 'paid',
+            'payment_session_id' => 'cs_test_paid_return',
+        ]);
+    }
 }

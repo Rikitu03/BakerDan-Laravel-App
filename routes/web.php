@@ -64,11 +64,10 @@ Route::prefix('forgot-password')->group(function () {
 | Vue Router handles client-side navigation
 */
 
-// Public cart route - guests can browse cart
-Route::get('/cart', [CustomerController::class, 'spa'])->name('cart');
-
 // Protected customer routes
 Route::middleware(['auth', 'role:customer'])->group(function () {
+    Route::get('/cart', fn () => redirect('/customer/cart'))->name('cart');
+
     Route::post('/customer/cart/add/{productId}', [CartController::class, 'addAndRedirect'])
         ->name('customer.cart.add');
 
@@ -103,7 +102,7 @@ Route::prefix('api')->group(function () {
 
 // Protected API routes - requires authentication
 Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
-    // Cart - guests can view cart (stored in localStorage), auth users get server-side cart
+    // Cart
     Route::get('/cart', [CartController::class, 'index']);
     Route::post('/cart/add/{productId}', [CartController::class, 'add']);
     Route::post('/cart/custom', [CartController::class, 'addCustom']);

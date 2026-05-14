@@ -7,6 +7,7 @@ import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
 const reverbKey = import.meta.env.VITE_REVERB_APP_KEY;
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
 window.Pusher = Pusher;
 window.Echo = null;
@@ -20,5 +21,12 @@ if (reverbKey) {
         wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
         forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
         enabledTransports: ['ws', 'wss'],
+        authEndpoint: '/broadcasting/auth',
+        auth: {
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        },
     });
 }

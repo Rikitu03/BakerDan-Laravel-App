@@ -559,11 +559,26 @@ class AdminController extends Controller
      */
     private function adminMessages(EloquentCollection $orders, EloquentCollection $customers): array
     {
-        $conversations = \App\Models\Conversation::with(['customer.detail', 'lastMessage'])
+        $adminId = auth()->id();
+
+        $conversations = \App\Models\Conversation::with([
+                'customer.detail',
+                'lastMessage',
+                'messages' => fn ($query) => $query
+                    ->with('sender.detail')
+                    ->orderBy('created_at')
+                    ->orderBy('id'),
+            ])
+            ->withCount([
+                'messages as unread_count' => fn ($query) => $query
+                    ->where('sender_id', '!=', $adminId)
+                    ->where('is_read', false),
+            ])
             ->latest('last_message_at')
+            ->limit(80)
             ->get();
 
-        return $conversations->map(function ($conversation) {
+        return $conversations->map(function ($conversation) use ($adminId) {
             $customerName = $conversation->customer->detail?->name ?? 'Customer';
             return [
                 'id' => $conversation->id,
@@ -572,12 +587,12 @@ class AdminController extends Controller
                 'label' => 'Direct Message',
                 'subtitle' => 'Customer since ' . $conversation->customer->created_at->format('M Y'),
                 'time' => $conversation->last_message_at ? $conversation->last_message_at->diffForHumans() : 'No messages',
-                'unread' => $conversation->messages()->where('sender_id', '!=', auth()->id())->where('is_read', false)->exists(),
+                'unread' => (int) $conversation->unread_count > 0,
                 'preview' => $conversation->lastMessage?->content ?? 'No messages yet',
-                'messages' => $conversation->messages->map(function ($message) {
+                'messages' => $conversation->messages->map(function ($message) use ($adminId) {
                     return [
                         'id' => $message->id,
-                        'sender' => $message->sender_id === auth()->id() ? 'me' : 'them',
+                        'sender' => $message->sender_id === $adminId ? 'me' : 'them',
                         'text' => $message->content,
                         'time' => $message->created_at->format('h:i A'),
                     ];

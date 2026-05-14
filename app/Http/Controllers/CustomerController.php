@@ -3,20 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
-use Illuminate\View\View;
 
 class CustomerController extends Controller
 {
     /**
      * Serve the Vue SPA for all customer routes
      */
-    public function spa(): View
+    public function spa(): Response
     {
         $customer = $this->customerProfile();
-        
-        return view('customer.app', compact('customer'));
+
+        return $this->withoutBrowserCache(response()->view('customer.app', compact('customer')));
     }
 
     /**
@@ -67,5 +67,13 @@ class CustomerController extends Controller
             'member_since' => $user->created_at?->format('F Y') ?: 'New member',
             'avatar' => $initials ?: 'BC',
         ], $overrides);
+    }
+
+    private function withoutBrowserCache(Response $response): Response
+    {
+        return $response
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', 'Fri, 01 Jan 1990 00:00:00 GMT');
     }
 }

@@ -110,13 +110,15 @@
         <button
           type="button"
           @click="loadOrders"
+          :disabled="isLoading"
           class="rounded-full border border-[#E3D7CD] bg-white px-4 py-2 text-sm font-semibold text-[#6C6057] transition-colors hover:bg-[#FFF8F2]"
+          :class="isLoading ? 'cursor-not-allowed opacity-60' : ''"
         >
-          Refresh all
+          {{ isLoading ? 'Refreshing...' : 'Refresh all' }}
         </button>
       </div>
 
-      <div v-if="isLoading" class="space-y-4">
+      <div v-if="isInitialOrdersLoading" class="space-y-4">
         <div
           v-for="placeholder in 2"
           :key="placeholder"
@@ -136,11 +138,25 @@
         <p class="mt-2 text-sm">{{ loadError }}</p>
       </div>
 
-      <div v-else-if="currentOrders.length" class="space-y-5">
+      <div v-else-if="currentOrders.length" class="relative space-y-5">
+        <div
+          v-if="isLoading"
+          class="absolute inset-0 z-10 flex items-start justify-center rounded-[30px] bg-[#FBF8F4]/70 pt-12 backdrop-blur-[2px]"
+        >
+          <div class="flex items-center gap-3 rounded-full border border-[#E4D6CB] bg-white px-5 py-3 text-sm font-semibold text-[#7A5C48] shadow-[0_18px_42px_-28px_rgba(118,79,49,0.45)]">
+            <svg class="h-5 w-5 animate-spin text-[#C9876C]" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            Updating orders
+          </div>
+        </div>
+
         <article
-          v-for="order in currentOrders"
+          v-for="order in visibleCurrentOrders"
           :key="order.id"
           class="rounded-[30px] border border-[#ECE1D8] bg-white p-6 shadow-[0_18px_40px_-34px_rgba(118,79,49,0.25)]"
+          :class="isLoading ? 'opacity-55' : ''"
         >
           <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div>
@@ -213,6 +229,10 @@
                   <img
                     :src="item.image"
                     :alt="item.name"
+                    loading="lazy"
+                    decoding="async"
+                    width="80"
+                    height="80"
                     class="h-20 w-20 rounded-[18px] object-cover"
                   />
                   <div class="min-w-0 flex-1">
@@ -266,6 +286,16 @@
             </div>
           </div>
         </article>
+
+        <div v-if="hasMoreCurrentOrders" class="flex justify-center">
+          <button
+            type="button"
+            @click="currentOrderLimit += CURRENT_ORDER_BATCH_SIZE"
+            class="rounded-full border border-[#E1D3C5] bg-white px-5 py-3 text-sm font-semibold text-[#6E6259] transition-colors hover:bg-[#FFF8F2]"
+          >
+            Show more current orders
+          </button>
+        </div>
       </div>
 
       <div v-else class="rounded-[30px] border border-dashed border-[#E5D7CA] bg-[#FCF8F4] px-6 py-10 text-center">
@@ -298,7 +328,7 @@
 
       <div class="grid gap-4 xl:grid-cols-2">
         <article
-          v-for="order in historyOrders"
+          v-for="order in visibleHistoryOrders"
           :key="`history-${order.id}`"
           class="rounded-[28px] border border-[#ECE1D8] bg-white p-5 shadow-[0_18px_40px_-34px_rgba(118,79,49,0.2)]"
         >
@@ -328,6 +358,16 @@
           <p class="mt-4 text-sm font-semibold text-[#5A5049]">{{ order.total_amount_label }}</p>
         </article>
       </div>
+
+      <div v-if="hasMoreHistoryOrders" class="mt-5 flex justify-center">
+        <button
+          type="button"
+          @click="historyOrderLimit += HISTORY_ORDER_BATCH_SIZE"
+          class="rounded-full border border-[#E1D3C5] bg-white px-5 py-3 text-sm font-semibold text-[#6E6259] transition-colors hover:bg-[#FFF8F2]"
+        >
+          Show more history
+        </button>
+      </div>
     </section>
   </div>
 </template>
@@ -349,6 +389,8 @@ const props = defineProps({
 });
 
 const { push, replace } = useSpaRouter();
+const CURRENT_ORDER_BATCH_SIZE = 4;
+const HISTORY_ORDER_BATCH_SIZE = 6;
 const orders = ref([]);
 const summary = ref({
   current_orders: 0,
@@ -362,7 +404,11 @@ const refreshingOrderId = ref(null);
 const cancellingOrderId = ref(null);
 const isHighlightSyncing = ref(false);
 const countdownNow = ref(Date.now());
+const currentOrderLimit = ref(CURRENT_ORDER_BATCH_SIZE);
+const historyOrderLimit = ref(HISTORY_ORDER_BATCH_SIZE);
 let countdownTimer = null;
+let ordersAbortController = null;
+let orderLoadSequence = 0;
 
 const flowSteps = [
   {
@@ -406,6 +452,11 @@ const highlightedOrder = computed(() =>
 
 const currentOrders = computed(() => orders.value.filter((order) => order.is_current));
 const historyOrders = computed(() => orders.value.filter((order) => !order.is_current));
+const visibleCurrentOrders = computed(() => currentOrders.value.slice(0, currentOrderLimit.value));
+const visibleHistoryOrders = computed(() => historyOrders.value.slice(0, historyOrderLimit.value));
+const hasMoreCurrentOrders = computed(() => currentOrders.value.length > visibleCurrentOrders.value.length);
+const hasMoreHistoryOrders = computed(() => historyOrders.value.length > visibleHistoryOrders.value.length);
+const isInitialOrdersLoading = computed(() => isLoading.value && !hasLoadedOrders.value);
 const currentOrderCount = computed(() =>
   Number(summary.value.current_orders ?? currentOrders.value.length),
 );
@@ -459,16 +510,6 @@ const notice = computed(() => {
     };
   }
 
-  if (highlightedOrder.value.is_pending_checkout) {
-    return {
-      visible: true,
-      title: 'Pending payment',
-      message: `Complete payment for ${highlightedOrder.value.id} within ${countdownLabel(highlightedOrder.value)} or the draft order will be removed automatically.`,
-      wrapperClass: 'border-[#F0DCCC] bg-[#FFF4EB] text-[#8E5632]',
-      eyebrowClass: 'text-[#C9876C]',
-    };
-  }
-
   if (props.paymentReturn === 'success') {
     if (highlightedOrder.value.payment_status === 'paid') {
       return {
@@ -483,9 +524,19 @@ const notice = computed(() => {
     return {
       visible: true,
       title: 'Payment verification in progress',
-      message: `Order #${highlightedOrder.value.id} has returned from PayMongo, but the final payment confirmation is still syncing.`,
+      message: `${highlightedOrder.value.id} returned from PayMongo. We are checking the final payment status before updating the order list.`,
       wrapperClass: 'border-[#D8E8F6] bg-[#F4FAFF] text-[#2F5F87]',
       eyebrowClass: 'text-[#5E94C2]',
+    };
+  }
+
+  if (highlightedOrder.value.is_pending_checkout) {
+    return {
+      visible: true,
+      title: 'Pending payment',
+      message: `Complete payment for ${highlightedOrder.value.id} within ${countdownLabel(highlightedOrder.value)} or the draft order will be removed automatically.`,
+      wrapperClass: 'border-[#F0DCCC] bg-[#FFF4EB] text-[#8E5632]',
+      eyebrowClass: 'text-[#C9876C]',
     };
   }
 
@@ -518,7 +569,7 @@ const removeOrderById = (orderId) => {
   orders.value = orders.value.filter((order) => normalizeOrderId(order.id) !== normalizedId);
 };
 
-const mergeOrder = (nextOrder, paymentPayload = null) => {
+const mergeOrder = (nextOrder, paymentPayload = null, { replaceExisting = false } = {}) => {
   const nextOrderId = normalizeOrderId(nextOrder?.id);
 
   if (!nextOrderId) {
@@ -526,7 +577,7 @@ const mergeOrder = (nextOrder, paymentPayload = null) => {
   }
 
   const existingIndex = orders.value.findIndex((order) => normalizeOrderId(order.id) === nextOrderId);
-  const existingOrder = existingIndex >= 0 ? orders.value[existingIndex] : {};
+  const existingOrder = !replaceExisting && existingIndex >= 0 ? orders.value[existingIndex] : {};
   const mergedOrder = {
     ...existingOrder,
     ...nextOrder,
@@ -545,15 +596,33 @@ const mergeOrder = (nextOrder, paymentPayload = null) => {
 };
 
 const loadOrders = async () => {
+  const requestId = ++orderLoadSequence;
+
+  if (ordersAbortController) {
+    ordersAbortController.abort();
+  }
+
+  ordersAbortController = new AbortController();
   isLoading.value = true;
   loadError.value = '';
 
   try {
-    const response = await api.getOrders();
+    const params = {};
+
+    if (highlightedOrderId.value && props.paymentReturn) {
+      params.highlight = highlightedOrderId.value;
+      params.payment_return = props.paymentReturn;
+    }
+
+    const response = await api.getOrders(params, { signal: ordersAbortController.signal });
     const payload = response.data?.data;
 
     if (!payload || !Array.isArray(payload.orders)) {
       throw new Error('Invalid orders payload');
+    }
+
+    if (requestId !== orderLoadSequence) {
+      return;
     }
 
     orders.value = payload.orders;
@@ -562,11 +631,33 @@ const loadOrders = async () => {
       custom_orders: Number(payload.summary?.custom_orders ?? payload.orders.filter((order) => order.contains_custom).length),
       pending_payment: Number(payload.summary?.pending_payment ?? payload.orders.filter((order) => order.is_current && ['pending', 'unpaid'].includes(order.payment_status)).length),
     };
+    currentOrderLimit.value = CURRENT_ORDER_BATCH_SIZE;
+    historyOrderLimit.value = HISTORY_ORDER_BATCH_SIZE;
     hasLoadedOrders.value = true;
+
+    if (payload.highlight?.materialized && payload.highlight?.replaced_pending_order_id && payload.highlight?.order_id) {
+      removeOrderById(payload.highlight.replaced_pending_order_id);
+
+      if (highlightedOrderId.value === payload.highlight.replaced_pending_order_id) {
+        const search = props.paymentReturn
+          ? `?highlight=${payload.highlight.order_id}&payment_return=${props.paymentReturn}`
+          : `?highlight=${payload.highlight.order_id}`;
+        replace(`/customer/orders${search}`);
+      }
+    }
   } catch (error) {
-    loadError.value = error.response?.data?.message || 'We could not load your orders right now.';
+    if (error.code === 'ERR_CANCELED' || error.name === 'CanceledError' || error.name === 'AbortError') {
+      return;
+    }
+
+    if (requestId === orderLoadSequence) {
+      loadError.value = error.response?.data?.message || 'We could not load your orders right now.';
+    }
   } finally {
-    isLoading.value = false;
+    if (requestId === orderLoadSequence) {
+      isLoading.value = false;
+      ordersAbortController = null;
+    }
   }
 };
 
@@ -582,13 +673,13 @@ const syncHighlightedPayment = async () => {
   isHighlightSyncing.value = true;
 
   try {
-    await refreshPayment(highlightedOrderId.value);
+    await refreshPayment(highlightedOrderId.value, { silent: true });
   } finally {
     isHighlightSyncing.value = false;
   }
 };
 
-const refreshPayment = async (orderId) => {
+const refreshPayment = async (orderId, { silent = false } = {}) => {
   const normalizedOrderId = normalizeOrderId(orderId);
 
   if (!normalizedOrderId) {
@@ -607,11 +698,24 @@ const refreshPayment = async (orderId) => {
       removeOrderById(payload.replaced_pending_order_id);
     }
 
-    mergeOrder(payload.order, payload.payment);
+    const refreshedOrder = payload.materialized
+      ? {
+          ...(payload.order || {}),
+          is_pending_checkout: false,
+          payment_status: payload.payment?.status || payload.order?.payment_status,
+          payment_status_label: payload.payment?.status === 'paid' ? 'Paid' : payload.order?.payment_status_label,
+        }
+      : payload.order;
+
+    mergeOrder(refreshedOrder, payload.payment, { replaceExisting: Boolean(payload.materialized) });
 
     if (payload.materialized && payload.replaced_pending_order_id && highlightedOrderId.value === payload.replaced_pending_order_id) {
       const search = props.paymentReturn ? `?highlight=${payload.order.id}&payment_return=${props.paymentReturn}` : `?highlight=${payload.order.id}`;
       replace(`/customer/orders${search}`);
+    }
+
+    if (payload.materialized) {
+      void loadOrders();
     }
   } catch (error) {
     if (error.response?.status === 410) {
@@ -622,7 +726,9 @@ const refreshPayment = async (orderId) => {
       }
     }
 
-    window.alert(error.response?.data?.message || 'Unable to refresh the payment status right now.');
+    if (!silent) {
+      window.alert(error.response?.data?.message || 'Unable to refresh the payment status right now.');
+    }
   } finally {
     refreshingOrderId.value = null;
   }
@@ -715,11 +821,7 @@ const paymentClass = (paymentStatus) => {
 };
 
 const showCancelAction = (order) => {
-  if (!order?.is_current) {
-    return false;
-  }
-
-  return !['cancelled', 'delivered'].includes(order.status);
+  return Boolean(order?.is_current && order?.can_cancel);
 };
 
 onMounted(() => {
@@ -732,15 +834,19 @@ onMounted(() => {
       return;
     }
 
-    window.setTimeout(() => {
+    if (isPendingOrderId(highlightedOrderId.value)) {
       void syncHighlightedPayment();
-    }, 0);
+    }
   });
 });
 
 onUnmounted(() => {
   if (countdownTimer) {
     window.clearInterval(countdownTimer);
+  }
+
+  if (ordersAbortController) {
+    ordersAbortController.abort();
   }
 });
 </script>

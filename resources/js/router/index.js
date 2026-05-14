@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { computed, markRaw, shallowRef } from 'vue';
 import HomePage from '../components/pages/HomePage.vue';
 import CartPage from '../components/pages/CartPage.vue';
 import CheckoutPage from '../components/pages/CheckoutPage.vue';
@@ -15,7 +15,7 @@ const baseLayoutProps = {
 };
 
 const buildRoute = (component, name, path, props = {}, layoutProps = {}) => ({
-  component,
+  component: markRaw(component),
   name,
   path,
   props,
@@ -129,7 +129,7 @@ const resolveRoute = () => {
   }
 };
 
-const currentRoute = ref(resolveRoute());
+const currentRoute = shallowRef(resolveRoute());
 
 const syncRoute = () => {
   currentRoute.value = resolveRoute();

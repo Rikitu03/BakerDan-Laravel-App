@@ -78,13 +78,24 @@
         </a>
         <div class="my-1 border-t"></div>
         <button
+          type="button"
           @click="handleSignOut"
-          class="flex w-full items-center gap-2 px-4 py-2 text-left text-red-600 transition-colors hover:bg-red-50"
+          :disabled="isSigningOut"
+          class="flex w-full items-center gap-2 px-4 py-2 text-left text-red-600 transition-colors hover:bg-red-50 disabled:cursor-wait disabled:opacity-70"
         >
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            v-if="isSigningOut"
+            class="h-4 w-4 animate-spin"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+          </svg>
+          <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
-          Sign out
+          {{ isSigningOut ? 'Signing out...' : 'Sign out' }}
         </button>
       </div>
     </transition>
@@ -94,6 +105,10 @@
       class="fixed inset-0 z-40"
       @click="showUserMenu = false"
     ></div>
+
+    <form ref="logoutForm" method="POST" action="/logout" class="hidden" aria-hidden="true">
+      <input type="hidden" name="_token" :value="csrfToken" />
+    </form>
   </div>
 </template>
 
@@ -151,6 +166,11 @@ const categories = ref([
 const activeCategory = ref('All');
 const showUserMenu = ref(false);
 const sidebarOpen = ref(false);
+const isSigningOut = ref(false);
+const logoutForm = ref(null);
+const csrfToken = window.Laravel?.csrfToken
+  || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+  || '';
 
 const handleCategorySelect = (categoryName) => {
   activeCategory.value = categoryName;
@@ -171,19 +191,34 @@ const updateCartCount = (count) => {
   console.log('Cart count updated:', count);
 };
 
-const handleSignOut = async () => {
-  try {
-    await fetch('/logout', {
-      method: 'POST',
-      headers: {
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-      },
-    });
-
-    window.location.href = '/login';
-  } catch (error) {
-    console.error('Sign out failed:', error);
+const handleSignOut = () => {
+  if (isSigningOut.value) {
+    return;
   }
+
+  isSigningOut.value = true;
+  showUserMenu.value = false;
+
+  requestAnimationFrame(() => {
+    if (logoutForm.value) {
+      logoutForm.value.submit();
+      return;
+    }
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/logout';
+    form.style.display = 'none';
+
+    const tokenInput = document.createElement('input');
+    tokenInput.type = 'hidden';
+    tokenInput.name = '_token';
+    tokenInput.value = csrfToken;
+
+    form.appendChild(tokenInput);
+    document.body.appendChild(form);
+    form.submit();
+  });
 };
 
 const handleClickOutside = (event) => {

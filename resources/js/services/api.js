@@ -88,8 +88,8 @@ export default {
     return api.post('/checkout', data)
   },
 
-  getOrders() {
-    return api.get('/orders')
+  getOrders(params = {}, config = {}) {
+    return api.get('/orders', { ...config, params })
   },
 
   getPurchases() {
