@@ -355,7 +355,17 @@
           </div>
 
           <p class="mt-4 text-sm leading-6 text-[#756A62]">{{ order.status_note }}</p>
-          <p class="mt-4 text-sm font-semibold text-[#5A5049]">{{ order.total_amount_label }}</p>
+          <div class="mt-4 flex items-center justify-between">
+            <p class="text-sm font-semibold text-[#5A5049]">{{ order.total_amount_label }}</p>
+            <button
+              v-if="order.can_review"
+              type="button"
+              @click="push('/customer/purchases')"
+              class="text-xs font-bold text-[#C9876C] hover:underline"
+            >
+              Review items
+            </button>
+          </div>
         </article>
       </div>
 

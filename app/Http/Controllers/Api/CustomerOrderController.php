@@ -30,6 +30,7 @@ class CustomerOrderController extends Controller
             ->latest('id')
             ->get();
         $historyOrders = Order::query()
+            ->with(['items.product', 'reviews'])
             ->where('user_id', $userId)
             ->whereNotIn('status', $currentStatuses)
             ->withCount([
@@ -127,7 +128,7 @@ class CustomerOrderController extends Controller
     public function purchaseHistory(): JsonResponse
     {
         $orders = Order::query()
-            ->with(['items.product'])
+            ->with(['items.product', 'reviews'])
             ->where('user_id', Auth::id())
             ->where('payment_status', 'paid')
             ->latest('id')
@@ -211,9 +212,10 @@ class CustomerOrderController extends Controller
             'flow_status' => $this->flowStatus($order->status),
             'flow_status_label' => $this->flowStatusLabel($order->status),
             'id' => $order->id,
+            'can_review' => in_array($order->status, ['delivered', 'completed']),
             'is_current' => $this->isCurrentOrder($order),
             'item_count' => $order->items->sum('quantity'),
-            'items' => $order->items->map(fn (OrderItem $item): array => $this->serializeOrderItem($item))->values()->all(),
+            'items' => $order->items->map(fn (OrderItem $item): array => $this->serializeOrderItem($item, $order))->values()->all(),
             'payment' => [
                 'checkout_url' => $order->payment_checkout_url,
                 'gateway_status' => data_get($order->payment_metadata, 'payment_intent_status')
@@ -249,6 +251,7 @@ class CustomerOrderController extends Controller
             'can_cancel' => $this->canCancel($order),
             'can_continue_payment' => $this->canContinuePayment($order),
             'can_refresh_payment' => filled($order->payment_session_id),
+            'can_review' => in_array($order->status, ['delivered', 'completed']),
             'checkout_url' => $order->payment_checkout_url,
             'contains_custom' => $containsCustom,
             'flow_status' => $this->flowStatus($order->status),
@@ -256,7 +259,9 @@ class CustomerOrderController extends Controller
             'id' => $order->id,
             'is_current' => false,
             'item_count' => $itemCount,
-            'items' => [],
+            'items' => $order->relationLoaded('items')
+                ? $order->items->map(fn (OrderItem $item): array => $this->serializeOrderItem($item, $order))->values()->all()
+                : [],
             'payment' => [
                 'checkout_url' => $order->payment_checkout_url,
                 'gateway_status' => data_get($order->payment_metadata, 'payment_intent_status')
@@ -283,7 +288,7 @@ class CustomerOrderController extends Controller
         ];
     }
 
-    private function serializeOrderItem(OrderItem $item): array
+    private function serializeOrderItem(OrderItem $item, ?Order $order = null): array
     {
         $unitPrice = (float) $item->price;
         $detailParts = array_filter([
@@ -291,6 +296,11 @@ class CustomerOrderController extends Controller
             $item->flavor ? 'Flavor ' . $item->flavor : null,
             $item->item_type === 'custom' && filled($item->design_description) ? 'Custom brief included' : null,
         ]);
+
+        $isReviewed = false;
+        if ($order && $item->product_id) {
+            $isReviewed = $order->reviews->where('product_id', $item->product_id)->isNotEmpty();
+        }
 
         return [
             'description' => $item->description,
@@ -309,6 +319,7 @@ class CustomerOrderController extends Controller
             'summary' => implode(' | ', $detailParts),
             'unit_price' => $unitPrice,
             'unit_price_label' => 'PHP ' . number_format($unitPrice, 2),
+            'is_reviewed' => $isReviewed,
         ];
     }
 

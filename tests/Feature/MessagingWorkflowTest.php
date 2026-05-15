@@ -15,6 +15,12 @@ class MessagingWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+    }
+
     public function test_customer_message_creates_conversation_and_admin_can_fetch_summary(): void
     {
         config(['broadcasting.default' => 'reverb']);

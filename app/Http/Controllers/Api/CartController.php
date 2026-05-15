@@ -488,6 +488,8 @@ class CartController extends Controller
             'flavor' => $item->flavor,
             'image' => $this->cartItemImageUrl($item),
             'tag' => $item->item_type === 'custom' ? 'Custom Order' : ($item->product?->is_active ? 'Available' : 'Unavailable'),
+            'average_rating' => $item->product?->average_rating,
+            'review_count' => $item->product?->review_count,
             'minimumQuantity' => (int) ($selectedOption['minimum_quantity'] ?? 1),
             'designDescription' => $item->design_description,
             'dedicationMessage' => $item->dedication_message,

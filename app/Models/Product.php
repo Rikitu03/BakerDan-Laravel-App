@@ -59,4 +59,25 @@ class Product extends Model
     {
         $this->attributes['is_active'] = (bool) $value;
     }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class, 'product_id', 'id');
+    }
+
+    public function getAverageRatingAttribute()
+    {
+        if (array_key_exists('reviews_avg_rating', $this->attributes)) {
+            return round((float) $this->attributes['reviews_avg_rating'], 1);
+        }
+        return round($this->reviews()->avg('rating') ?: 0, 1);
+    }
+
+    public function getReviewCountAttribute()
+    {
+        if (array_key_exists('reviews_count', $this->attributes)) {
+            return (int) $this->attributes['reviews_count'];
+        }
+        return $this->reviews()->count();
+    }
 }

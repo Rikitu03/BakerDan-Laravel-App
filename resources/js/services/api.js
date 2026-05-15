@@ -36,7 +36,7 @@ export default {
   getProducts(params = {}, config = {}) {
     return api.get('/products', { ...config, params })
   },
-  
+
   getProduct(id) {
     return api.get(`/products/${id}`)
   },
@@ -160,5 +160,18 @@ export default {
   // Categories
   getCategories() {
     return api.get('/categories')
+  },
+
+  // Reviews
+  getProductReviews(productId) {
+    return api.get(`/products/${productId}/reviews`)
+  },
+
+  submitReview(data) {
+    return api.post('/reviews', data)
+  },
+
+  getCustomerReviews() {
+    return api.get('/reviews/customer')
   },
 }
