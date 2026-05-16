@@ -93,17 +93,38 @@
 
               <div class="flex flex-col items-end gap-2">
                 <p class="whitespace-nowrap text-sm font-bold text-[#4B4743]">{{ item.line_total_label }}</p>
-                <button
-                  v-if="item.source !== 'custom' && item.product_id"
-                  type="button"
-                  @click="addToCart(item.product_id)"
-                  class="flex items-center gap-1.5 rounded-full border border-[#C9876C] px-3 py-1.5 text-xs font-semibold text-[#C9876C] transition-all hover:bg-[#C9876C] hover:text-white"
-                >
-                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  Add to Cart
-                </button>
+                <div class="flex flex-col gap-2 items-end">
+                  <button
+                    v-if="item.source !== 'custom' && item.product_id"
+                    type="button"
+                    @click="addToCart(item.product_id)"
+                    class="flex items-center gap-1.5 rounded-full border border-[#C9876C] px-3 py-1.5 text-xs font-semibold text-[#C9876C] transition-all hover:bg-[#C9876C] hover:text-white"
+                  >
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Add to Cart
+                  </button>
+
+                  <button
+                    v-if="order.can_review && item.product_id && !item.is_reviewed"
+                    type="button"
+                    @click="openReviewModal(order, item)"
+                    class="flex items-center gap-1.5 rounded-full bg-[#F6F1ED] px-3 py-1.5 text-xs font-semibold text-[#8B6D57] transition-all hover:bg-[#EDE3DB]"
+                  >
+                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.382-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                    Review
+                  </button>
+
+                  <span v-else-if="item.is_reviewed" class="flex items-center gap-1 text-[11px] font-bold text-[#4E8A45]">
+                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Reviewed
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -127,12 +148,62 @@
       </div>
     </div>
   </div>
+
+  <ReviewModal
+    :show="showReviewModal"
+    :order-id="activeReviewOrder?.id"
+    :item="activeReviewItem"
+    @close="showReviewModal = false"
+    @submitted="handleReviewSubmitted"
+  />
+
+  <!-- Success Modal Overlay -->
+  <div v-if="showSuccessModal" class="fixed inset-0 z-[110] overflow-y-auto">
+    <div class="flex min-h-screen items-center justify-center p-4 text-center sm:p-0">
+      <div
+        class="fixed inset-0 bg-[#443A34]/40 backdrop-blur-sm transition-opacity"
+        @click="showSuccessModal = false"
+      ></div>
+
+      <div class="relative transform overflow-hidden rounded-[32px] bg-white p-8 text-center shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md">
+        <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#F0FDF4] mb-6">
+          <svg class="h-10 w-10 text-[#22C55E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+
+        <h3 class="text-2xl font-black text-[#443A34] mb-2" style="font-family: 'Urbanist', sans-serif;">
+          Review Submitted!
+        </h3>
+
+        <p class="text-[#7C746E] leading-relaxed">
+          Thank you for your review {{ user.name }}. We hope you have a nice day!
+        </p>
+
+        <button
+          type="button"
+          @click="showSuccessModal = false"
+          class="mt-8 w-full rounded-full bg-[#C9876C] py-3.5 px-6 text-sm font-bold text-white shadow-lg shadow-[#C9876C]/20 transition-all hover:bg-[#B8765B]"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
 import { onMounted, ref } from 'vue';
 import { useSpaRouter } from '../../router';
 import api from '../../services/api';
+import ReviewModal from '../shared/ReviewModal.vue';
+
+const props = defineProps({
+  user: {
+    type: Object,
+    default: () => ({ name: 'Customer' })
+  }
+});
 
 const { push } = useSpaRouter();
 
@@ -141,6 +212,38 @@ const loadError = ref('');
 const purchases = ref([]);
 const totalSpent = ref(0);
 const totalOrders = ref(0);
+
+const showReviewModal = ref(false);
+const showSuccessModal = ref(false);
+const activeReviewOrder = ref(null);
+const activeReviewItem = ref(null);
+
+const openReviewModal = (order, item) => {
+  activeReviewOrder.value = order;
+  activeReviewItem.value = item;
+  showReviewModal.value = true;
+};
+
+const handleReviewSubmitted = ({ orderId, productId }) => {
+  // Update the local state to mark as reviewed
+  purchases.value = purchases.value.map(order => {
+    if (order.id === orderId) {
+      return {
+        ...order,
+        items: order.items.map(item => {
+          if (item.product_id === productId) {
+            return { ...item, is_reviewed: true };
+          }
+          return item;
+        })
+      };
+    }
+    return order;
+  });
+
+  // Show success modal
+  showSuccessModal.value = true;
+};
 
 const formatNumber = (num) => {
   return Number(num || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

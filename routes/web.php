@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\GeminiChatController;
 use App\Http\Controllers\Api\MessageController;
+use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\PayMongoWebhookController;
 
 /*
@@ -36,7 +37,7 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 Route::prefix('register')->group(function () {
     Route::get('/step-1', [RegisterController::class, 'showStep1'])->name('register.step1');
     Route::post('/step-1', [RegisterController::class, 'handleStep1']);
-    
+
     Route::get('/step-2', [RegisterController::class, 'showStep2'])->name('register.step2');
     Route::post('/step-2', [RegisterController::class, 'handleStep2']);
     Route::post('/resend-otp', [RegisterController::class, 'resendOtp'])->name('register.resend-otp');
@@ -48,10 +49,10 @@ Route::prefix('register')->group(function () {
 Route::prefix('forgot-password')->group(function () {
     Route::get('/step-1', [ForgotPasswordController::class, 'showStep1'])->name('password.request');
     Route::post('/step-1', [ForgotPasswordController::class, 'handleStep1']);
-    
+
     Route::get('/step-2', [ForgotPasswordController::class, 'showStep2'])->name('password.otp');
     Route::post('/step-2', [ForgotPasswordController::class, 'handleStep2']);
-    
+
     Route::get('/step-3', [ForgotPasswordController::class, 'showStep3'])->name('password.reset');
     Route::post('/step-3', [ForgotPasswordController::class, 'handleStep3']);
 });
@@ -95,9 +96,12 @@ Route::prefix('api')->group(function () {
     // Products - public for browsing
     Route::get('/products', [ProductController::class, 'index']);
     Route::get('/products/{id}', [ProductController::class, 'show']);
-    
+
     // Categories - public for browsing
     Route::get('/categories', [ProductController::class, 'categories']);
+
+    // Reviews - public for viewing
+    Route::get('/products/{id}/reviews', [ReviewController::class, 'index']);
 });
 
 // Protected API routes - requires authentication
@@ -116,10 +120,10 @@ Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
     Route::get('/orders/{order}/payment-status', [OrderPaymentController::class, 'show']);
     Route::patch('/pending-orders/{pendingOrderId}/cancel', [CustomerOrderController::class, 'cancelPending']);
     Route::get('/pending-orders/{pendingOrderId}/payment-status', [OrderPaymentController::class, 'showPending']);
-    
+
     // Custom Orders
     Route::post('/custom-orders', [CustomOrderController::class, 'store']);
-    
+
     // Profile
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);
@@ -127,6 +131,10 @@ Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/{notificationId}/read', [NotificationController::class, 'markRead']);
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+
+    // Reviews - authenticated
+    Route::post('/reviews', [ReviewController::class, 'store']);
+    Route::get('/reviews/customer', [ReviewController::class, 'customerReviews']);
 });
 
 /*

@@ -6,7 +6,7 @@ use App\Mail\OtpMail;
 use App\Models\Otp;
 use App\Models\User;
 use App\Models\UserDetail;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -21,7 +21,7 @@ class CustomerRegistrationWorkflowTest extends TestCase
     {
         parent::setUp();
 
-        $this->withoutMiddleware(VerifyCsrfToken::class);
+        $this->withoutMiddleware(ValidateCsrfToken::class);
     }
 
     public function test_registration_rejects_an_email_that_already_has_an_account(): void

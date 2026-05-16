@@ -40,13 +40,16 @@
     </div>
 
     <div class="px-2 pb-2 pt-4">
-      <div class="mb-3 flex flex-wrap items-center gap-2">
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
         <span class="rounded-full bg-[#FAEEE4] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#B66B40]">
           {{ product.tag || 'Best Seller' }}
         </span>
-        <span class="text-xs font-semibold text-[#D07D52]">
-          {{ product.rating || '4.9/5' }}
-        </span>
+        <StarRating
+          v-if="product.average_rating !== undefined"
+          size="sm"
+          :rating="product.average_rating"
+          :show-text="false"
+        />
       </div>
 
       <h3 class="mb-2 line-clamp-2 min-h-[3.2rem] text-[1.02rem] font-semibold leading-6 text-gray-800">
@@ -123,6 +126,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import StarRating from './StarRating.vue';
 
 const props = defineProps({
   product: {

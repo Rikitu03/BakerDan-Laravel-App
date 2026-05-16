@@ -44,6 +44,12 @@
           />
         </div>
 
+        <StarRating
+          v-if="featuredProduct.review_count !== undefined || featuredProduct.reviewCount !== undefined"
+          class="mb-3"
+          :rating="featuredProduct.average_rating ?? featuredProduct.averageRating ?? 0"
+          :review-count="featuredProduct.review_count ?? featuredProduct.reviewCount ?? 0"
+        />
         <div class="flex flex-wrap items-center gap-2">
           <span class="rounded-full bg-[#FAEEE4] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#B66B40]">
             {{ featuredProduct.tag || 'Bakerdan Pick' }}
@@ -347,6 +353,7 @@ import { useSpaRouter } from '../../router';
 import api from '../../services/api';
 import { useCartStore } from '../../services/cartStore';
 import CartItem from '../shared/CartItem.vue';
+import StarRating from '../shared/StarRating.vue';
 
 const PREVIEW_PRODUCT_CACHE_TTL_MS = 60 * 1000;
 
@@ -437,6 +444,8 @@ const mapPreviewProduct = (p = {}) => ({
   sizesAvailable: p.sizes_available || p.sizesAvailable || '',
   flavorsAvailable: p.flavors_available || p.flavorsAvailable || '',
   options: normalizeOptions(p.options),
+  averageRating: Number(p.average_rating || 0),
+  reviewCount: Number(p.review_count || 0),
   minimumQuantity: Number(p.minimum_quantity || p.minimumQuantity || 1),
 });
 

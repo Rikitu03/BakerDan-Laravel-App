@@ -21,6 +21,8 @@ class ProductController extends Controller
     {
         $perPage = max(1, min(10, (int) $request->input('per_page', 10)));
         $query = Product::query()
+            ->withCount('reviews')
+            ->withAvg('reviews', 'rating')
             ->select([
                 'id',
                 'product_id',
@@ -82,7 +84,12 @@ class ProductController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $product = Product::query()->whereKey($id)->where('is_active', true)->firstOrFail();
+        $product = Product::query()
+            ->withCount('reviews')
+            ->withAvg('reviews', 'rating')
+            ->whereKey($id)
+            ->where('is_active', true)
+            ->firstOrFail();
 
         return response()->json([
             'success' => true,
@@ -152,6 +159,8 @@ class ProductController extends Controller
             'image' => $imageUrl,
             'image_url' => $imageUrl,
             'image_source' => $product->image_source,
+            'average_rating' => $product->average_rating,
+            'review_count' => $product->review_count,
             'in_stock' => true,
             'is_active' => (bool) $product->is_active,
             'is_custom_only' => false,

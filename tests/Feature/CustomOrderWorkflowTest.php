@@ -7,7 +7,7 @@ use App\Models\Product;
 use App\Models\User;
 use App\Services\PayMongoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Cache;
 use Mockery\MockInterface;
 use Tests\TestCase;
@@ -20,7 +20,7 @@ class CustomOrderWorkflowTest extends TestCase
     {
         parent::setUp();
 
-        $this->withoutMiddleware(VerifyCsrfToken::class);
+        $this->withoutMiddleware(ValidateCsrfToken::class);
         Cache::store('file')->flush();
     }
 
