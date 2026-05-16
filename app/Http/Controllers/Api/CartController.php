@@ -10,8 +10,11 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Services\CustomOrderImageService;
+use App\Services\PendingOrderService;
 use App\Services\PayMongoService;
+use App\Services\ProductOptionService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +24,15 @@ use Throwable;
 
 class CartController extends Controller
 {
+    private const SHIPPING_FEE = 150.00;
+    private const PICKUP_SHOP_NAME = 'Bakerdan Shop';
+    private const PICKUP_SHOP_ADDRESS = 'Bakerdan Shop, 28 Market Avenue, San Nicolas, Pasig City, Metro Manila';
+    private const PICKUP_SHOP_PIN_LINK = 'https://maps.app.goo.gl/bakerdan-pickup-placeholder';
+
+    public function __construct(private ProductOptionService $productOptions)
+    {
+    }
+
     public function index(): JsonResponse
     {
         return response()->json([
@@ -33,6 +45,8 @@ class CartController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'quantity' => 'required|integer|min:1|max:99',
+            'option_id' => 'nullable|string|max:120',
+            'include_cart' => 'nullable|boolean',
             'size' => 'nullable|string|max:100',
             'flavor' => 'nullable|string|max:100',
         ]);
@@ -58,10 +72,28 @@ class CartController extends Controller
 
         $cart = $this->userCart(true);
         $validated = $validator->validated();
-        $size = $validated['size'] ?? null;
-        $flavor = $validated['flavor'] ?? null;
+        $option = $this->productOptions->optionFor($product, $validated['option_id'] ?? null);
 
-        $cartItem = DB::transaction(function () use ($cart, $product, $validated, $size, $flavor): CartItem {
+        if (filled($validated['option_id'] ?? null) && !$option) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please choose a valid option for this product.',
+            ], 422);
+        }
+
+        $minimumQuantity = (int) ($option['minimum_quantity'] ?? 1);
+        if ((int) $validated['quantity'] < $minimumQuantity) {
+            return response()->json([
+                'success' => false,
+                'message' => "This option requires a minimum quantity of {$minimumQuantity}.",
+            ], 422);
+        }
+
+        $size = $option['size'] ?? ($validated['size'] ?? null);
+        $flavor = $option['flavor'] ?? ($validated['flavor'] ?? null);
+        $unitPrice = (float) ($option['price'] ?? $product->price);
+
+        $cartItem = DB::transaction(function () use ($cart, $product, $validated, $size, $flavor, $unitPrice): CartItem {
             $existingItem = $cart->items()
                 ->where('item_type', 'catalog')
                 ->where('product_id', $product->id)
@@ -78,7 +110,7 @@ class CartController extends Controller
                 'product_id' => $product->id,
                 'item_type' => 'catalog',
                 'quantity' => (int) $validated['quantity'],
-                'unit_price' => (float) $product->price,
+                'unit_price' => $unitPrice,
                 'product_name' => $product->product_name,
                 'description' => $product->description,
                 'image_url' => $product->image_url,
@@ -87,14 +119,47 @@ class CartController extends Controller
             ])->load('product');
         });
 
+        $includeCart = $request->boolean('include_cart', true);
+        $data = [
+            'item' => $this->serializeCartItem($cartItem),
+        ];
+
+        if ($includeCart) {
+            $data['cart'] = $this->cartSummary($cart->fresh());
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Item added to cart successfully.',
-            'data' => [
-                'item' => $this->serializeCartItem($cartItem),
-                'cart' => $this->cartSummary($cart->fresh()),
-            ],
+            'data' => $data,
         ]);
+    }
+
+    public function addAndRedirect(Request $request, int $productId): RedirectResponse
+    {
+        $returnTo = $this->safeCustomerReturnPath((string) $request->input('return_to', '/customer/cart'));
+        $request->merge(['include_cart' => false]);
+
+        try {
+            $response = $this->add($request, $productId);
+            $payload = $response->getData(true);
+
+            if (! $response->isSuccessful()) {
+                return redirect($returnTo)->with('cart_error', $this->cartErrorMessage($payload));
+            }
+
+            $itemId = data_get($payload, 'data.item.id');
+
+            if (! $itemId) {
+                return redirect($returnTo)->with('cart_error', 'The item was added, but the cart could not identify it.');
+            }
+
+            return redirect('/customer/cart?added=' . urlencode((string) $itemId));
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return redirect($returnTo)->with('cart_error', 'Unable to add this item to the cart right now.');
+        }
     }
 
     public function addCustom(Request $request, CustomOrderImageService $customOrderImageService): JsonResponse
@@ -222,14 +287,24 @@ class CartController extends Controller
         ]);
     }
 
-    public function checkout(Request $request, PayMongoService $payMongo): JsonResponse
+    public function checkout(Request $request, PayMongoService $payMongo, PendingOrderService $pendingOrders): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'item_ids' => 'required|array|min:1',
             'item_ids.*' => 'integer',
             'payment_method' => 'required|string|in:gcash,maya',
+            'fulfillment_method' => 'nullable|string|in:delivery,pickup',
             'shipping_address' => 'nullable|string|max:1000',
+            'shipping_pin_link' => 'nullable|string|max:1000',
         ]);
+
+        $validator->after(function ($validator) use ($request): void {
+            $fulfillmentMethod = $request->input('fulfillment_method', 'delivery');
+
+            if ($fulfillmentMethod === 'delivery' && blank($request->input('shipping_address'))) {
+                $validator->errors()->add('shipping_address', 'A delivery address is required for delivery orders.');
+            }
+        });
 
         if ($validator->fails()) {
             return response()->json([
@@ -239,6 +314,7 @@ class CartController extends Controller
         }
 
         $validated = $validator->validated();
+        $fulfillmentMethod = $validated['fulfillment_method'] ?? 'delivery';
         $cart = $this->userCart();
 
         if (!$cart) {
@@ -261,25 +337,26 @@ class CartController extends Controller
             ], 422);
         }
 
-        $order = DB::transaction(function () use ($validated, $items): Order {
-            $subtotal = $items->sum(fn (CartItem $item) => $this->cartItemUnitPrice($item) * $item->quantity);
-
-            $order = Order::query()->create([
-                'user_id' => Auth::id(),
-                'total_amount' => $subtotal,
-                'status' => 'pending',
-                'payment_status' => 'pending',
-                'payment_method' => $validated['payment_method'],
-                'payment_provider' => 'paymongo',
-                'shipping_address' => $validated['shipping_address'] ?? null,
-            ]);
-
-            foreach ($items as $item) {
-                $order->items()->create([
+        $itemsSubtotal = $items->sum(fn (CartItem $item) => $this->cartItemUnitPrice($item) * $item->quantity);
+        $shippingFee = $this->shippingFeeFor($fulfillmentMethod, $items->isNotEmpty());
+        $expiresAt = now()->addHours(2);
+        $pendingOrder = $pendingOrders->create([
+            'user_id' => (int) Auth::id(),
+            'total_amount' => $itemsSubtotal + $shippingFee,
+            'payment_method' => $validated['payment_method'],
+            'payment_provider' => 'paymongo',
+            'shipping_address' => $this->formatShippingAddress(
+                $fulfillmentMethod,
+                $validated['shipping_address'] ?? null,
+                $validated['shipping_pin_link'] ?? null,
+            ),
+            'expires_at' => $expiresAt,
+            'items' => $items->map(function (CartItem $item): array {
+                return [
                     'product_id' => $item->product_id,
                     'item_type' => $item->item_type,
                     'quantity' => $item->quantity,
-                    'price' => $this->cartItemUnitPrice($item),
+                    'unit_price' => $this->cartItemUnitPrice($item),
                     'product_name' => $this->cartItemName($item),
                     'description' => $this->cartItemDescription($item),
                     'image_url' => $item->item_type === 'custom' ? $item->image_url : $item->product?->image_url,
@@ -287,17 +364,15 @@ class CartController extends Controller
                     'dedication_message' => $item->dedication_message,
                     'size' => $item->size,
                     'flavor' => $item->flavor,
-                ]);
-            }
-
-            return $order->load(['items', 'user.detail']);
-        });
+                ];
+            })->values()->all(),
+        ]);
 
         try {
-            $checkoutSession = $payMongo->createCheckoutSession($order);
+            $checkoutSession = $payMongo->createCheckoutSessionFromPendingOrder($pendingOrder);
         } catch (Throwable $exception) {
             report($exception);
-            $order->delete();
+            $pendingOrders->forget((string) $pendingOrder['id']);
 
             return response()->json([
                 'success' => false,
@@ -305,32 +380,45 @@ class CartController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($checkoutSession, $items, $order): void {
-            $order->update([
-                'payment_reference' => data_get($checkoutSession, 'attributes.reference_number'),
-                'payment_session_id' => $checkoutSession['id'] ?? null,
-                'payment_checkout_url' => data_get($checkoutSession, 'attributes.checkout_url'),
-                'payment_metadata' => array_filter([
-                    'checkout_session_status' => data_get($checkoutSession, 'attributes.status'),
-                    'payment_intent_id' => data_get($checkoutSession, 'attributes.payment_intent.id'),
-                    'payment_intent_status' => data_get($checkoutSession, 'attributes.payment_intent.attributes.status'),
-                ], fn ($value) => $value !== null && $value !== ''),
-            ]);
-
+        DB::transaction(function () use ($checkoutSession, $items): void {
             $items->each->delete();
         });
 
-        $order = $order->fresh('items');
-        $this->notifyCustomerOrderSentToAdmin($order);
+        $pendingOrder = $pendingOrders->syncCheckoutSession($pendingOrder, $checkoutSession);
 
         return response()->json([
             'success' => true,
             'message' => 'Checkout session created successfully.',
             'data' => [
-                'order' => $this->serializeOrder($order),
+                'order' => $pendingOrders->serializeForCustomer($pendingOrder),
                 'cart' => $this->cartSummary($cart->fresh()),
             ],
         ]);
+    }
+
+    private function safeCustomerReturnPath(string $path): string
+    {
+        if (str_starts_with($path, '/customer/')) {
+            return $path;
+        }
+
+        return '/customer/cart';
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function cartErrorMessage(array $payload): string
+    {
+        if (filled($payload['message'] ?? null)) {
+            return (string) $payload['message'];
+        }
+
+        $firstValidationError = collect($payload['errors'] ?? [])
+            ->flatten()
+            ->first();
+
+        return $firstValidationError ?: 'Unable to add this item to the cart right now.';
     }
 
     private function userCart(bool $create = false): ?Cart
@@ -362,6 +450,7 @@ class CartController extends Controller
                 'tax' => 0,
                 'total' => 0,
                 'item_count' => 0,
+                'quantity_count' => 0,
             ];
         }
 
@@ -374,18 +463,21 @@ class CartController extends Controller
             'subtotal' => round($subtotal, 2),
             'tax' => 0,
             'total' => round($subtotal, 2),
-            'item_count' => $serializedItems->sum('quantity'),
+            'item_count' => $serializedItems->count(),
+            'quantity_count' => $serializedItems->sum('quantity'),
         ];
     }
 
     private function serializeCartItem(CartItem $item): array
     {
         $unitPrice = $this->cartItemUnitPrice($item);
+        $selectedOption = $this->selectedCartItemOption($item);
 
         return [
             'basePrice' => $unitPrice,
             'id' => $item->id,
             'product_id' => $item->product_id,
+            'optionId' => $selectedOption['id'] ?? null,
             'productName' => $this->cartItemName($item),
             'source' => $item->item_type === 'custom' ? 'custom' : 'catalog',
             'name' => $this->cartItemName($item),
@@ -396,6 +488,7 @@ class CartController extends Controller
             'flavor' => $item->flavor,
             'image' => $this->cartItemImageUrl($item),
             'tag' => $item->item_type === 'custom' ? 'Custom Order' : ($item->product?->is_active ? 'Available' : 'Unavailable'),
+            'minimumQuantity' => (int) ($selectedOption['minimum_quantity'] ?? 1),
             'designDescription' => $item->design_description,
             'dedicationMessage' => $item->dedication_message,
             'line_total' => round($unitPrice * $item->quantity, 2),
@@ -459,6 +552,44 @@ class CartController extends Controller
         return $productLabel . ' | ' . implode(' | ', $parts);
     }
 
+    private function shippingFeeFor(string $fulfillmentMethod, bool $hasItems): float
+    {
+        if (! $hasItems) {
+            return 0;
+        }
+
+        return $fulfillmentMethod === 'pickup' ? 0 : self::SHIPPING_FEE;
+    }
+
+    private function formatShippingAddress(string $fulfillmentMethod, ?string $address, ?string $pinLink): ?string
+    {
+        if ($fulfillmentMethod === 'pickup') {
+            return sprintf(
+                'Pickup at %s | %s | Pin link: %s',
+                self::PICKUP_SHOP_NAME,
+                self::PICKUP_SHOP_ADDRESS,
+                self::PICKUP_SHOP_PIN_LINK,
+            );
+        }
+
+        $address = filled($address) ? trim((string) $address) : null;
+        $pinLink = filled($pinLink) ? trim((string) $pinLink) : null;
+
+        if ($address && $pinLink) {
+            return $address . ' | Pin link: ' . $pinLink;
+        }
+
+        if ($address) {
+            return $address;
+        }
+
+        if ($pinLink) {
+            return 'Pin link: ' . $pinLink;
+        }
+
+        return null;
+    }
+
     private function resolveImageUrl(?string $imagePath): ?string
     {
         if (!$imagePath) {
@@ -479,6 +610,24 @@ class CartController extends Controller
         }
 
         return asset('storage/' . $publicRelativePath);
+    }
+
+    private function selectedCartItemOption(CartItem $item): ?array
+    {
+        if (! $item->product) {
+            return null;
+        }
+
+        foreach ($this->productOptions->optionsFor($item->product) as $option) {
+            $sizeMatches = blank($item->size) || ($option['size'] ?? null) === $item->size;
+            $flavorMatches = blank($item->flavor) || ($option['flavor'] ?? null) === $item->flavor;
+
+            if ($sizeMatches && $flavorMatches) {
+                return $option;
+            }
+        }
+
+        return null;
     }
 
     private function cartItemImageUrl(CartItem $item): string

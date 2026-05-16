@@ -20,6 +20,7 @@ class Order extends Model
         'payment_session_id',
         'payment_checkout_url',
         'payment_paid_at',
+        'payment_expires_at',
         'payment_metadata',
         'shipping_address',
     ];
@@ -27,8 +28,16 @@ class Order extends Model
     protected $casts = [
         'total_amount' => 'decimal:2',
         'payment_paid_at' => 'datetime',
+        'payment_expires_at' => 'datetime',
         'payment_metadata' => 'array',
     ];
+
+    public function isPaymentExpired(): bool
+    {
+        return $this->payment_expires_at
+            && $this->payment_status !== 'paid'
+            && now()->greaterThan($this->payment_expires_at);
+    }
 
     public function user()
     {

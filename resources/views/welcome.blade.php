@@ -184,7 +184,7 @@
             'name' => 'Korean Garlic Cream Cheese Bun',
             'description' => 'Soft enriched dough with a rich cream cheese filling and glossy golden top.',
             'price' => 395.00,
-            'imagePath' => 'images/bakerdan/Creme_Cheese_Garlic.png',
+            'imagePath' => 'images/bakerdan/bread/Creme_Cheese_Garlic.png',
         ];
 
         $bestSellers = [
@@ -192,19 +192,19 @@
                 'title' => 'Wallnut Brownies ',
                 'description' => 'Our signature walnut brownies, rich and fudgy with a deep chocolate flavor, packed with crunchy walnuts and a perfectly moist, chewy texture.',
                 'price' => 320.00,
-                'imagePath' => 'images/bakerdan/Brownies.png',
+                'imagePath' => 'images/bakerdan/pastries/Brownies.png',
             ],
             [
                 'title' => 'Creme Puffs',
                 'description' => 'A light and airy choux pastry filled with smooth, luscious cream and finished with a delicate golden crust.',
                 'price' => 310.00,
-                'imagePath' => 'images/bakerdan/Creme_Puffs.png',
+                'imagePath' => 'images/bakerdan/pastries/Creme_Puffs.png',
             ],
             [
                 'title' => 'Korean Garlic Cream Cheese Bun',
                 'description' => 'Soft enriched dough with a rich cream cheese filling and glossy golden top.',
                 'price' => 395.00,
-                'imagePath' => 'images/bakerdan/Creme_Cheese_Garlic.png',
+                'imagePath' => 'images/bakerdan/bread/Creme_Cheese_Garlic.png',
             ],
         ];
 
@@ -217,10 +217,10 @@
         ];
 
         $galleryShots = [
-            ['path' => 'images/bakerdan/Creme_Puffs.png', 'title' => 'Cream puffs'],
-            ['path' => 'images/bakerdan/Customized_Cookies.png', 'title' => 'Customized cookies'],
+            ['path' => 'images/bakerdan/pastries/Creme_Puffs.png', 'title' => 'Cream puffs'],
+            ['path' => 'images/bakerdan/sugar cookies/Customized_Cookies.png', 'title' => 'Customized cookies'],
             ['path' => 'images/bakerdan/Bread.png', 'title' => 'Fresh bread'],
-            ['path' => 'images/bakerdan/Brownies.png', 'title' => 'Brownies'],
+            ['path' => 'images/bakerdan/pastries/Brownies.png', 'title' => 'Brownies'],
         ];
 
         $testimonials = [
@@ -277,7 +277,7 @@
                     </nav>
                     <div class="flex items-center gap-3">
                         <!-- Cart Icon -->
-                        <a href="/cart" class="grid h-10 w-10 place-items-center rounded-full border transition hover:bg-white/60" style="border-color: var(--line);" aria-label="Cart">
+                        <a href="{{ route('cart') }}" @guest data-requires-auth="true" @endguest class="grid h-10 w-10 place-items-center rounded-full border transition hover:bg-white/60" style="border-color: var(--line);" aria-label="Cart">
                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                 <circle cx="9" cy="20" r="1.25"></circle>
                                 <circle cx="18" cy="20" r="1.25"></circle>
@@ -336,7 +336,7 @@
                     <div class="hero-grid relative">
                         <div class="mesh-card entrance entrance-delay-2 rounded-[2.25rem] p-4 sm:p-5">
                             <div class="image-card min-h-[24rem]">
-                                <img src="{{ asset('images/bakerdan/Creme_Cheese_Garlic.png') }}" alt="Featured bread and pastries">
+                                <img src="{{ asset('images/bakerdan/bread/Creme_Cheese_Garlic.png') }}" alt="Featured bread and pastries">
                                 <div class="absolute left-4 top-4 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white" style="border-color: rgba(255,255,255,0.22); background: rgba(15, 20, 30, 0.38);">
                                     House favorite
                                 </div>

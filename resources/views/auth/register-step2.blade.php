@@ -2,7 +2,7 @@
 
 @section('content')
 <h2 class="font-display text-2xl font-bold mb-6">Verify OTP</h2>
-<p class="mb-6 text-sm" style="color: var(--ink-soft);">We sent a verification code to <strong>{{ session('registration_email') }}</strong>.</p>
+<p class="mb-6 text-sm" style="color: var(--ink-soft);">We sent a 6-digit verification code to <strong>{{ session('registration_email') }}</strong>. It expires in 10 minutes.</p>
 
 <form action="{{ route('register.step2') }}" method="POST">
     @csrf

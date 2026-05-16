@@ -47,11 +47,17 @@
               <button
                 type="button"
                 @click="sendAiPrompt"
+                :disabled="aiLoading"
                 class="flex h-10 w-10 items-center justify-center rounded-full bg-[#4B4643] text-white shadow-md transition hover:bg-[#383431]"
+                :class="aiLoading ? 'cursor-not-allowed opacity-70' : ''"
                 aria-label="Send AI prompt"
               >
-                <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="!aiLoading" class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h10m0 0l-4-4m4 4l-4 4" />
+                </svg>
+                <svg v-else class="h-4.5 w-4.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
                 </svg>
               </button>
             </div>
@@ -61,6 +67,15 @@
             <span class="inline-flex items-center rounded-full bg-[#F6E8DC] px-3 py-1 text-xs font-semibold text-[#B06E43]">
               Attached: {{ attachmentName }}
             </span>
+          </div>
+
+          <div v-if="aiResponse || aiError" class="px-4 pb-3 pt-2 text-left">
+            <p
+              class="rounded-[18px] px-4 py-3 text-sm leading-6"
+              :class="aiError ? 'border border-[#F0DCCC] bg-[#FFF4EB] text-[#8E5632]' : 'border border-[#E1D7CD] bg-white text-[#554C45]'"
+            >
+              {{ aiError || aiResponse }}
+            </p>
           </div>
         </div>
       </div>
@@ -112,109 +127,145 @@
       </div>
     </section>
 
-    <section class="mt-6">
+    <section class="relative mt-6 min-h-[420px]" aria-live="polite" :aria-busy="isCatalogLoading">
       <div
-        v-if="isCakeCategory"
-        class="rounded-[32px] border border-[#E7DED7] bg-white p-6 shadow-[0_18px_40px_-34px_rgba(118,79,49,0.25)] md:p-8"
+        v-if="isCatalogLoading && paginatedProducts.length"
+        class="absolute inset-0 z-10 flex items-start justify-center rounded-[28px] bg-[#FBF8F4]/70 pt-16 backdrop-blur-[2px]"
       >
-        <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div class="max-w-2xl">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#B47A52]">Made To Order</p>
-            <h2 class="mt-2 text-3xl font-black text-[#4C4641]" style="font-family: 'Urbanist', sans-serif;">Cake orders now follow the custom guide</h2>
-            <p class="mt-3 text-sm leading-6 text-[#756A63]">
-              Bakerdan does not offer ready-made cakes in the customer catalog anymore. Every cake request now starts from the ordering guide, then moves into a custom brief with your design peg, flavor, message, and event details.
-            </p>
-          </div>
-          <button
-            type="button"
-            @click="openCakeGuide()"
-            class="rounded-full bg-[#C9876C] px-5 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#B8765B]"
-          >
-            Open cake guide
-          </button>
-        </div>
-
-        <div class="mt-7 grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-4">
-          <article
-            v-for="section in cakeGuideSections"
-            :key="section.id"
-            class="rounded-[26px] border border-[#E9DDD2] bg-[#FCFAF7] p-5 shadow-[0_12px_28px_-26px_rgba(118,79,49,0.35)]"
-          >
-            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#B47A52]">{{ section.eyebrow }}</p>
-            <h3 class="mt-3 text-xl font-bold text-[#4B4743]">{{ section.title }}</h3>
-            <p class="mt-3 text-sm leading-6 text-[#756A63]">{{ section.description }}</p>
-            <p class="mt-4 text-sm font-semibold text-[#8B5A3C]">{{ section.priceNote }}</p>
-            <button
-              type="button"
-              @click="openCakeGuide(section.id)"
-              class="mt-5 rounded-full border border-[#DEC6B1] bg-white px-4 py-2.5 text-sm font-semibold text-[#7A563F] transition-colors hover:bg-[#FFF4EB]"
-            >
-              Start custom order
-            </button>
-          </article>
+        <div class="flex items-center gap-3 rounded-full border border-[#E4D6CB] bg-white px-5 py-3 text-sm font-semibold text-[#7A5C48] shadow-[0_18px_42px_-28px_rgba(118,79,49,0.45)]">
+          <svg class="h-5 w-5 animate-spin text-[#C9876C]" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+          </svg>
+          Loading products
         </div>
       </div>
 
-      <div v-else-if="paginatedProducts.length" class="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
+      <div
+        v-if="paginatedProducts.length"
+        class="grid grid-cols-1 gap-5 transition duration-150 md:grid-cols-2 2xl:grid-cols-3"
+        :class="isCatalogLoading ? 'pointer-events-none opacity-45' : 'opacity-100'"
+      >
         <ProductCard
-          v-for="product in paginatedProducts"
+          v-for="(product, index) in paginatedProducts"
           :key="product.id"
           :product="product"
+          :eager="currentPage === 1 && index < 3"
           @add-to-cart="handleAddToCart"
           @toggle-like="handleToggleLike"
         />
       </div>
 
-      <div v-else class="rounded-[28px] border border-dashed border-[#E1D4C8] bg-[#FCF8F4] px-6 py-12 text-center text-[#756A63]">
-        <h2 class="text-2xl font-bold text-[#4C4641]" style="font-family: 'Urbanist', sans-serif;">No products available</h2>
-        <p class="mt-2 text-sm">The catalog is waiting for products from the database.</p>
+      <div v-else-if="isCatalogLoading" class="flex min-h-[420px] items-center justify-center rounded-[28px] border border-dashed border-[#E1D4C8] bg-[#FCF8F4] px-6 py-12 text-center text-[#756A63]">
+        <div>
+          <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-[0_18px_34px_-24px_rgba(118,79,49,0.55)]">
+            <svg class="h-7 w-7 animate-spin text-[#C9876C]" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+          </div>
+          <p class="mt-4 text-sm font-semibold text-[#695F57]">Loading products</p>
+        </div>
+      </div>
+
+      <div v-else class="mt-6 rounded-[28px] border border-dashed border-[#E1D4C8] bg-[#FCF8F4] px-6 py-12 text-center text-[#756A63]">
+        <h2 class="text-2xl font-bold text-[#4C4641]" style="font-family: 'Urbanist', sans-serif;">{{ emptyStateTitle }}</h2>
+        <p class="mt-2 text-sm">{{ emptyStateMessage }}</p>
+        <button
+          v-if="catalogError"
+          type="button"
+          @click="loadProducts({ force: true })"
+          class="mt-5 rounded-full bg-[#C9876C] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#B8765B]"
+        >
+          Retry
+        </button>
       </div>
     </section>
 
-    <nav v-if="filteredProducts.length" class="mt-10 flex items-center justify-center gap-3" aria-label="Product pagination">
+    <nav v-if="totalPages > 1" class="mt-10 flex items-center justify-center gap-2" aria-label="Product pagination">
       <button
         type="button"
-        class="flex h-10 w-10 items-center justify-center rounded-full border border-[#E1D6CC] bg-white text-[#71675F]"
+        :disabled="currentPage <= 1"
+        class="flex h-10 w-10 items-center justify-center rounded-full border border-[#E1D6CC] bg-white text-[#71675F] transition hover:bg-[#F7F2EC] disabled:cursor-not-allowed disabled:opacity-40"
+        @click="currentPage = Math.max(1, currentPage - 1)"
       >
-        1
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
       </button>
+
+      <template v-for="token in paginationTokens" :key="token.key">
+        <button
+          v-if="token.type === 'page'"
+          type="button"
+          class="flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition"
+          :class="currentPage === token.value
+            ? 'border border-[#B47A52] bg-[#B47A52] text-white shadow-md'
+            : 'border border-[#E1D6CC] bg-white text-[#71675F] hover:bg-[#F7F2EC]'"
+          @click="currentPage = token.value"
+        >
+          {{ token.value }}
+        </button>
+
+        <span
+          v-else
+          class="flex h-10 w-10 items-center justify-center text-sm font-semibold text-[#8A8078]"
+          aria-hidden="true"
+        >
+          ...
+        </span>
+      </template>
+
       <button
-        v-for="page in totalPages - 1"
-        :key="page + 1"
         type="button"
-        class="text-sm font-semibold text-[#B7A59A]"
+        :disabled="currentPage >= totalPages"
+        class="flex h-10 w-10 items-center justify-center rounded-full border border-[#E1D6CC] bg-white text-[#71675F] transition hover:bg-[#F7F2EC] disabled:cursor-not-allowed disabled:opacity-40"
+        @click="currentPage = Math.min(totalPages, currentPage + 1)"
       >
-        {{ page + 1 }}
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
       </button>
     </nav>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
-import { useSpaRouter } from '../../router';
-import { cakeGuideSections } from '../../data/cakeGuides';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import api from '../../services/api';
-import { useCartStore } from '../../services/cartStore';
+import { preloadImages } from '../../services/imageCache';
 import ProductCard from '../shared/ProductCard.vue';
+
+const PRODUCT_CACHE_TTL = 45 * 1000;
+const PRODUCT_PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_DELAY = 250;
+
+const cachedCatalogPages = new Map();
+let productLoadSequence = 0;
+let productAbortController = null;
 
 const props = defineProps({
   activeCategory: {
     type: String,
-    default: 'Bread',
+    default: 'All',
   },
 });
 
-const { push } = useSpaRouter();
-const { addCatalogItem } = useCartStore();
-
 const attachmentInput = ref(null);
 const attachmentName = ref('');
+const aiError = ref('');
+const aiHistory = ref([]);
+const aiLoading = ref(false);
 const aiPrompt = ref('');
+const aiResponse = ref('');
+const catalogError = ref('');
 const searchQuery = ref('');
+const debouncedSearchQuery = ref('');
 const sortBy = ref('popularity');
 const currentPage = ref(1);
-const perPage = 6;
+const isCatalogLoading = ref(true);
+const perPage = PRODUCT_PAGE_SIZE;
+let searchDebounceHandle = null;
 
 const sortModes = [
   { id: 'popularity', label: 'Popularity' },
@@ -223,37 +274,377 @@ const sortModes = [
 ];
 
 const products = ref([]);
-const isCakeCategory = computed(() => props.activeCategory === 'Cakes');
+const catalogPagination = ref({
+  total: 0,
+  per_page: PRODUCT_PAGE_SIZE,
+  current_page: 1,
+  last_page: 1,
+  from: null,
+  to: null,
+});
+const NEUTRAL_FALLBACK_IMAGE = '/images/logo/BAKERDAN%20LOGO.jpg';
 
-watch(
-  () => props.activeCategory,
-  () => {
-    currentPage.value = 1;
-  },
+const categoryFallbackImage = (category) => {
+  return NEUTRAL_FALLBACK_IMAGE;
+};
+
+const versionedImage = (image, cacheKey = '') => {
+  if (!image || !cacheKey || image.startsWith('data:') || image.startsWith('blob:')) {
+    return image;
+  }
+
+  if (image.startsWith('http://') || image.startsWith('https://')) {
+    return image;
+  }
+
+  return `${image}${image.includes('?') ? '&' : '?'}v=${encodeURIComponent(cacheKey)}`;
+};
+
+const normalizeImage = (image, category, cacheKey = '') => versionedImage(image || categoryFallbackImage(category), cacheKey);
+
+const normalizeOptions = (options = [], category = 'Bread', productImage = '', cacheKey = '') => {
+  if (!Array.isArray(options)) {
+    return [];
+  }
+
+  return options.map((option) => ({
+    ...option,
+    price: Number(option.price || 0),
+    minimum_quantity: Number(option.minimum_quantity || 1),
+    image_url: option.image_url
+      ? normalizeImage(option.image_url, category, cacheKey)
+      : (productImage || normalizeImage(categoryFallbackImage(category), category, cacheKey)),
+  }));
+};
+
+const mapProduct = (product) => {
+  const category = product.category ?? 'Bread';
+  const cacheKey = product.image_cache_key || product.updated_at || product.id || '';
+  const image = normalizeImage(product.image_url || product.image || product.category_fallback_image, category, cacheKey);
+  const options = normalizeOptions(product.options, category, image, cacheKey);
+
+  return {
+    id: product.id ?? product.product_id,
+    category,
+    name: product.name ?? product.product_name ?? 'Untitled Product',
+    description: product.description ?? '',
+    price: Number(product.price ?? 0),
+    priceLabel: product.price_label ?? '',
+    image,
+    fallbackImage: normalizeImage(product.category_fallback_image, category, cacheKey),
+    liked: false,
+    tag: product.order_mode === 'custom' ? 'Custom Order' : (product.is_active ? 'Available' : 'Inactive'),
+    rating: '5.0/5',
+    orderMode: product.order_mode || 'catalog',
+    orderingGuide: product.ordering_guide || null,
+    flavorsAvailable: product.flavors_available || '',
+    sizesAvailable: product.sizes_available || '',
+    options,
+    minimumQuantity: Number(product.minimum_quantity || 1),
+    sourceProductIds: [product.id ?? product.product_id],
+    searchableText: [
+      product.name ?? product.product_name ?? '',
+      product.description ?? '',
+      category,
+      product.order_mode === 'custom' ? 'Custom Order' : (product.is_active ? 'Available' : 'Inactive'),
+      product.flavors_available || '',
+      product.sizes_available || '',
+      options.map((option) => `${option.label} ${option.flavor || ''} ${option.size || ''} ${option.price_label || ''}`).join(' '),
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase(),
+  };
+};
+
+const groupProducts = (items) => {
+  const grouped = new Map();
+  const standalone = [];
+
+  for (const product of items) {
+    const dashIndex = product.name.indexOf(' - ');
+    if (dashIndex === -1) {
+      standalone.push(product);
+      continue;
+    }
+
+    const baseName = product.name.substring(0, dashIndex).trim();
+    const variantLabel = product.name.substring(dashIndex + 3).trim();
+
+    if (!grouped.has(baseName)) {
+      grouped.set(baseName, {
+        baseName,
+        firstProduct: product,
+        variants: [],
+      });
+    }
+
+    grouped.get(baseName).variants.push({
+      label: variantLabel,
+      id: product.id,
+      image: product.image,
+      price: product.price,
+      priceLabel: product.priceLabel,
+      description: product.description,
+      liked: product.liked,
+    });
+  }
+
+  const result = standalone.map((product) => ({
+    ...product,
+    sourceProductIds: product.sourceProductIds || [product.id],
+  }));
+
+  for (const [, group] of grouped) {
+    if (group.variants.length === 1) {
+      result.push({
+        ...group.firstProduct,
+        sourceProductIds: group.firstProduct.sourceProductIds || [group.firstProduct.id],
+      });
+    } else {
+      const first = group.variants[0];
+      const prices = group.variants.map((v) => v.price);
+      const minP = Math.min(...prices);
+      const maxP = Math.max(...prices);
+      const priceRange = minP === maxP
+        ? `PHP ${minP.toFixed(2)}`
+        : `PHP ${minP.toFixed(2)} - ${maxP.toFixed(2)}`;
+
+      result.push({
+        id: `group-${group.firstProduct.id}`,
+        category: group.firstProduct.category,
+        name: group.baseName,
+        description: first.description,
+        price: minP,
+        priceLabel: priceRange,
+        image: first.image,
+        liked: group.variants.some((variant) => variant.liked),
+        tag: group.firstProduct.tag,
+        rating: group.firstProduct.rating,
+        flavorsAvailable: group.firstProduct.flavorsAvailable,
+        sizesAvailable: group.firstProduct.sizesAvailable,
+        sourceProductIds: group.variants.map((variant) => variant.id),
+        searchableText: [
+          group.baseName,
+          group.firstProduct.description,
+          group.firstProduct.category,
+          group.firstProduct.tag,
+          group.firstProduct.flavorsAvailable,
+          group.firstProduct.sizesAvailable,
+          group.variants.map((variant) => `${variant.label} ${variant.description}`).join(' '),
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase(),
+        variants: group.variants,
+      });
+    }
+  }
+
+  return result;
+};
+
+const collectCatalogImageSources = (items) => {
+  return [...new Set(
+    (items || []).flatMap((product) => [
+      product.image,
+      NEUTRAL_FALLBACK_IMAGE,
+      ...(product.options || []).map((option) => option.image_url),
+      ...(product.variants || []).map((variant) => variant.image),
+    ]),
+  )].filter(Boolean);
+};
+
+const productCategoryParam = () => {
+  if (props.activeCategory === 'All') {
+    return null;
+  }
+
+  return props.activeCategory;
+};
+
+const shouldLoadCatalog = () => props.activeCategory !== 'Customize Order';
+
+const runWhenBrowserIdle = (callback, timeout = 900) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(callback, { timeout });
+    return;
+  }
+
+  window.setTimeout(callback, 120);
+};
+
+const productRequestParams = () => {
+  const params = {
+    page: currentPage.value,
+    per_page: perPage,
+    sort: sortBy.value,
+  };
+  const category = productCategoryParam();
+  const search = debouncedSearchQuery.value.trim();
+
+  if (category) {
+    params.category = category;
+  }
+
+  if (search) {
+    params.search = search;
+  }
+
+  return params;
+};
+
+const productCacheKey = (params) => JSON.stringify(
+  Object.keys(params)
+    .sort()
+    .reduce((payload, key) => {
+      payload[key] = params[key];
+      return payload;
+    }, {}),
 );
 
-const mapProduct = (product) => ({
-  id: product.id ?? product.product_id,
-  category: product.category ?? 'Bread',
-  name: product.name ?? product.product_name ?? 'Untitled Product',
-  description: product.description ?? '',
-  price: Number(product.price ?? 0),
-  priceLabel: product.price_label ?? '',
-  image: product.image_url || product.image || '/images/bakerdan/Bread.png',
-  liked: false,
-  tag: product.order_mode === 'custom' ? 'Custom Order' : (product.is_active ? 'Available' : 'Inactive'),
-  rating: '5.0/5',
-  orderMode: product.order_mode || 'catalog',
-  orderingGuide: product.ordering_guide || null,
+const normalizePagination = (pagination = {}) => ({
+  total: Number(pagination.total || 0),
+  per_page: Number(pagination.per_page || perPage),
+  current_page: Number(pagination.current_page || currentPage.value),
+  last_page: Math.max(1, Number(pagination.last_page || 1)),
+  from: pagination.from ?? null,
+  to: pagination.to ?? null,
 });
 
-const loadProducts = async () => {
-  try {
-    const response = await api.getProducts();
-    const catalog = response.data?.data || [];
-    products.value = catalog.map(mapProduct);
-  } catch (error) {
+const cacheProductPayload = (cacheKey, data, pagination) => {
+  cachedCatalogPages.set(cacheKey, {
+    payload: {
+      data,
+      pagination: normalizePagination(pagination),
+    },
+    expiresAt: Date.now() + PRODUCT_CACHE_TTL,
+  });
+};
+
+const applyProductPayload = (payload) => {
+  products.value = payload.data.map(mapProduct);
+  catalogPagination.value = normalizePagination(payload.pagination);
+};
+
+const prefetchProductPage = (page) => {
+  if (!shouldLoadCatalog() || page < 1 || page > totalPages.value) {
+    return;
+  }
+
+  const params = {
+    ...productRequestParams(),
+    page,
+  };
+  const cacheKey = productCacheKey(params);
+  const cached = cachedCatalogPages.get(cacheKey);
+
+  if (cached?.payload && Date.now() < cached.expiresAt) {
+    return;
+  }
+
+  runWhenBrowserIdle(async () => {
+    const latestCached = cachedCatalogPages.get(cacheKey);
+
+    if (latestCached?.payload && Date.now() < latestCached.expiresAt) {
+      return;
+    }
+
+    try {
+      const response = await api.getProducts(params);
+      cacheProductPayload(
+        cacheKey,
+        Array.isArray(response.data?.data) ? response.data.data : [],
+        response.data?.pagination,
+      );
+    } catch (error) {
+      // Adjacent-page prefetch is an optimization only.
+    }
+  });
+};
+
+const prefetchAdjacentProductPages = () => {
+  prefetchProductPage(currentPage.value + 1);
+  prefetchProductPage(currentPage.value - 1);
+};
+
+const resetAndLoadProducts = () => {
+  if (currentPage.value !== 1) {
+    currentPage.value = 1;
+    return;
+  }
+
+  loadProducts();
+};
+
+const loadProducts = async ({ force = false } = {}) => {
+  if (!shouldLoadCatalog()) {
     products.value = [];
+    catalogPagination.value = normalizePagination({ total: 0, per_page: perPage, current_page: 1, last_page: 1 });
+    isCatalogLoading.value = false;
+    return;
+  }
+
+  const params = productRequestParams();
+  const cacheKey = productCacheKey(params);
+  const cached = cachedCatalogPages.get(cacheKey);
+  const requestId = ++productLoadSequence;
+  const now = Date.now();
+  const hasFreshCache = Boolean(cached?.payload && now < cached.expiresAt && !force);
+
+  catalogError.value = '';
+
+  if (hasFreshCache) {
+    applyProductPayload(cached.payload);
+    isCatalogLoading.value = false;
+    prefetchAdjacentProductPages();
+    return;
+  }
+
+  isCatalogLoading.value = true;
+
+  if (productAbortController) {
+    productAbortController.abort();
+  }
+  productAbortController = new AbortController();
+
+  try {
+    const response = await api.getProducts(params, { signal: productAbortController.signal });
+    cacheProductPayload(
+      cacheKey,
+      Array.isArray(response.data?.data) ? response.data.data : [],
+      response.data?.pagination,
+    );
+    const payload = cachedCatalogPages.get(cacheKey)?.payload || { data: [], pagination: normalizePagination() };
+
+    if (requestId !== productLoadSequence) {
+      return;
+    }
+
+    applyProductPayload(payload);
+    prefetchAdjacentProductPages();
+  } catch (error) {
+    if (error.code === 'ERR_CANCELED' || error.name === 'CanceledError' || error.name === 'AbortError') {
+      return;
+    }
+
+    if (requestId === productLoadSequence) {
+      catalogError.value = error.response?.data?.message || 'Unable to load the catalog right now.';
+      products.value = [];
+      catalogPagination.value = normalizePagination();
+    }
+  } finally {
+    if (requestId === productLoadSequence) {
+      isCatalogLoading.value = false;
+    }
+
+    if (requestId === productLoadSequence || productAbortController?.signal.aborted) {
+      productAbortController = null;
+    }
   }
 };
 
@@ -261,44 +652,144 @@ onMounted(() => {
   loadProducts();
 });
 
-const filteredProducts = computed(() => {
-  if (isCakeCategory.value) {
-    return [];
+onBeforeUnmount(() => {
+  if (searchDebounceHandle) {
+    clearTimeout(searchDebounceHandle);
   }
 
-  const query = searchQuery.value.trim().toLowerCase();
-
-  let result = products.value.filter((product) => {
-    const matchesCategory = props.activeCategory === 'Customize'
-      ? product.category === 'Customize'
-      : props.activeCategory === 'Bread' || props.activeCategory === 'Pastries' || props.activeCategory === 'Cakes'
-        ? product.category === props.activeCategory
-        : true;
-
-    const matchesQuery = !query
-      || product.name.toLowerCase().includes(query)
-      || product.description.toLowerCase().includes(query)
-      || product.tag.toLowerCase().includes(query);
-
-    return matchesCategory && matchesQuery;
-  });
-
-  if (sortBy.value === 'low-to-high') {
-    result = [...result].sort((a, b) => a.price - b.price);
-  } else if (sortBy.value === 'price') {
-    result = [...result].sort((a, b) => b.price - a.price);
-  } else {
-    result = [...result].sort((a, b) => Number(b.liked) - Number(a.liked));
+  if (productAbortController) {
+    productAbortController.abort();
   }
-
-  return result;
 });
 
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredProducts.value.length / perPage)));
+watch(
+  searchQuery,
+  (value) => {
+    if (searchDebounceHandle) {
+      clearTimeout(searchDebounceHandle);
+    }
+
+    searchDebounceHandle = setTimeout(() => {
+      debouncedSearchQuery.value = value;
+    }, SEARCH_DEBOUNCE_DELAY);
+  },
+  { immediate: true },
+);
+
+watch(
+  [() => props.activeCategory, sortBy, debouncedSearchQuery],
+  resetAndLoadProducts,
+);
+
+watch(
+  currentPage,
+  () => {
+    loadProducts();
+  },
+);
+
+const groupedProducts = computed(() => {
+  return groupProducts(products.value);
+});
+
+const filteredProducts = computed(() => {
+  return groupedProducts.value;
+});
+
+const emptyStateTitle = computed(() => {
+  if (catalogError.value) return 'Unable to load products';
+  if (debouncedSearchQuery.value.trim() || props.activeCategory !== 'All') return 'No matching products';
+
+  return 'No products available';
+});
+
+const emptyStateMessage = computed(() => {
+  if (catalogError.value) return catalogError.value;
+  if (debouncedSearchQuery.value.trim()) return 'Try another keyword, flavor, or option name.';
+  if (props.activeCategory !== 'All') return 'This category has no active products right now.';
+
+  return 'The catalog is waiting for products from the database.';
+});
+
+const totalPages = computed(() => Math.max(1, Number(catalogPagination.value.last_page || 1)));
 
 const paginatedProducts = computed(() => {
-  const start = (currentPage.value - 1) * perPage;
-  return filteredProducts.value.slice(start, start + perPage);
+  return filteredProducts.value;
+});
+
+watch(
+  paginatedProducts,
+  (visibleProducts) => {
+    preloadImages(collectCatalogImageSources(visibleProducts), {
+      concurrency: 5,
+      limit: 24,
+    });
+  },
+  { immediate: true },
+);
+
+const paginationTokens = computed(() => {
+  if (totalPages.value <= 7) {
+    return Array.from({ length: totalPages.value }, (_, index) => ({
+      type: 'page',
+      value: index + 1,
+      key: `page-${index + 1}`,
+    }));
+  }
+
+  const pages = new Set([1, totalPages.value, currentPage.value]);
+
+  if (currentPage.value <= 3) {
+    pages.add(2);
+    pages.add(3);
+  }
+
+  if (currentPage.value >= totalPages.value - 2) {
+    pages.add(totalPages.value - 1);
+    pages.add(totalPages.value - 2);
+  }
+
+  if (currentPage.value > 2) {
+    pages.add(currentPage.value - 1);
+  }
+
+  if (currentPage.value < totalPages.value - 1) {
+    pages.add(currentPage.value + 1);
+  }
+
+  const sortedPages = [...pages]
+    .filter((page) => page >= 1 && page <= totalPages.value)
+    .sort((a, b) => a - b);
+
+  const tokens = [];
+  let previousPage = null;
+
+  for (const page of sortedPages) {
+    if (previousPage !== null && page - previousPage > 1) {
+      tokens.push({
+        type: 'ellipsis',
+        key: `ellipsis-${previousPage}-${page}`,
+      });
+    }
+
+    tokens.push({
+      type: 'page',
+      value: page,
+      key: `page-${page}`,
+    });
+
+    previousPage = page;
+  }
+
+  return tokens;
+});
+
+const productLookup = computed(() => {
+  return new Map(products.value.map((product) => [product.id, product]));
+});
+
+const displayProductLookup = computed(() => {
+  return new Map(filteredProducts.value.map((product) => [product.id, product]));
 });
 
 const openAttachmentPicker = () => {
@@ -309,61 +800,97 @@ const handleAttachmentChange = (event) => {
   attachmentName.value = event.target.files?.[0]?.name || '';
 };
 
-const sendAiPrompt = () => {
+const sendAiPrompt = async () => {
   const prompt = aiPrompt.value.trim();
 
   if (!prompt && !attachmentName.value) {
     return;
   }
 
-  searchQuery.value = prompt;
-  currentPage.value = 1;
+  const message = attachmentName.value
+    ? [prompt || 'Help me choose a BakerDan product for this attachment.', `Attached file name: ${attachmentName.value}`].join('\n')
+    : prompt;
+
+  aiError.value = '';
+  aiResponse.value = '';
+  aiLoading.value = true;
+
+  try {
+    const response = await api.chat({
+      message,
+      history: aiHistory.value,
+    });
+    const reply = response.data?.reply || 'I could not generate a response right now.';
+
+    aiResponse.value = reply;
+    aiHistory.value = [
+      ...aiHistory.value,
+      { role: 'user', text: message },
+      { role: 'model', text: reply },
+    ].slice(-12);
+
+    if (prompt) {
+      searchQuery.value = prompt;
+      submitSearch();
+    }
+  } catch (error) {
+    aiError.value = error.response?.data?.message || 'Unable to reach the BakerDan assistant right now.';
+  } finally {
+    aiLoading.value = false;
+  }
 };
 
 const submitSearch = () => {
+  if (searchDebounceHandle) {
+    clearTimeout(searchDebounceHandle);
+  }
+
+  debouncedSearchQuery.value = searchQuery.value;
   currentPage.value = 1;
 };
 
-const handleAddToCart = async (productId) => {
-  const product = products.value.find((item) => item.id === productId);
+const handleAddToCart = (payload) => {
+  const productId = typeof payload === 'object' ? payload.productId : payload;
+  const optionId = typeof payload === 'object' ? payload.optionId : null;
+  const query = new URLSearchParams({ preview: String(productId) });
 
-  if (!product) {
-    return;
+  if (optionId) {
+    query.set('option', optionId);
   }
 
-  if (product.orderMode === 'custom') {
-    push(`/customer/customize?guide=${product.orderingGuide || 'cakes'}`);
-    return;
-  }
+  const product = productLookup.value.get(productId) || displayProductLookup.value.get(productId);
 
-  try {
-    const addedItem = await addCatalogItem(product.id, {
-      quantity: 1,
-    });
-
-    if (addedItem?.id) {
-      push(`/customer/cart?added=${addedItem.id}`);
+  if (product) {
+    try {
+      window.sessionStorage.setItem(
+        `bakerdan.cartPreview.${productId}`,
+        JSON.stringify({
+          ...product,
+          cachedAt: Date.now(),
+        }),
+      );
+    } catch (error) {
+      // Session storage is only a speed hint; navigation should continue if it is unavailable.
     }
-  } catch (error) {
-    window.alert('Unable to add this item to the cart right now.');
   }
+
+  window.location.assign(`/customer/cart?${query.toString()}`);
 };
 
 const handleToggleLike = (productId) => {
-  const product = products.value.find((item) => item.id === productId);
+  const displayProduct = displayProductLookup.value.get(productId);
+  const sourceProductIds = displayProduct?.sourceProductIds?.length
+    ? displayProduct.sourceProductIds
+    : [productId];
+  const nextLikedState = sourceProductIds.some((sourceProductId) => !productLookup.value.get(sourceProductId)?.liked);
 
-  if (product) {
-    product.liked = !product.liked;
+  for (const sourceProductId of sourceProductIds) {
+    const product = productLookup.value.get(sourceProductId);
+
+    if (product) {
+      product.liked = nextLikedState;
+    }
   }
 };
 
-const openCakeGuide = (section = null) => {
-  const query = new URLSearchParams({ guide: 'cakes' });
-
-  if (section) {
-    query.set('section', section);
-  }
-
-  push(`/customer/customize?${query.toString()}`);
-};
 </script>

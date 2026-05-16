@@ -64,11 +64,13 @@ Route::prefix('forgot-password')->group(function () {
 | Vue Router handles client-side navigation
 */
 
-// Public cart route - guests can browse cart
-Route::get('/cart', [CustomerController::class, 'spa'])->name('cart');
-
 // Protected customer routes
 Route::middleware(['auth', 'role:customer'])->group(function () {
+    Route::get('/cart', fn () => redirect('/customer/cart'))->name('cart');
+
+    Route::post('/customer/cart/add/{productId}', [CartController::class, 'addAndRedirect'])
+        ->name('customer.cart.add');
+
     // All customer routes return the SPA
     Route::get('/customer/{any?}', [CustomerController::class, 'spa'])
         ->where('any', '.*')
@@ -100,7 +102,7 @@ Route::prefix('api')->group(function () {
 
 // Protected API routes - requires authentication
 Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
-    // Cart - guests can view cart (stored in localStorage), auth users get server-side cart
+    // Cart
     Route::get('/cart', [CartController::class, 'index']);
     Route::post('/cart/add/{productId}', [CartController::class, 'add']);
     Route::post('/cart/custom', [CartController::class, 'addCustom']);
@@ -109,8 +111,11 @@ Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
     Route::delete('/cart/clear', [CartController::class, 'clear']);
     Route::post('/checkout', [CartController::class, 'checkout']);
     Route::get('/orders', [CustomerOrderController::class, 'index']);
+    Route::get('/purchases', [CustomerOrderController::class, 'purchaseHistory']);
     Route::patch('/orders/{order}/cancel', [CustomerOrderController::class, 'cancel']);
     Route::get('/orders/{order}/payment-status', [OrderPaymentController::class, 'show']);
+    Route::patch('/pending-orders/{pendingOrderId}/cancel', [CustomerOrderController::class, 'cancelPending']);
+    Route::get('/pending-orders/{pendingOrderId}/payment-status', [OrderPaymentController::class, 'showPending']);
     
     // Custom Orders
     Route::post('/custom-orders', [CustomOrderController::class, 'store']);

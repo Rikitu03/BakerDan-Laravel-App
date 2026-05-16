@@ -57,6 +57,101 @@
         </div>
       </section>
 
+      <div
+        v-if="isCakeGuide && isTierCakeSection && tierGalleryNoticeVisible"
+        class="fixed bottom-6 right-6 z-40 max-w-sm rounded-[24px] border border-[#E6D4C5] bg-white p-5 text-[#5F5147] shadow-[0_22px_55px_-28px_rgba(79,52,34,0.55)]"
+      >
+        <div class="flex items-start gap-3">
+          <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FFF0E6] text-[#B46E46]">
+            <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.55-2.27A1 1 0 0121 8.62v6.76a1 1 0 01-1.45.89L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <p class="text-sm font-bold text-[#453D37]">Tier cake gallery tip</p>
+            <p class="mt-1 text-sm leading-6 text-[#74675E]">
+              {{ activeCakeSection?.galleryNotice || 'Tap a reference photo to view previous cakes with their summary and prices.' }}
+            </p>
+          </div>
+          <button
+            type="button"
+            @click="tierGalleryNoticeVisible = false"
+            class="ml-auto rounded-full p-1 text-[#9A8B7F] transition hover:bg-[#F7EFE8] hover:text-[#5E5148]"
+            aria-label="Close tier cake gallery notice"
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <section
+        v-if="isCakeGuide && activeGalleryImages.length"
+        class="mt-7 rounded-[32px] border border-[#E8DDD3] bg-white p-6 shadow-[0_18px_40px_-34px_rgba(118,79,49,0.25)] md:p-8"
+      >
+        <h2 class="text-2xl font-bold text-[#4B4743]">
+          {{ activeCakeSection?.eyebrow }} - Reference Gallery
+        </h2>
+        <p class="mt-2 text-sm leading-6 text-[#766C65]">
+          Browse past designs for inspiration. Tier cake photos include their previous summary and prices.
+        </p>
+
+        <div class="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+          <button
+            v-for="(img, idx) in activeGalleryImages"
+            :key="img.src || idx"
+            type="button"
+            @click="openGalleryImage(img)"
+            class="group relative aspect-square overflow-hidden rounded-[20px] border border-[#E9DDD2] bg-[#F9F5F1] transition-all hover:shadow-md"
+          >
+            <img
+              :src="img.src"
+              :alt="img.label || `${activeCakeSection?.eyebrow} reference ${idx + 1}`"
+              class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+            />
+            <span
+              v-if="img.label"
+              class="absolute inset-x-2 bottom-2 rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-[#5D5149] shadow-sm"
+            >
+              {{ img.label }}
+            </span>
+          </button>
+        </div>
+
+        <div
+          v-if="galleryLightbox"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          @click.self="galleryLightbox = null"
+        >
+          <div class="relative max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-[24px] bg-white">
+            <div class="grid max-h-[90vh] overflow-y-auto lg:grid-cols-[1.15fr_0.85fr]">
+              <div class="bg-black">
+                <img :src="galleryLightbox.src" :alt="galleryLightbox.label || 'Gallery preview'" class="max-h-[85vh] w-full object-contain" />
+              </div>
+              <div v-if="galleryLightbox.label" class="p-6 md:p-7">
+                <div class="rounded-[24px] border border-[#E7D8CB] bg-white p-5">
+                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#B59884]">Guide summary</p>
+                  <p class="mt-3 text-2xl font-bold text-[#4B4743]">{{ galleryLightbox.label }}</p>
+                  <p class="mt-2 text-sm font-semibold text-[#8B5A3C]">{{ galleryLightbox.priceLabel }}</p>
+                  <p class="mt-4 text-base leading-7 text-[#766C65]">{{ galleryLightbox.summary }}</p>
+                  <p v-if="galleryLightbox.size" class="mt-4 text-sm text-[#685D55]">Guide size: {{ galleryLightbox.size }}</p>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              @click="galleryLightbox = null"
+              class="absolute right-3 top-3 rounded-full bg-white/90 p-2 shadow-md transition hover:bg-white"
+            >
+              <svg class="h-5 w-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
       <section class="mt-7 rounded-[32px] border border-[#E8DDD3] bg-white p-6 shadow-[0_18px_40px_-34px_rgba(118,79,49,0.35)] md:p-8">
         <h2 class="text-2xl font-bold text-[#4B4743]">
           {{ isCakeGuide ? 'Selected order details' : 'Product details' }}
@@ -136,6 +231,19 @@
                   {{ selectedCakePackage?.summary || activeCakeSection?.description }}
                 </p>
                 <p v-if="selectedCakePackage?.size" class="mt-3 text-sm text-[#685D55]">Guide size: {{ selectedCakePackage.size }}</p>
+              </div>
+
+              <div v-if="activeCakeSection?.packageInclusions?.length" class="rounded-[24px] border border-[#E7D8CB] bg-[#FFF8F1] p-5">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#B59884]">Package inclusions</p>
+                <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                  <span
+                    v-for="inclusion in activeCakeSection.packageInclusions"
+                    :key="inclusion"
+                    class="rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#6D5545]"
+                  >
+                    {{ inclusion }}
+                  </span>
+                </div>
               </div>
 
               <div class="grid gap-2">
@@ -466,6 +574,8 @@ const isDragging = ref(false);
 const fileInput = ref(null);
 const selectedCheckoutFlow = ref('cart_first');
 const selectedPaymentMethod = ref('gcash');
+const galleryLightbox = ref(null);
+const tierGalleryNoticeVisible = ref(false);
 
 const activeCakeSection = computed(() => (
   isCakeGuide.value ? getCakeGuideSection(selectedCakeSectionId.value) : null
@@ -481,6 +591,35 @@ const selectedFlavorOptions = computed(() => (
     ? (activeCakeSection.value?.flavorOptions || ['To be discussed with Bakerdan'])
     : legacyFlavorOptions
 ));
+const isTierCakeSection = computed(() => selectedCakeSectionId.value === 'tier-package');
+const activeGalleryImages = computed(() => (
+  activeCakeSection.value?.galleryImages || []
+).map((image, index) => {
+  if (typeof image === 'string') {
+    return {
+      src: image,
+      label: '',
+      priceLabel: '',
+      summary: '',
+      size: '',
+      index,
+    };
+  }
+
+  return {
+    src: image.src,
+    label: image.label || '',
+    priceLabel: image.priceLabel || '',
+    summary: image.summary || '',
+    size: image.size || '',
+    index,
+  };
+}));
+
+const openGalleryImage = (image) => {
+  galleryLightbox.value = image;
+};
+
 const primaryActionLabel = computed(() => {
   if (selectedCheckoutFlow.value === 'direct_checkout') {
     return isCakeGuide.value ? 'Direct Checkout This Cake Order' : 'Direct Checkout This Custom Order';
@@ -515,6 +654,16 @@ watch(selectedCakeSectionId, () => {
   syncCakeSelection();
 });
 
+watch(
+  isTierCakeSection,
+  (selected) => {
+    if (isCakeGuide.value && selected) {
+      tierGalleryNoticeVisible.value = true;
+    }
+  },
+  { immediate: true },
+);
+
 watch(selectedCakePackageId, () => {
   syncCakeSelection();
 });
@@ -542,6 +691,7 @@ watch(
 
     formData.value.size = 'Medium';
     formData.value.flavor = legacyFlavorOptions[0];
+    tierGalleryNoticeVisible.value = false;
   },
 );
 

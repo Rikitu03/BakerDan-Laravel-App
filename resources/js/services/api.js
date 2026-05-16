@@ -33,12 +33,16 @@ api.interceptors.response.use(
 
 export default {
   // Products
-  getProducts(params = {}) {
-    return api.get('/products', { params })
+  getProducts(params = {}, config = {}) {
+    return api.get('/products', { ...config, params })
   },
   
   getProduct(id) {
     return api.get(`/products/${id}`)
+  },
+
+  chat(data) {
+    return api.post('/chat', data)
   },
 
   // Cart
@@ -84,16 +88,28 @@ export default {
     return api.post('/checkout', data)
   },
 
-  getOrders() {
-    return api.get('/orders')
+  getOrders(params = {}, config = {}) {
+    return api.get('/orders', { ...config, params })
+  },
+
+  getPurchases() {
+    return api.get('/purchases')
   },
 
   cancelOrder(orderId) {
     return api.patch(`/orders/${orderId}/cancel`)
   },
 
+  cancelPendingOrder(pendingOrderId) {
+    return api.patch(`/pending-orders/${encodeURIComponent(pendingOrderId)}/cancel`)
+  },
+
   getOrderPaymentStatus(orderId) {
     return api.get(`/orders/${orderId}/payment-status`)
+  },
+
+  getPendingOrderPaymentStatus(pendingOrderId) {
+    return api.get(`/pending-orders/${encodeURIComponent(pendingOrderId)}/payment-status`)
   },
 
   // Custom Orders

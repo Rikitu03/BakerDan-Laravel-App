@@ -18,6 +18,9 @@
     <script>
         window.Laravel = {
             csrfToken: @json(csrf_token()),
+            flash: {
+                cartError: @json(session('cart_error')),
+            },
             user: @json(array_merge($customer, ['role' => 'customer'])),
             customer: @json($customer),
         };

@@ -3,7 +3,6 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -13,14 +12,17 @@ class OtpMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $otp;
+    public string $otp;
+
+    public int $expiresInMinutes;
 
     /**
      * Create a new message instance.
      */
-    public function __construct($otp)
+    public function __construct($otp, int $expiresInMinutes = 10)
     {
-        $this->otp = $otp;
+        $this->otp = (string) $otp;
+        $this->expiresInMinutes = $expiresInMinutes;
     }
 
     /**
@@ -29,7 +31,7 @@ class OtpMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Your Registration OTP',
+            subject: 'Your BakerDan Verification Code',
         );
     }
 
@@ -40,6 +42,10 @@ class OtpMail extends Mailable
     {
         return new Content(
             view: 'emails.otp',
+            with: [
+                'otp' => $this->otp,
+                'expiresInMinutes' => $this->expiresInMinutes,
+            ],
         );
     }
 

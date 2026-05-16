@@ -28,11 +28,19 @@
           <p class="mt-1 text-sm font-medium">{{ addedItem.name }} is now in your cart.</p>
         </div>
 
+        <div v-if="addError" class="mb-5 rounded-[22px] border border-[#F0DCCC] bg-[#FFF4EB] px-5 py-4 text-[#8E5632] shadow-sm">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#C9876C]">Cart update</p>
+          <p class="mt-1 text-sm font-medium">{{ addError }}</p>
+        </div>
+
         <div class="mb-6 overflow-hidden rounded-[28px] border border-[#EADFD6] bg-[#FBF8F5] p-3">
           <img
-            :src="featuredProduct.image"
+            :src="featuredImage"
             :alt="featuredProduct.name"
+            loading="eager"
+            decoding="async"
             class="aspect-[4/3] w-full rounded-[22px] object-cover"
+            @error="handleFeaturedImageError"
           />
         </div>
 
@@ -49,50 +57,80 @@
           {{ featuredProduct.name }}
         </h2>
         <p class="mt-3 text-gray-600">
-          {{ featuredProduct.description }}
+          {{ featuredDescription }}
         </p>
 
         <div class="mt-8 text-5xl font-bold text-gray-800">
-          PHP {{ formatPrice(featuredProduct.price) }}
+          PHP {{ formatPrice(featuredUnitPrice) }}
         </div>
 
         <div class="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div>
-            <label class="mb-2 block text-sm text-gray-600">Size</label>
-            <div class="flex h-12 items-center rounded-full border border-[#DED4CB] bg-[#FCFBF9] px-5 text-sm font-medium text-[#58514B]">
-              {{ featuredProduct.size || 'Medium' }}
+          <div v-if="optionChoices.length > 1">
+            <label class="mb-2 block text-sm text-gray-600">Flavor / Option</label>
+            <select
+              v-model="selectedOptionId"
+              class="h-12 w-full rounded-full border border-[#DED4CB] bg-[#FCFBF9] px-5 text-sm font-medium text-[#58514B] outline-none focus:ring-2 focus:ring-[#C9876C]"
+            >
+              <option v-for="option in optionChoices" :key="option.id" :value="option.id">
+                {{ option.label }} - {{ option.price_label }}
+              </option>
+            </select>
+          </div>
+
+          <div v-else>
+            <label class="mb-2 block text-sm text-gray-600">Size / Option</label>
+            <select
+              v-if="sizeOptions.length > 1"
+              v-model="selectedSize"
+              class="h-12 w-full rounded-full border border-[#DED4CB] bg-[#FCFBF9] px-5 text-sm font-medium text-[#58514B] outline-none focus:ring-2 focus:ring-[#C9876C]"
+            >
+              <option v-for="opt in sizeOptions" :key="opt" :value="opt">{{ opt }}</option>
+            </select>
+            <div v-else class="flex h-12 items-center rounded-full border border-[#DED4CB] bg-[#FCFBF9] px-5 text-sm font-medium text-[#58514B]">
+              {{ sizeOptions[0] || 'Standard' }}
             </div>
           </div>
 
           <div>
-            <label class="mb-2 block text-sm text-gray-600">Quantity</label>
+            <div class="mb-2 flex items-center justify-between gap-3">
+              <label class="block text-sm text-gray-600">Quantity</label>
+              <span v-if="minimumQuantity > 1" class="text-xs font-semibold text-[#A06F50]">
+                Min. {{ minimumQuantity }} pcs
+              </span>
+            </div>
             <div class="flex items-center overflow-hidden rounded-full border border-[#DED4CB] bg-[#FCFBF9]">
               <button
                 type="button"
                 @click="decrementQuantity"
-                class="px-4 py-3 transition-colors hover:bg-[#F2ECE5]"
+                :disabled="!canDecreaseQuantity"
+                aria-label="Decrease quantity"
+                class="flex h-12 w-12 items-center justify-center transition-colors"
+                :class="canDecreaseQuantity
+                  ? 'text-[#5C534D] hover:bg-[#F2ECE5]'
+                  : 'cursor-not-allowed text-[#C9BCB1] opacity-60'"
               >
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
                 </svg>
               </button>
-              <input
-                :value="featuredProduct.quantity"
-                type="number"
-                min="1"
-                class="flex-1 bg-transparent py-3 text-center outline-none"
-                @change="setQuantity($event.target.value)"
-              />
+              <output class="flex min-w-0 flex-1 flex-col items-center justify-center px-2 py-2 text-center">
+                <span class="text-base font-bold leading-5 text-[#4D4742]">{{ currentQuantity }}</span>
+                <span class="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#A99A8D]">pcs</span>
+              </output>
               <button
                 type="button"
                 @click="incrementQuantity"
-                class="px-4 py-3 transition-colors hover:bg-[#F2ECE5]"
+                aria-label="Increase quantity"
+                class="m-1 flex h-10 w-10 items-center justify-center rounded-full bg-[#C9876C] text-white shadow-sm transition-colors hover:bg-[#B8765B]"
               >
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
               </button>
             </div>
+            <p v-if="minimumQuantity > 1" class="mt-2 text-xs leading-5 text-[#8A7464]">
+              Use the plus button to add pieces above the {{ minimumQuantity }} pcs minimum.
+            </p>
           </div>
         </div>
 
@@ -106,58 +144,64 @@
           <p class="mt-2 text-sm leading-6 text-[#695F57]">{{ featuredProduct.dedicationMessage }}</p>
         </div>
 
-        <div class="mt-6 rounded-[24px] border border-[#EFE5DC] bg-[#FCFAF8] p-5">
-          <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#B59884]">Payment Method</p>
-              <p class="mt-2 text-sm text-[#695F57]">Use PayMongo to pay with your preferred wallet.</p>
-            </div>
-            <span class="inline-flex w-fit rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9B6A48]">
-              PayMongo
-            </span>
-          </div>
-
-          <div class="mt-4 grid gap-3 sm:grid-cols-2">
-            <button
-              v-for="option in paymentMethodOptions"
-              :key="`featured-${option.value}`"
-              type="button"
-              @click="selectedPaymentMethod = option.value"
-              class="rounded-[22px] border px-4 py-4 text-left transition-all"
-              :class="paymentMethodButtonClass(option.value)"
-            >
-              <div class="flex items-center justify-between gap-3">
-                <div>
-                  <p class="font-semibold text-[#4D4742]">{{ option.label }}</p>
-                  <p class="mt-1 text-xs text-[#766D67]">{{ option.description }}</p>
-                </div>
-                <span
-                  class="flex h-6 w-6 items-center justify-center rounded-full border"
-                  :class="paymentMethodIndicatorClass(option.value)"
-                >
-                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M5 13l4 4L19 7" />
-                  </svg>
-                </span>
-              </div>
-            </button>
-          </div>
-        </div>
-
         <div class="mt-6 space-y-3">
+          <form
+            v-if="canUseNativeCatalogAdd"
+            :action="catalogAddAction"
+            method="POST"
+            class="w-full"
+            @submit="handleNativeCatalogAdd"
+          >
+            <input type="hidden" name="_token" :value="csrfToken" />
+            <input type="hidden" name="return_to" :value="currentCustomerPath" />
+            <input type="hidden" name="quantity" :value="catalogAddQuantity" />
+            <input v-if="catalogAddOptionId" type="hidden" name="option_id" :value="catalogAddOptionId" />
+            <input v-if="catalogAddSize" type="hidden" name="size" :value="catalogAddSize" />
+            <input v-if="catalogAddFlavor" type="hidden" name="flavor" :value="catalogAddFlavor" />
+            <button
+              type="submit"
+              :disabled="isAddButtonDisabled"
+              class="w-full rounded-full py-4 font-semibold text-white shadow-md transition-colors"
+              :class="isAddButtonDisabled
+                ? 'cursor-not-allowed bg-[#CFA48F] opacity-80'
+                : 'bg-[#C9876C] hover:bg-[#B8765B]'"
+            >
+              <span class="inline-flex items-center justify-center gap-2">
+                <svg
+                  v-if="isAddingFeaturedToCart"
+                  class="h-4 w-4 animate-spin"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+                {{ addToCartButtonLabel }}
+              </span>
+            </button>
+          </form>
           <button
+            v-else
             type="button"
             @click="addFeaturedToCart"
-            class="w-full rounded-full bg-[#C9876C] py-4 font-semibold text-white shadow-md transition-colors hover:bg-[#B8765B]"
+            :disabled="isAddButtonDisabled"
+            class="w-full rounded-full py-4 font-semibold text-white shadow-md transition-colors"
+            :class="isAddButtonDisabled
+              ? 'cursor-not-allowed bg-[#CFA48F] opacity-80'
+              : 'bg-[#C9876C] hover:bg-[#B8765B]'"
           >
-            Add to cart
-          </button>
-          <button
-            type="button"
-            @click="checkout"
-            class="w-full rounded-full bg-[#8B6F47] py-4 font-semibold text-white shadow-md transition-colors hover:bg-[#7A5F3A]"
-          >
-            Checkout with {{ selectedPaymentMethodLabel }}
+            <span class="inline-flex items-center justify-center gap-2">
+              <svg
+                v-if="isAddingFeaturedToCart"
+                class="h-4 w-4 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+              </svg>
+              {{ addToCartButtonLabel }}
+            </span>
           </button>
           <button
             type="button"
@@ -275,38 +319,20 @@
           </div>
 
           <div class="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
-            <div class="flex flex-col gap-5 xl:items-end">
-              <div class="rounded-[24px] border border-[#EAE0D8] bg-[#FCFAF8] p-4">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#B59884]">Payment Method</p>
-                <div class="mt-3 flex flex-wrap gap-3">
-                  <button
-                    v-for="option in paymentMethodOptions"
-                    :key="`summary-${option.value}`"
-                    type="button"
-                    @click="selectedPaymentMethod = option.value"
-                    class="rounded-full border px-4 py-2 text-sm font-semibold transition-all"
-                    :class="paymentMethodButtonClass(option.value)"
-                  >
-                    {{ option.label }}
-                  </button>
-                </div>
+            <div class="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
+              <div class="text-right">
+                <p class="text-sm text-gray-600">Total ({{ selectedItems.length }} item{{ selectedItems.length === 1 ? '' : 's' }})</p>
+                <p class="text-3xl font-bold text-gray-800">PHP {{ formatPrice(cartTotal) }}</p>
               </div>
 
-              <div class="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
-                <div class="text-right">
-                  <p class="text-sm text-gray-600">Total ({{ selectedItems.length }} item)</p>
-                  <p class="text-3xl font-bold text-gray-800">PHP {{ formatPrice(cartTotal) }}</p>
-                </div>
-
-                <button
-                  type="button"
-                  @click="proceedToCheckout"
-                  :disabled="selectedItems.length === 0"
-                  class="rounded-full bg-[#C9876C] px-8 py-4 font-semibold text-white shadow-md transition-colors hover:bg-[#B8765B] disabled:cursor-not-allowed disabled:bg-gray-300"
-                >
-                  Checkout with {{ selectedPaymentMethodLabel }}
-                </button>
-              </div>
+              <button
+                type="button"
+                @click="proceedToCheckout"
+                :disabled="selectedItems.length === 0"
+                class="rounded-full bg-[#C9876C] px-8 py-4 font-semibold text-white shadow-md transition-colors hover:bg-[#B8765B] disabled:cursor-not-allowed disabled:bg-gray-300"
+              >
+                Proceed to checkout
+              </button>
             </div>
           </div>
         </div>
@@ -318,8 +344,11 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { useSpaRouter } from '../../router';
+import api from '../../services/api';
 import { useCartStore } from '../../services/cartStore';
 import CartItem from '../shared/CartItem.vue';
+
+const PREVIEW_PRODUCT_CACHE_TTL_MS = 60 * 1000;
 
 const props = defineProps({
   added: {
@@ -334,6 +363,14 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  preview: {
+    type: [String, Number],
+    default: null,
+  },
+  option: {
+    type: String,
+    default: null,
+  },
 });
 
 const { push } = useSpaRouter();
@@ -342,11 +379,9 @@ const {
   lastAddedId,
   lastCheckoutOrderId,
   loadCart,
-  addCatalogItem,
   addCustomItem,
   updateCartItemQuantity,
   removeCartItem,
-  checkout: checkoutCartItems,
   syncOrderPaymentStatus,
 } = useCartStore();
 
@@ -358,21 +393,112 @@ const selectedPaymentMethod = ref('gcash');
 const paymentStatusDetails = ref(null);
 const isSyncingPayment = ref(false);
 const paymentSyncError = ref('');
-const paymentMethodOptions = [
-  {
-    value: 'gcash',
-    label: 'GCash',
-    description: 'Pay through the GCash wallet.',
-  },
-  {
-    value: 'maya',
-    label: 'Maya',
-    description: 'Pay through the Maya wallet.',
-  },
-];
+const previewProduct = ref(null);
+const previewQuantity = ref(1);
+const selectedSize = ref('');
+const selectedOptionId = ref('');
+const featuredImageFailed = ref(false);
+const isAddingFeaturedToCart = ref(false);
+const NEUTRAL_FALLBACK_IMAGE = '/images/logo/BAKERDAN%20LOGO.jpg';
+const csrfToken = window.Laravel?.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+const addError = ref(window.Laravel?.flash?.cartError || '');
+
+const isPreviewMode = computed(() => Boolean(previewProduct.value));
+
+const parseSizes = (sizesStr) => {
+  if (!sizesStr) return [];
+  return sizesStr.split('|').map((s) => s.trim()).filter(Boolean);
+};
+
+const normalizeOptions = (options = []) => {
+  if (!Array.isArray(options)) return [];
+
+  return options.map((option) => ({
+    ...option,
+    price: Number(option.price || 0),
+    minimum_quantity: Number(option.minimum_quantity || 1),
+  }));
+};
+
+const previewCacheKey = (productId) => `bakerdan.cartPreview.${productId}`;
+
+const mapPreviewProduct = (p = {}) => ({
+  id: p.id,
+  product_id: p.product_id ?? p.productId ?? p.id,
+  category: p.category || 'Bread',
+  name: p.name ?? p.product_name ?? 'Bakerdan Product',
+  description: p.description ?? '',
+  price: Number(p.price ?? 0),
+  image: p.image_url || p.image || p.category_fallback_image || p.fallbackImage || NEUTRAL_FALLBACK_IMAGE,
+  fallbackImage: p.category_fallback_image || p.fallbackImage || NEUTRAL_FALLBACK_IMAGE,
+  tag: p.is_active === false ? 'Inactive' : (p.tag || 'Available'),
+  source: 'catalog',
+  quantity: 1,
+  sizesAvailable: p.sizes_available || p.sizesAvailable || '',
+  flavorsAvailable: p.flavors_available || p.flavorsAvailable || '',
+  options: normalizeOptions(p.options),
+  minimumQuantity: Number(p.minimum_quantity || p.minimumQuantity || 1),
+});
+
+const applyPreviewProduct = (payload) => {
+  previewProduct.value = mapPreviewProduct(payload);
+
+  const firstOptionId = previewProduct.value.options[0]?.id || '';
+  selectedOptionId.value = previewProduct.value.options.some((option) => option.id === props.option)
+    ? props.option
+    : firstOptionId;
+  previewQuantity.value = Math.max(1, selectedOption.value?.minimum_quantity || previewProduct.value.minimumQuantity || 1);
+  const sizes = parseSizes(previewProduct.value.sizesAvailable);
+  selectedSize.value = selectedOption.value?.size || sizes[0] || 'Standard';
+};
+
+const loadCachedPreviewProduct = (previewId) => {
+  try {
+    const raw = window.sessionStorage.getItem(previewCacheKey(previewId));
+    if (!raw) return false;
+
+    const cached = JSON.parse(raw);
+    if (!cached?.cachedAt || Date.now() - Number(cached.cachedAt) > PREVIEW_PRODUCT_CACHE_TTL_MS) {
+      window.sessionStorage.removeItem(previewCacheKey(previewId));
+      return false;
+    }
+
+    applyPreviewProduct(cached);
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
+const loadPreviewProduct = async () => {
+  const previewId = Number(props.preview);
+  if (!previewId) {
+    previewProduct.value = null;
+    return;
+  }
+
+  const hasCachedPreview = loadCachedPreviewProduct(previewId);
+
+  try {
+    const response = await api.getProduct(previewId);
+    const product = response.data?.data;
+    if (product) {
+      applyPreviewProduct(product);
+    }
+  } catch (error) {
+    if (!hasCachedPreview) {
+      previewProduct.value = null;
+    }
+  }
+};
 
 const addedItemId = computed(() => Number(props.added) || Number(lastAddedId.value) || null);
-const checkoutOrderId = computed(() => Number(props.ordered) || Number(lastCheckoutOrderId.value) || null);
+const checkoutOrderId = computed(() => {
+  const routeOrderId = String(props.ordered || '').trim();
+  const recentOrderId = String(lastCheckoutOrderId.value || '').trim();
+
+  return routeOrderId || recentOrderId || null;
+});
 
 watch(
   cartItems,
@@ -418,9 +544,125 @@ const visibleCartItems = computed(() => {
   return result;
 });
 
-const featuredProduct = computed(() =>
-  cartItems.value.find((item) => item.id === activeFeaturedId.value) || cartItems.value[0] || null,
-);
+const featuredProduct = computed(() => {
+  if (isPreviewMode.value) return previewProduct.value;
+  return cartItems.value.find((item) => item.id === activeFeaturedId.value) || cartItems.value[0] || null;
+});
+
+const optionChoices = computed(() => featuredProduct.value?.options || []);
+
+const selectedOption = computed(() => {
+  if (!optionChoices.value.length) return null;
+
+  return optionChoices.value.find((option) => option.id === selectedOptionId.value)
+    || optionChoices.value[0];
+});
+
+const catalogAddProductId = computed(() => featuredProduct.value?.product_id || featuredProduct.value?.id || null);
+const catalogAddAction = computed(() => (
+  catalogAddProductId.value
+    ? `/customer/cart/add/${encodeURIComponent(String(catalogAddProductId.value))}`
+    : ''
+));
+const catalogAddQuantity = computed(() => (
+  isPreviewMode.value
+    ? Math.max(minimumQuantity.value, previewQuantity.value)
+    : 1
+));
+const catalogAddOptionId = computed(() => selectedOption.value?.id || featuredProduct.value?.optionId || '');
+const catalogAddSize = computed(() => selectedOption.value?.size || selectedSize.value || featuredProduct.value?.size || '');
+const catalogAddFlavor = computed(() => selectedOption.value?.flavor || featuredProduct.value?.flavor || '');
+const canUseNativeCatalogAdd = computed(() => (
+  Boolean(featuredProduct.value)
+    && featuredProduct.value.source !== 'custom'
+    && Boolean(catalogAddAction.value)
+));
+const currentCustomerPath = computed(() => `${window.location.pathname}${window.location.search}`);
+
+const minimumQuantity = computed(() => {
+  return Number(selectedOption.value?.minimum_quantity || featuredProduct.value?.minimumQuantity || 1);
+});
+
+const currentQuantity = computed(() => {
+  if (!featuredProduct.value) return minimumQuantity.value;
+
+  return Number(isPreviewMode.value ? previewQuantity.value : featuredProduct.value.quantity) || minimumQuantity.value;
+});
+
+const canDecreaseQuantity = computed(() => currentQuantity.value > minimumQuantity.value);
+
+const featuredFallbackImage = computed(() => {
+  if (featuredProduct.value?.fallbackImage) return featuredProduct.value.fallbackImage;
+  return NEUTRAL_FALLBACK_IMAGE;
+});
+
+const rawFeaturedImage = computed(() => {
+  return selectedOption.value?.image_url || featuredProduct.value?.image || NEUTRAL_FALLBACK_IMAGE;
+});
+
+const featuredImage = computed(() => {
+  return featuredImageFailed.value ? featuredFallbackImage.value : rawFeaturedImage.value;
+});
+
+const featuredDescription = computed(() => {
+  if (!selectedOption.value) {
+    return featuredProduct.value?.description || '';
+  }
+
+  return [
+    featuredProduct.value?.description || '',
+    selectedOption.value.size ? `Size: ${selectedOption.value.size}` : '',
+    selectedOption.value.flavor ? `Flavor: ${selectedOption.value.flavor}` : '',
+  ].filter(Boolean).join(' | ');
+});
+
+const featuredUnitPrice = computed(() => {
+  return Number(selectedOption.value?.price ?? featuredProduct.value?.price ?? 0);
+});
+
+const sizeOptions = computed(() => {
+  if (!featuredProduct.value) return [];
+  if (selectedOption.value?.size) return [selectedOption.value.size];
+  const raw = featuredProduct.value.sizesAvailable || featuredProduct.value.size || '';
+  const sizes = parseSizes(raw);
+  return sizes.length ? sizes : ['Standard'];
+});
+
+watch(featuredProduct, (prod) => {
+  if (prod && !isPreviewMode.value) {
+    const sizes = parseSizes(prod.sizesAvailable || prod.size || '');
+    selectedSize.value = sizes[0] || prod.size || 'Standard';
+  }
+}, { immediate: true });
+
+watch(selectedOption, (option) => {
+  if (!option || !isPreviewMode.value) {
+    return;
+  }
+
+  selectedSize.value = option.size || selectedSize.value || 'Standard';
+  previewQuantity.value = Math.max(previewQuantity.value, Number(option.minimum_quantity || 1));
+});
+
+watch(rawFeaturedImage, () => {
+  featuredImageFailed.value = false;
+});
+
+const handleFeaturedImageError = () => {
+  if (featuredImage.value !== featuredFallbackImage.value) {
+    featuredImageFailed.value = true;
+  }
+};
+
+const isAddButtonDisabled = computed(() => (
+  !featuredProduct.value || isAddingFeaturedToCart.value
+));
+
+const addToCartButtonLabel = computed(() => {
+  if (isAddingFeaturedToCart.value) return 'Adding...';
+
+  return 'Add to cart';
+});
 
 const addedItem = computed(() => cartItems.value.find((item) => item.id === addedItemId.value) || null);
 const allSelected = computed(() => selectedItems.value.length === cartItems.value.length && cartItems.value.length > 0);
@@ -440,7 +682,6 @@ const resolvedPaymentStatus = computed(() => {
 
   return checkoutOrderId.value ? 'pending' : null;
 });
-const selectedPaymentMethodLabel = computed(() => formatPaymentMethod(selectedPaymentMethod.value));
 const canContinuePayment = computed(() => Boolean(paymentCheckoutUrl.value) && resolvedPaymentStatus.value === 'pending');
 const checkoutNotice = computed(() => {
   if (!checkoutOrderId.value) {
@@ -514,16 +755,33 @@ const checkoutNotice = computed(() => {
 
 const formatPrice = (price) => Number(price).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 const formatPaymentMethod = (value) => (value === 'maya' ? 'Maya' : 'GCash');
-const paymentMethodButtonClass = (value) => (
-  selectedPaymentMethod.value === value
-    ? 'border-[#C9876C] bg-[#FFF4EB] text-[#7E4E32] shadow-[0_12px_30px_-26px_rgba(201,135,108,0.7)]'
-    : 'border-[#E5D8CC] bg-white text-[#5C5651] hover:border-[#D6B9A5]'
-);
-const paymentMethodIndicatorClass = (value) => (
-  selectedPaymentMethod.value === value
-    ? 'border-[#C9876C] bg-[#C9876C] text-white'
-    : 'border-[#D8CCC2] bg-white text-transparent'
-);
+
+const redirectToAddedCart = (itemId) => {
+  window.location.replace(`/customer/cart?added=${encodeURIComponent(String(itemId))}`);
+};
+
+const addCatalogItemForRedirect = async (productId, data = {}) => {
+  try {
+    const response = await api.addToCart(productId, {
+      ...data,
+      include_cart: false,
+    });
+
+    return response.data?.data?.item || null;
+  } catch (error) {
+    if (error.response?.status === 401) {
+      window.location.href = '/login';
+      return null;
+    }
+
+    throw error;
+  }
+};
+
+const handleNativeCatalogAdd = () => {
+  addError.value = '';
+  isAddingFeaturedToCart.value = true;
+};
 
 const refreshCart = async () => {
   try {
@@ -553,7 +811,10 @@ const refreshOrderPaymentStatus = async () => {
 };
 
 const incrementQuantity = async () => {
-  if (!featuredProduct.value) {
+  if (!featuredProduct.value) return;
+
+  if (isPreviewMode.value) {
+    previewQuantity.value = Math.max(minimumQuantity.value, previewQuantity.value + 1);
     return;
   }
 
@@ -565,40 +826,32 @@ const incrementQuantity = async () => {
 };
 
 const decrementQuantity = async () => {
-  if (!featuredProduct.value) {
+  if (!featuredProduct.value) return;
+
+  if (isPreviewMode.value) {
+    previewQuantity.value = Math.max(minimumQuantity.value, previewQuantity.value - 1);
     return;
   }
 
   try {
-    await updateCartItemQuantity(featuredProduct.value.id, Math.max(1, featuredProduct.value.quantity - 1));
-  } catch (error) {
-    window.alert('Unable to update the cart quantity right now.');
-  }
-};
-
-const setQuantity = async (value) => {
-  if (!featuredProduct.value) {
-    return;
-  }
-
-  const normalizedQuantity = Math.max(1, Number(value) || 1);
-  try {
-    await updateCartItemQuantity(featuredProduct.value.id, normalizedQuantity);
+    await updateCartItemQuantity(featuredProduct.value.id, Math.max(minimumQuantity.value, featuredProduct.value.quantity - 1));
   } catch (error) {
     window.alert('Unable to update the cart quantity right now.');
   }
 };
 
 const addFeaturedToCart = async () => {
-  if (!featuredProduct.value) {
+  if (isAddButtonDisabled.value) {
     return;
   }
+
+  isAddingFeaturedToCart.value = true;
 
   try {
     if (featuredProduct.value.source === 'custom') {
       const addedItem = await addCustomItem({
-        size: featuredProduct.value.size,
-        quantity: 1,
+        size: selectedSize.value || featuredProduct.value.size,
+        quantity: isPreviewMode.value ? previewQuantity.value : 1,
         flavor: featuredProduct.value.flavor,
         designDescription: featuredProduct.value.designDescription,
         dedicationMessage: featuredProduct.value.dedicationMessage,
@@ -608,48 +861,27 @@ const addFeaturedToCart = async () => {
       });
 
       if (addedItem?.id) {
-        push(`/customer/cart?added=${addedItem.id}`);
+        redirectToAddedCart(addedItem.id);
       }
 
       return;
     }
 
-    const addedItem = await addCatalogItem(featuredProduct.value.product_id, {
-      quantity: 1,
-      size: featuredProduct.value.size,
-      flavor: featuredProduct.value.flavor,
+    const productId = featuredProduct.value.product_id || featuredProduct.value.id;
+    const addedItem = await addCatalogItemForRedirect(productId, {
+      quantity: isPreviewMode.value ? Math.max(minimumQuantity.value, previewQuantity.value) : 1,
+      option_id: selectedOption.value?.id || null,
+      size: selectedOption.value?.size || selectedSize.value || featuredProduct.value.size,
+      flavor: selectedOption.value?.flavor || featuredProduct.value.flavor,
     });
 
     if (addedItem?.id) {
-      push(`/customer/cart?added=${addedItem.id}`);
+      redirectToAddedCart(addedItem.id);
     }
   } catch (error) {
-    window.alert('Unable to add this item to the cart right now.');
-  }
-};
-
-const checkout = async () => {
-  if (!featuredProduct.value) {
-    return;
-  }
-
-  try {
-    const featuredItemId = featuredProduct.value.id;
-    const order = await checkoutCartItems([featuredItemId], {
-      paymentMethod: selectedPaymentMethod.value,
-    });
-    selectedItems.value = selectedItems.value.filter((itemId) => itemId !== featuredItemId);
-
-    if (order?.checkout_url) {
-      window.location.href = order.checkout_url;
-      return;
-    }
-
-    if (order?.id) {
-      push(`/customer/orders?highlight=${order.id}`);
-    }
-  } catch (error) {
-    window.alert(error.response?.data?.message || 'Unable to complete checkout right now.');
+    addError.value = error.response?.data?.message || 'Unable to add this item to the cart right now.';
+  } finally {
+    isAddingFeaturedToCart.value = false;
   }
 };
 
@@ -709,28 +941,12 @@ const deleteSelected = async () => {
   }
 };
 
-const proceedToCheckout = async () => {
+const proceedToCheckout = () => {
   if (!selectedItems.value.length) {
     return;
   }
 
-  try {
-    const order = await checkoutCartItems(selectedItems.value, {
-      paymentMethod: selectedPaymentMethod.value,
-    });
-    selectedItems.value = [];
-
-    if (order?.checkout_url) {
-      window.location.href = order.checkout_url;
-      return;
-    }
-
-    if (order?.id) {
-      push(`/customer/orders?highlight=${order.id}`);
-    }
-  } catch (error) {
-    window.alert(error.response?.data?.message || 'Unable to complete checkout right now.');
-  }
+  push(`/customer/checkout?items=${selectedItems.value.join(',')}`);
 };
 
 const continuePayment = () => {
@@ -749,5 +965,7 @@ watch(
 
 onMounted(() => {
   refreshCart();
+  loadPreviewProduct();
 });
+
 </script>

@@ -38,7 +38,7 @@
                 v-for="conversation in filteredConversations"
                 :key="conversation.id"
                 type="button"
-                @click="activeConversationId = conversation.id"
+                @click="selectConversation(conversation.id)"
                 class="mb-2 flex w-full items-start gap-3 rounded-[22px] px-3 py-3 text-left transition-all"
                 :class="conversation.id === activeConversationId
                   ? 'bg-white shadow-[0_18px_36px_-30px_rgba(122,82,54,0.48)] ring-1 ring-[#EADACD]'
@@ -147,6 +147,9 @@
                     </div>
                   </div>
                 </template>
+                <div v-else-if="isLoadingMessages" class="flex flex-1 items-center justify-center py-20 text-sm font-semibold text-[#9B806E]">
+                  Loading messages...
+                </div>
                 <div v-else class="flex flex-1 flex-col items-center justify-center py-20 text-center">
                   <div class="flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-[#E8D7CA]">
                     <svg class="h-10 w-10 text-[#C9876C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,9 +193,10 @@
                   <button
                     type="button"
                     @click="sendMessage"
-                    class="rounded-full bg-[#4A4541] px-6 py-3 font-semibold text-white shadow-md transition hover:bg-[#383431]"
+                    :disabled="isSendingMessage"
+                    class="rounded-full bg-[#4A4541] px-6 py-3 font-semibold text-white shadow-md transition hover:bg-[#383431] disabled:cursor-wait disabled:opacity-70"
                   >
-                    Send
+                    {{ isSendingMessage ? 'Sending...' : 'Send' }}
                   </button>
                 </div>
               </div>
@@ -236,6 +240,15 @@ const conversations = ref([]);
 const activeConversationId = ref(null);
 const isLoadingConversations = ref(true);
 const isLoadingMessages = ref(false);
+const isSendingMessage = ref(false);
+let conversationPollTimer = null;
+let messagePollTimer = null;
+let conversationsRequest = null;
+let messagesRequest = null;
+
+const ACTIVE_MESSAGE_POLL_MS = 1000;
+const CONVERSATION_POLL_MS = 1500;
+const currentUserId = computed(() => Number(props.user.user_id || props.user.id || 0));
 
 // Placeholder for new conversations
 const newConversationPlaceholder = {
@@ -251,21 +264,108 @@ const newConversationPlaceholder = {
   loaded: true
 };
 
-const fetchConversations = async () => {
+const formatMessageTime = (dateValue) => {
+  if (!dateValue) {
+    return 'Now';
+  }
+
+  return new Date(dateValue).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
+const newestMessageId = (conversation) => Math.max(
+  0,
+  ...(conversation?.messages || []).map((message) => Number(message.id) || 0),
+);
+
+const normalizeConversation = (conv, existing = null) => ({
+  id: conv.id,
+  name: 'BakerDan Admin',
+  avatar: 'AD',
+  label: 'Customer Support',
+  subtitle: 'Replies as soon as possible',
+  time: conv.last_message_at_human || conv.time || 'No messages',
+  unread: Number(conv.unread_count || 0) > 0 || Boolean(conv.unread),
+  preview: conv.last_message_content || conv.preview || 'No messages yet',
+  messages: existing?.messages || [],
+  loaded: existing?.loaded || false,
+  latestMessageId: Number(conv.latest_message_id || existing?.latestMessageId || newestMessageId(existing)) || 0,
+});
+
+const normalizeMessage = (msg) => ({
+  id: msg.id,
+  conversation_id: msg.conversation_id,
+  sender: Number(msg.sender_id) === currentUserId.value ? 'me' : 'them',
+  text: msg.content,
+  time: formatMessageTime(msg.created_at),
+});
+
+const sortConversations = () => {
+  conversations.value = [...conversations.value].sort((a, b) => Number(b.latestMessageId || 0) - Number(a.latestMessageId || 0));
+};
+
+const mergeMessages = (conversation, incomingMessages = []) => {
+  if (!conversation || !incomingMessages.length) {
+    return false;
+  }
+
+  const seen = new Set(conversation.messages.map((message) => Number(message.id)));
+  let changed = false;
+
+  incomingMessages.forEach((message) => {
+    const normalized = normalizeMessage(message);
+    if (seen.has(Number(normalized.id))) {
+      return;
+    }
+
+    conversation.messages.push(normalized);
+    conversation.latestMessageId = Math.max(Number(conversation.latestMessageId || 0), Number(normalized.id || 0));
+    conversation.preview = normalized.text;
+    conversation.time = 'Just now';
+    seen.add(Number(normalized.id));
+    changed = true;
+  });
+
+  if (changed) {
+    conversation.messages.sort((a, b) => Number(a.id) - Number(b.id));
+  }
+
+  return changed;
+};
+
+const upsertConversation = (summary) => {
+  const existing = conversations.value.find((conversation) => Number(conversation.id) === Number(summary.id));
+  const normalized = normalizeConversation(summary, existing);
+
+  if (existing) {
+    Object.assign(existing, normalized, {
+      messages: existing.messages,
+      loaded: existing.loaded,
+      latestMessageId: Math.max(Number(existing.latestMessageId || 0), Number(normalized.latestMessageId || 0)),
+    });
+    return existing;
+  }
+
+  conversations.value.push(normalized);
+  return normalized;
+};
+
+const fetchConversations = async ({ silent = false } = {}) => {
+  if (conversationsRequest) {
+    return;
+  }
+
+  conversationsRequest = new AbortController();
+
+  if (!silent) {
+    isLoadingConversations.value = true;
+  }
+
   try {
-    const response = await axios.get('/api/conversations');
-    conversations.value = response.data.map(conv => ({
-      id: conv.id,
-      name: 'BakerDan Admin',
-      avatar: 'AD',
-      label: 'Customer Support',
-      subtitle: 'Replies within the day',
-      time: conv.last_message_at_human,
-      unread: conv.unread_count > 0,
-      preview: conv.last_message_content,
-      messages: [],
-      loaded: false
-    }));
+    const response = await axios.get('/api/conversations', { signal: conversationsRequest.signal });
+    const summaries = Array.isArray(response.data) ? response.data : [];
+
+    summaries.forEach(upsertConversation);
+    sortConversations();
     
     if (conversations.value.length > 0) {
       if (!activeConversationId.value) {
@@ -275,33 +375,61 @@ const fetchConversations = async () => {
       activeConversationId.value = 'new';
     }
   } catch (error) {
-    console.error('Failed to fetch conversations:', error);
+    if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+      console.error('Failed to fetch conversations:', error);
+    }
   } finally {
     isLoadingConversations.value = false;
+    conversationsRequest = null;
   }
 };
 
-const fetchMessages = async (conversationId) => {
+const fetchMessages = async (conversationId, { incremental = false, silent = false } = {}) => {
   if (conversationId === 'new') return;
   
   const conversation = conversations.value.find(c => c.id === conversationId);
-  if (!conversation || conversation.loaded) return;
+  if (!conversation || (conversation.loaded && !incremental)) return;
 
-  isLoadingMessages.value = true;
+  if (messagesRequest) {
+    if (incremental) {
+      return;
+    }
+
+    messagesRequest.abort();
+  }
+
+  messagesRequest = new AbortController();
+
+  if (!silent) {
+    isLoadingMessages.value = true;
+  }
+
   try {
-    const response = await axios.get(`/api/conversations/${conversationId}/messages`);
-    conversation.messages = response.data.map(msg => ({
-      id: msg.id,
-      sender: Number(msg.sender_id) === Number(props.user.id) ? 'me' : 'them',
-      text: msg.content,
-      time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }));
+    const params = incremental ? { after_id: newestMessageId(conversation) } : {};
+    const response = await axios.get(`/api/conversations/${conversationId}/messages`, {
+      params,
+      signal: messagesRequest.signal,
+    });
+    const incoming = Array.isArray(response.data) ? response.data : [];
+    const changed = incremental
+      ? mergeMessages(conversation, incoming)
+      : (() => {
+          conversation.messages = incoming.map(normalizeMessage);
+          conversation.latestMessageId = newestMessageId(conversation);
+          return true;
+        })();
+
     conversation.loaded = true;
-    scrollMessagesToBottom();
+    if (changed) {
+      scrollMessagesToBottom();
+    }
   } catch (error) {
-    console.error('Failed to fetch messages:', error);
+    if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+      console.error('Failed to fetch messages:', error);
+    }
   } finally {
     isLoadingMessages.value = false;
+    messagesRequest = null;
   }
 };
 
@@ -340,6 +468,10 @@ const scrollMessagesToBottom = () => {
   });
 };
 
+const selectConversation = (conversationId) => {
+  activeConversationId.value = conversationId;
+};
+
 watch(activeConversationId, (newId) => {
   if (newId && newId !== 'new') {
     fetchMessages(newId);
@@ -360,11 +492,12 @@ const markAsRead = async (conversationId) => {
 
 const sendMessage = async () => {
   const text = draftMessage.value.trim();
-  if (!text || !activeConversation.value) return;
+  if (!text || !activeConversation.value || isSendingMessage.value) return;
 
   const tempId = Date.now();
   const currentConvId = activeConversationId.value;
   const isNew = currentConvId === 'new';
+  isSendingMessage.value = true;
 
   // Optimistic update
   activeConversation.value.messages.push({
@@ -387,26 +520,33 @@ const sendMessage = async () => {
     }
 
     const response = await axios.post('/api/messages', payload);
+    const savedMessage = response.data;
     
     if (isNew) {
-      // If it was a new conversation, we need to refresh the list to get the real ID
-      await fetchConversations();
-      activeConversationId.value = response.data.conversation_id;
+      await fetchConversations({ silent: true });
+      activeConversationId.value = savedMessage.conversation_id;
+      const conversation = conversations.value.find((item) => Number(item.id) === Number(savedMessage.conversation_id));
+      if (conversation) {
+        mergeMessages(conversation, [savedMessage]);
+        conversation.loaded = true;
+      }
     } else {
       // Update temp message with real data
       const msgIndex = activeConversation.value.messages.findIndex(m => m.id === tempId);
       if (msgIndex !== -1) {
-        activeConversation.value.messages[msgIndex].id = response.data.id;
-        activeConversation.value.messages[msgIndex].time = new Date(response.data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        activeConversation.value.messages[msgIndex] = normalizeMessage(savedMessage);
       }
       activeConversation.value.preview = messageContent;
       activeConversation.value.time = 'Just now';
+      activeConversation.value.latestMessageId = Math.max(Number(activeConversation.value.latestMessageId || 0), Number(savedMessage.id || 0));
     }
   } catch (error) {
     console.error('Failed to send message:', error);
     // Remove optimistic message on error
     activeConversation.value.messages = activeConversation.value.messages.filter(m => m.id !== tempId);
     draftMessage.value = messageContent; // Restore draft
+  } finally {
+    isSendingMessage.value = false;
   }
 };
 
@@ -415,7 +555,7 @@ const handleIncomingMessage = (event) => {
   let conversation = conversations.value.find(c => c.id === message.conversation_id);
   
   if (!conversation) {
-    fetchConversations();
+    fetchConversations({ silent: true });
     return;
   }
 
@@ -425,13 +565,7 @@ const handleIncomingMessage = (event) => {
 
   // If it's the active conversation, add to feed
   if (conversation.id === activeConversationId.value) {
-    if (!conversation.messages.find(m => m.id === message.id)) {
-      conversation.messages.push({
-        id: message.id,
-        sender: Number(message.sender_id) === Number(props.user.id) ? 'me' : 'them',
-        text: message.content,
-        time: new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      });
+    if (mergeMessages(conversation, [message])) {
       scrollMessagesToBottom();
       markAsRead(conversation.id);
     }
@@ -440,8 +574,49 @@ const handleIncomingMessage = (event) => {
   }
 };
 
+const pollMessages = () => {
+  if (document.hidden) {
+    return;
+  }
+
+  if (activeConversationId.value && activeConversationId.value !== 'new') {
+    fetchMessages(activeConversationId.value, { incremental: true, silent: true });
+  }
+};
+
+const startPolling = () => {
+  stopPolling();
+
+  messagePollTimer = window.setInterval(pollMessages, ACTIVE_MESSAGE_POLL_MS);
+  conversationPollTimer = window.setInterval(() => {
+    if (!document.hidden) {
+      fetchConversations({ silent: true });
+    }
+  }, CONVERSATION_POLL_MS);
+};
+
+const stopPolling = () => {
+  if (messagePollTimer) {
+    window.clearInterval(messagePollTimer);
+    messagePollTimer = null;
+  }
+
+  if (conversationPollTimer) {
+    window.clearInterval(conversationPollTimer);
+    conversationPollTimer = null;
+  }
+};
+
+const handleVisibilityChange = () => {
+  if (!document.hidden) {
+    pollMessages();
+  }
+};
+
 onMounted(() => {
   fetchConversations();
+  startPolling();
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 
   if (window.Echo) {
     window.Echo.private(`user.${props.user.user_id}`)
@@ -452,6 +627,11 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  stopPolling();
+  conversationsRequest?.abort();
+  messagesRequest?.abort();
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
+
   if (window.Echo) {
     window.Echo.leave(`user.${props.user.user_id}`);
   }
