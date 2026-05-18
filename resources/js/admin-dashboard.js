@@ -11,19 +11,19 @@ if (dashboard) {
     const modalMessage = dashboard.querySelector('[data-modal-message]');
     const modalConfirm = dashboard.querySelector('[data-modal-confirm]');
     const modalCancel = dashboard.querySelector('[data-modal-cancel]');
-    const inventoryTitle = dashboard.querySelector('[data-inventory-title]');
-    const inventorySubtitle = dashboard.querySelector('[data-inventory-subtitle]');
     const inventoryDrawer = dashboard.querySelector('[data-inventory-drawer]');
-    const inventoryDrawerClose = dashboard.querySelector('[data-inventory-close]');
-    const inventoryForm = dashboard.querySelector('[data-inventory-form]');
-    const inventoryFeedback = dashboard.querySelector('[data-inventory-feedback]');
-    const inventoryName = dashboard.querySelector('[data-inventory-name]');
-    const inventoryDescription = dashboard.querySelector('[data-inventory-description]');
-    const inventoryPrice = dashboard.querySelector('[data-inventory-price]');
-    const inventoryType = dashboard.querySelector('[data-inventory-type]');
-    const inventoryIsActive = dashboard.querySelector('[data-inventory-is-active]');
-    const inventoryMethod = dashboard.querySelector('[data-inventory-method]');
-    const inventoryId = dashboard.querySelector('[data-inventory-id]');
+    const inventoryDrawerClose = inventoryDrawer?.querySelector('[data-inventory-close]');
+    const inventoryForm = inventoryDrawer?.querySelector('[data-inventory-form]');
+    const inventoryTitle = inventoryDrawer?.querySelector('[data-inventory-title]');
+    const inventorySubtitle = inventoryDrawer?.querySelector('[data-inventory-subtitle]');
+    const inventoryFeedback = inventoryDrawer?.querySelector('[data-inventory-feedback]');
+    const inventoryName = inventoryForm?.querySelector('[data-inventory-name]');
+    const inventoryDescription = inventoryForm?.querySelector('[data-inventory-description]');
+    const inventoryPrice = inventoryForm?.querySelector('[data-inventory-price]');
+    const inventoryType = inventoryForm?.querySelector('[data-inventory-type]');
+    const inventoryIsActive = inventoryForm?.querySelector('[data-inventory-is-active]');
+    const inventoryMethod = inventoryForm?.querySelector('[data-inventory-method]');
+    const inventoryId = inventoryForm?.querySelector('[data-inventory-id]');
     const customerPanel = dashboard.querySelector('[data-customer-panel]');
     const customerPanelTitle = dashboard.querySelector('[data-customer-panel-title]');
     const customerPanelMeta = dashboard.querySelector('[data-customer-panel-meta]');
@@ -70,9 +70,10 @@ if (dashboard) {
     const adminMessages = adminMessagesElement ? JSON.parse(adminMessagesElement.textContent) : [];
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-    const paginationKeys = ['inventory', 'orders', 'customers', 'admins', 'notifications'];
+    const paginationKeys = ['inventory', 'promos', 'orders', 'customers', 'admins', 'notifications'];
     const paginations = {
         inventory: { page: 1, size: 10 },
+        promos: { page: 1, size: 10 },
         orders: { page: 1, size: 10 },
         customers: { page: 1, size: 10 },
         admins: { page: 1, size: 10 },
@@ -80,6 +81,7 @@ if (dashboard) {
     };
     const filters = {
         inventory: { query: '', value: 'all' },
+        promos: { query: '', value: 'all' },
         orders: { query: '', value: 'all' },
         notifications: { query: '', value: 'all' },
     };
@@ -610,7 +612,7 @@ if (dashboard) {
         return !query || haystack.includes(query);
     };
 
-    const matchesNotificationsFilter = (item) => {
+     const matchesNotificationsFilter = (item) => {
         const query = filters.notifications.query.trim().toLowerCase();
         const selected = filters.notifications.value;
         const haystack = [
@@ -627,11 +629,32 @@ if (dashboard) {
         return !query || haystack.includes(query);
     };
 
+    const matchesPromosFilter = (item) => {
+        const query = filters.promos.query.trim().toLowerCase();
+        const active = filters.promos.value;
+        const haystack = [
+            item.dataset.promoCode,
+            item.dataset.promoDescription,
+        ].join(' ').toLowerCase();
+
+        if (active !== 'all') {
+            const isActive = item.dataset.promoIsActive === '1';
+            if (active === 'active' && !isActive) return false;
+            if (active === 'inactive' && isActive) return false;
+        }
+
+        return !query || haystack.includes(query);
+    };
+
     const getFilteredItems = (key) => {
         const items = getPageItems(key);
 
         if (key === 'inventory') {
             return items.filter(matchesInventoryFilter);
+        }
+
+        if (key === 'promos') {
+            return items.filter(matchesPromosFilter);
         }
 
         if (key === 'orders') {
@@ -729,6 +752,11 @@ if (dashboard) {
 
         if (key === 'inventory' && inventoryEmptyState) {
             inventoryEmptyState.hidden = total > 0;
+        }
+
+        if (key === 'promos') {
+            const emptyState = dashboard.querySelector('[data-promos-empty]');
+            if (emptyState) emptyState.hidden = total > 0;
         }
 
         if (key === 'notifications') {
@@ -1031,17 +1059,86 @@ if (dashboard) {
             return;
         }
 
+        const closeInventory = event.target.closest('[data-inventory-close]');
+        if (closeInventory) {
+            closeInventoryDrawer();
+            return;
+        }
+
         const editProduct = event.target.closest('[data-edit-product]');
         if (editProduct) {
             const row = editProduct.closest('[data-product-row]');
-            openInventoryDrawer('edit', {
-                id: row.dataset.productId,
-                name: row.dataset.productName,
-                description: row.dataset.productDescription,
-                price: row.dataset.productPrice,
-                category: row.dataset.productCategory,
-                is_active: row.dataset.productIsActive === '1',
-            });
+            if (row) {
+                openInventoryDrawer('edit', {
+                    id: row.dataset.productId,
+                    name: row.dataset.productName,
+                    description: row.dataset.productDescription,
+                    price: row.dataset.productPrice,
+                    category: row.dataset.productCategory,
+                    is_active: row.dataset.productIsActive === '1',
+                });
+            }
+            return;
+        }
+
+        const addPromo = event.target.closest('[data-open-add-promo]');
+        if (addPromo) {
+            openPromoDrawer('add');
+            return;
+        }
+
+        const closePromo = event.target.closest('[data-promo-close]');
+        if (closePromo) {
+            closePromoDrawer();
+            return;
+        }
+
+        const editPromo = event.target.closest('[data-edit-promo]');
+        if (editPromo) {
+            const row = editPromo.closest('[data-promo-row]');
+            if (row) {
+                let applicable = [];
+                try {
+                    applicable = JSON.parse(row.dataset.promoApplicableProducts || '[]');
+                } catch (e) {
+                    applicable = [];
+                }
+
+                const promo = {
+                    id: row.dataset.promoId,
+                    code: row.dataset.promoCode,
+                    description: row.dataset.promoDescription,
+                    discount_type: row.dataset.promoDiscountType,
+                    discount_value: row.dataset.promoDiscountValue,
+                    min_purchase: row.dataset.promoMinPurchase,
+                    max_discount: row.dataset.promoMaxDiscount,
+                    usage_limit: row.dataset.promoUsageLimit,
+                    limit_per_user: row.dataset.promoLimitPerUser,
+                    starts_at: row.dataset.promoStartsAt,
+                    expires_at: row.dataset.promoExpiresAt,
+                    applicable_products: applicable,
+                    is_active: row.dataset.promoIsActive === '1',
+                };
+
+                openPromoDrawer('edit', promo);
+            }
+            return;
+        }
+
+        const removePromo = event.target.closest('[data-remove-promo]');
+        if (removePromo) {
+            const row = removePromo.closest('[data-promo-row]');
+            if (row) {
+                const promoId = row.dataset.promoId;
+                const promoCode = row.dataset.promoCode;
+
+                openModal({
+                    title: 'Remove Promo Code',
+                    message: `Are you sure you want to permanently delete the promo code "${promoCode}"? This action cannot be undone.`,
+                    confirmLabel: 'Delete Promo',
+                    promoId: promoId,
+                });
+            }
             return;
         }
 
@@ -1210,6 +1307,20 @@ if (dashboard) {
             return;
         }
 
+        if (modalAction.promoId) {
+            fetch(`/admin/promos/${modalAction.promoId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                },
+            }).then(() => {
+                window.location.reload();
+            });
+            closeModal();
+            return;
+        }
+
         if (modalAction.orderId) {
             const orderCard = dashboard.querySelector(`[data-order-card][data-order-id="${modalAction.orderId}"]`);
             if (orderCard) {
@@ -1239,7 +1350,7 @@ if (dashboard) {
         dashboard.classList.toggle('is-sidebar-compact');
     });
 
-    inventoryDrawerClose?.addEventListener('click', closeInventoryDrawer);
+    // Removed direct listener to close inventory drawer - handled in delegation
     openWalkinOrderBtn?.addEventListener('click', () => {
         openDialog(walkinOrderModal);
     });
@@ -1376,6 +1487,111 @@ if (dashboard) {
                 updateNavCounts();
             });
     }
+
+    // ==========================================
+    // PROMOS & DISCOUNTS DRAWER & HANDLERS
+    // ==========================================
+    const promoDrawer = dashboard.querySelector('[data-promo-drawer]');
+    const promoForm = promoDrawer?.querySelector('[data-promo-form]');
+    const promoTitle = promoDrawer?.querySelector('[data-promo-title]');
+    const promoSubtitle = promoDrawer?.querySelector('[data-promo-subtitle]');
+    const promoIdInput = promoForm?.querySelector('[data-promo-id]');
+    const promoMethodInput = promoForm?.querySelector('[data-promo-method]');
+    const promoCodeInput = promoForm?.querySelector('[data-promo-code-input]');
+    const promoDescriptionInput = promoForm?.querySelector('[data-promo-description]');
+    const promoDiscountTypeInput = promoForm?.querySelector('[data-promo-discount-type]');
+    const promoDiscountValueInput = promoForm?.querySelector('[data-promo-discount-value]');
+    const promoMinPurchaseInput = promoForm?.querySelector('[data-promo-min-purchase]');
+    const promoMaxDiscountInput = promoForm?.querySelector('[data-promo-max-discount]');
+    const promoUsageLimitInput = promoForm?.querySelector('[data-promo-usage-limit]');
+    const promoLimitPerUserInput = promoForm?.querySelector('[data-promo-limit-per-user]');
+    const promoStartsAtInput = promoForm?.querySelector('[data-promo-starts-at]');
+    const promoExpiresAtInput = promoForm?.querySelector('[data-promo-expires-at]');
+    const promoIsActiveInput = promoForm?.querySelector('[data-promo-is-active]');
+    const promoProductCheckboxes = Array.from(promoForm?.querySelectorAll('[data-promo-product-checkbox]') || []);
+
+    const openPromoDrawer = (mode, promo = null) => {
+        if (!promoDrawer || !promoForm) return;
+
+        promoForm.dataset.mode = mode;
+        if (promoTitle) {
+            promoTitle.textContent = mode === 'edit' ? 'Edit Promo' : 'Add Promo';
+        }
+        if (promoSubtitle) {
+            promoSubtitle.textContent = mode === 'edit' ? 'Update the details and restrictions for this discount code.' : 'Create a new discount code with limit rules.';
+        }
+
+        if (mode === 'edit' && promo) {
+            if (promoIdInput) promoIdInput.value = promo.id;
+            if (promoCodeInput) promoCodeInput.value = promo.code;
+            if (promoDescriptionInput) promoDescriptionInput.value = promo.description || '';
+            if (promoDiscountTypeInput) promoDiscountTypeInput.value = promo.discount_type;
+            if (promoDiscountValueInput) promoDiscountValueInput.value = promo.discount_value;
+            if (promoMinPurchaseInput) promoMinPurchaseInput.value = promo.min_purchase || '';
+            if (promoMaxDiscountInput) promoMaxDiscountInput.value = promo.max_discount || '';
+            if (promoUsageLimitInput) promoUsageLimitInput.value = promo.usage_limit || '';
+            if (promoLimitPerUserInput) promoLimitPerUserInput.value = promo.limit_per_user || '';
+            
+            if (promoStartsAtInput) {
+                promoStartsAtInput.value = promo.starts_at ? promo.starts_at.replace(' ', 'T') : '';
+            }
+            if (promoExpiresAtInput) {
+                promoExpiresAtInput.value = promo.expires_at ? promo.expires_at.replace(' ', 'T') : '';
+            }
+            
+            if (promoIsActiveInput) promoIsActiveInput.value = promo.is_active ? '1' : '0';
+
+            const applicableIds = Array.isArray(promo.applicable_products) 
+                ? promo.applicable_products.map(id => Number(id))
+                : [];
+            
+            promoProductCheckboxes.forEach((checkbox) => {
+                checkbox.checked = applicableIds.includes(Number(checkbox.value));
+            });
+        } else {
+            promoForm.reset();
+            if (promoIdInput) promoIdInput.value = '';
+            promoProductCheckboxes.forEach((checkbox) => {
+                checkbox.checked = false;
+            });
+        }
+
+        if (promoDrawer) {
+            promoDrawer.hidden = false;
+        }
+    };
+
+    const closePromoDrawer = () => {
+        if (promoDrawer) {
+            promoDrawer.hidden = true;
+        }
+    };
+
+    promoForm?.addEventListener('submit', (event) => {
+        event.preventDefault();
+
+        const mode = promoForm.dataset.mode || 'add';
+        const promoId = promoIdInput ? promoIdInput.value : '';
+        const baseUrl = promoForm.dataset.updateUrlBase;
+
+        if (mode === 'edit' && promoId) {
+            promoForm.action = `${baseUrl}/${promoId}`;
+            if (promoMethodInput) {
+                promoMethodInput.disabled = false;
+                promoMethodInput.value = 'PUT';
+            }
+        } else {
+            promoForm.action = promoForm.dataset.storeUrl || promoForm.action;
+            if (promoMethodInput) {
+                promoMethodInput.disabled = true;
+                promoMethodInput.value = '';
+            }
+        }
+
+        promoForm.submit();
+    });
+
+    // Removed direct listener for removing promo - handled in delegation
 
     paginationKeys.forEach((key) => renderPagination(key));
     updateNavCounts();

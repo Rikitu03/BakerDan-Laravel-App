@@ -24,13 +24,13 @@ class CustomerOrderController extends Controller
         $highlightSync = $this->syncHighlightedPaymentReturn($request, $pendingOrders, $payMongo, $userId);
 
         $currentOrders = Order::query()
-            ->with(['items.product'])
+            ->with(['items.product', 'promo'])
             ->where('user_id', $userId)
             ->whereIn('status', $currentStatuses)
             ->latest('id')
             ->get();
         $historyOrders = Order::query()
-            ->with(['items.product', 'reviews'])
+            ->with(['items.product', 'reviews', 'promo'])
             ->where('user_id', $userId)
             ->whereNotIn('status', $currentStatuses)
             ->withCount([
@@ -128,7 +128,7 @@ class CustomerOrderController extends Controller
     public function purchaseHistory(): JsonResponse
     {
         $orders = Order::query()
-            ->with(['items.product', 'reviews'])
+            ->with(['items.product', 'reviews', 'promo'])
             ->where('user_id', Auth::id())
             ->where('payment_status', 'paid')
             ->latest('id')
@@ -239,6 +239,9 @@ class CustomerOrderController extends Controller
             'status_note' => $this->statusNote($order, $containsCustom),
             'total_amount' => (float) $order->total_amount,
             'total_amount_label' => 'PHP ' . number_format((float) $order->total_amount, 2),
+            'promo_id' => $order->promo_id,
+            'discount_amount' => (float) $order->discount_amount,
+            'promo_code' => $order->promo?->code,
         ];
     }
 
@@ -285,6 +288,9 @@ class CustomerOrderController extends Controller
             'status_note' => $this->statusNote($order, $containsCustom),
             'total_amount' => (float) $order->total_amount,
             'total_amount_label' => 'PHP ' . number_format((float) $order->total_amount, 2),
+            'promo_id' => $order->promo_id,
+            'discount_amount' => (float) $order->discount_amount,
+            'promo_code' => $order->promo?->code,
         ];
     }
 

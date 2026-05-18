@@ -51,6 +51,8 @@ class PendingOrderService
             'payment_metadata' => is_array($attributes['payment_metadata'] ?? null) ? $attributes['payment_metadata'] : [],
             'shipping_address' => $attributes['shipping_address'] ?? null,
             'total_amount' => round((float) ($attributes['total_amount'] ?? 0), 2),
+            'promo_id' => isset($attributes['promo_id']) ? (int) $attributes['promo_id'] : null,
+            'discount_amount' => round((float) ($attributes['discount_amount'] ?? 0), 2),
             'created_at' => $this->normalizeCarbon($attributes['created_at'] ?? $now)->toIso8601String(),
             'expires_at' => $this->normalizeCarbon($expiresAt)->toIso8601String(),
             'items' => $items,
@@ -250,6 +252,8 @@ class PendingOrderService
                 'payment_expires_at' => $this->expiresAt($pendingOrder),
                 'payment_metadata' => is_array($pendingOrder['payment_metadata'] ?? null) ? $pendingOrder['payment_metadata'] : [],
                 'shipping_address' => $pendingOrder['shipping_address'] ?? null,
+                'promo_id' => $pendingOrder['promo_id'] ?? null,
+                'discount_amount' => round((float) ($pendingOrder['discount_amount'] ?? 0), 2),
             ]);
 
             foreach (($pendingOrder['items'] ?? []) as $item) {
@@ -266,6 +270,10 @@ class PendingOrderService
                     'size' => $item['size'] ?? null,
                     'flavor' => $item['flavor'] ?? null,
                 ]);
+            }
+
+            if ($order->promo_id) {
+                \App\Models\Promo::whereKey($order->promo_id)->increment('usage_count');
             }
 
             return $order->load(['items.product']);

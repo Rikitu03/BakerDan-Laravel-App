@@ -5,35 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>BakerDan Admin Dashboard</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=sora:400,500,600,700,800|outfit:400,500,600,700" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Urbanist:wght@600;700;800;900&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/main.js'])
     <style>
         :root {
-            --paper: #fbf4e8;
-            --surface: rgba(255, 252, 247, 0.74);
-            --line: rgba(38, 24, 15, 0.1);
-            --ink: #26180f;
-            --ink-soft: #6d5949;
-            --brand: #c86f38;
-            --brand-deep: #8f4723;
-            --olive: #626b3c;
-            --success: #107a4b;
-            --danger: #b42318;
-            --shadow: 0 28px 80px -42px rgba(38, 24, 15, 0.45);
+            --paper: #f8f5f1;
+            --surface: #ffffff;
+            --line: #ece1d8;
+            --ink: #473d36;
+            --ink-soft: #8a7e76;
+            --brand: #c9876c;
+            --brand-deep: #b8765b;
+            --olive: #8e7868;
+            --success: #2e682e;
+            --danger: #c84b31;
+            --shadow: 0 18px 40px -24px rgba(71, 61, 54, 0.12);
         }
 
         body {
-            font-family: 'Outfit', sans-serif;
+            font-family: 'Poppins', sans-serif;
             color: var(--ink);
             background:
-                radial-gradient(circle at top left, rgba(255, 255, 255, 0.72), transparent 24%),
-                radial-gradient(circle at 85% 18%, rgba(200, 111, 56, 0.12), transparent 18%),
-                linear-gradient(180deg, #f1ece5 0, #fbf4e8 88px, #fbf4e8 100%);
+                radial-gradient(circle at top left, rgba(255, 255, 255, 0.8), transparent 30%),
+                radial-gradient(circle at 85% 18%, rgba(201, 135, 108, 0.1), transparent 20%),
+                linear-gradient(180deg, #fcfbf9 0, #f8f5f1 88px, #f8f5f1 100%);
         }
 
         .font-display {
-            font-family: 'Sora', sans-serif;
+            font-family: 'Urbanist', sans-serif;
+            font-weight: 800;
         }
 
         .page-shell {
@@ -55,7 +57,7 @@
             height: 30rem;
             top: 4rem;
             right: -12rem;
-            background: radial-gradient(circle, rgba(200, 111, 56, 0.14), transparent 65%);
+            background: radial-gradient(circle, rgba(201, 135, 108, 0.12), transparent 65%);
         }
 
         .page-shell::after {
@@ -63,7 +65,7 @@
             height: 22rem;
             left: -9rem;
             bottom: 6rem;
-            background: radial-gradient(circle, rgba(143, 71, 35, 0.08), transparent 70%);
+            background: radial-gradient(circle, rgba(184, 118, 91, 0.08), transparent 70%);
         }
 
         [hidden] {
@@ -72,8 +74,8 @@
 
         .glass-panel {
             background:
-                radial-gradient(circle at top, rgba(255, 255, 255, 0.92), transparent 58%),
-                linear-gradient(160deg, rgba(255, 250, 241, 0.95), rgba(243, 227, 198, 0.78));
+                radial-gradient(circle at top, rgba(255, 255, 255, 0.96), transparent 60%),
+                linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(250, 248, 245, 0.92));
             border: 1px solid var(--line);
             box-shadow: var(--shadow);
             backdrop-filter: blur(12px);
@@ -81,9 +83,9 @@
 
         [data-sidebar] {
             background:
-                radial-gradient(circle at top, rgba(255, 255, 255, 0.94), transparent 50%),
-                linear-gradient(160deg, rgba(255, 252, 247, 0.96), rgba(245, 230, 205, 0.82));
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), var(--shadow);
+                radial-gradient(circle at top, rgba(255, 255, 255, 0.96), transparent 50%),
+                linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(248, 245, 241, 0.95));
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), var(--shadow);
         }
 
         .soft-panel {
@@ -98,8 +100,8 @@
 
         .panel-lift:hover {
             transform: translateY(-3px);
-            box-shadow: 0 28px 54px -38px rgba(38, 24, 15, 0.55);
-            border-color: rgba(200, 111, 56, 0.3);
+            box-shadow: 0 28px 54px -38px rgba(71, 61, 54, 0.25);
+            border-color: rgba(201, 135, 108, 0.3);
         }
 
         .metric-card {
@@ -112,7 +114,7 @@
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(120deg, rgba(200, 111, 56, 0.1), transparent 55%);
+            background: linear-gradient(120deg, rgba(201, 135, 108, 0.1), transparent 55%);
             opacity: 0;
             transition: opacity 220ms ease;
             z-index: -1;
@@ -132,10 +134,10 @@
         }
 
         .dark-pill {
-            background: linear-gradient(135deg, rgba(143, 71, 35, 0.95), rgba(38, 24, 15, 0.92));
+            background: linear-gradient(135deg, rgba(184, 118, 91, 0.95), rgba(71, 61, 54, 0.92));
             color: #fff;
-            border: 1px solid rgba(200, 111, 56, 0.3);
-            box-shadow: 0 12px 28px -12px rgba(143, 71, 35, 0.45);
+            border: 1px solid rgba(201, 135, 108, 0.3);
+            box-shadow: 0 12px 28px -12px rgba(184, 118, 91, 0.45);
         }
 
         .brand-logo-wrap {
@@ -143,9 +145,9 @@
             width: 3.5rem;
             border-radius: 1.2rem;
             overflow: hidden;
-            border: 2px solid rgba(200, 111, 56, 0.2);
-            box-shadow: 0 8px 24px -12px rgba(143, 71, 35, 0.4);
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 248, 240, 0.95));
+            border: 2px solid rgba(201, 135, 108, 0.2);
+            box-shadow: 0 8px 24px -12px rgba(184, 118, 91, 0.25);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 245, 241, 0.95));
             display: flex;
             align-items: center;
             justify-content: center;
@@ -153,8 +155,8 @@
         }
 
         .brand-logo-wrap:hover {
-            border-color: rgba(200, 111, 56, 0.4);
-            box-shadow: 0 12px 28px -8px rgba(143, 71, 35, 0.5);
+            border-color: rgba(201, 135, 108, 0.4);
+            box-shadow: 0 12px 28px -8px rgba(184, 118, 91, 0.35);
             transform: scale(1.03);
         }
 
@@ -173,8 +175,8 @@
         .logout-button {
             width: 100%;
             border-radius: 0.95rem;
-            border: 1.5px solid rgba(200, 111, 56, 0.3);
-            background: linear-gradient(135deg, rgba(200, 111, 56, 0.1), rgba(255, 255, 255, 0.15));
+            border: 1.5px solid rgba(201, 135, 108, 0.3);
+            background: linear-gradient(135deg, rgba(201, 135, 108, 0.1), rgba(255, 255, 255, 0.15));
             /* color: rgba(255, 255, 255, 0.9); */
             padding: 0.8rem 1.1rem;
             font-size: 0.9rem;
@@ -186,9 +188,9 @@
 
         .logout-button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 12px 24px -12px rgba(143, 71, 35, 0.6);
-            background: linear-gradient(135deg, rgba(200, 111, 56, 0.2), rgba(255, 255, 255, 0.22));
-            border-color: rgba(200, 111, 56, 0.5);
+            box-shadow: 0 12px 24px -12px rgba(184, 118, 91, 0.4);
+            background: linear-gradient(135deg, rgba(201, 135, 108, 0.2), rgba(255, 255, 255, 0.22));
+            border-color: rgba(201, 135, 108, 0.5);
             color: rgba(255, 255, 255, 1);
         }
 
@@ -200,7 +202,7 @@
             background: linear-gradient(135deg, var(--brand-deep), var(--brand));
             color: #fff;
             border-color: var(--brand);
-            box-shadow: 0 8px 16px -4px rgba(143, 71, 35, 0.35);
+            box-shadow: 0 8px 16px -4px rgba(184, 118, 91, 0.35);
         }
 
         .nav-item {
@@ -210,10 +212,10 @@
         }
 
         .nav-item:hover:not([data-active="true"]) {
-            background: linear-gradient(135deg, rgba(200, 111, 56, 0.1), rgba(255, 255, 255, 0.95));
-            border-color: rgba(200, 111, 56, 0.3);
+            background: linear-gradient(135deg, rgba(201, 135, 108, 0.1), rgba(255, 255, 255, 0.95));
+            border-color: rgba(201, 135, 108, 0.3);
             transform: translateX(2px);
-            box-shadow: 0 4px 12px -4px rgba(143, 71, 35, 0.2);
+            box-shadow: 0 4px 12px -4px rgba(184, 118, 91, 0.15);
         }
 
         .nav-item:active {
@@ -221,16 +223,16 @@
         }
 
         [data-nav-count] {
-            background: linear-gradient(135deg, rgba(200, 111, 56, 0.12), rgba(255, 255, 255, 0.88)) !important;
-            border: 1px solid rgba(200, 111, 56, 0.15);
+            background: linear-gradient(135deg, rgba(201, 135, 108, 0.12), rgba(255, 255, 255, 0.88)) !important;
+            border: 1px solid rgba(201, 135, 108, 0.15);
             color: var(--brand-deep) !important;
             font-weight: 700;
             transition: all 150ms ease;
         }
 
         .nav-item:hover [data-nav-count]:not([data-active="true"]) {
-            background: linear-gradient(135deg, rgba(200, 111, 56, 0.18), rgba(255, 255, 255, 0.95)) !important;
-            border-color: rgba(200, 111, 56, 0.25);
+            background: linear-gradient(135deg, rgba(201, 135, 108, 0.18), rgba(255, 255, 255, 0.95)) !important;
+            border-color: rgba(201, 135, 108, 0.25);
             transform: scale(1.05);
         }
 
@@ -244,8 +246,8 @@
             position: relative;
             overflow: hidden;
             background:
-                radial-gradient(circle at top right, rgba(255, 255, 255, 0.82), transparent 30%),
-                linear-gradient(135deg, rgba(66, 45, 33, 0.98), rgba(122, 72, 41, 0.96), rgba(199, 132, 87, 0.9));
+                radial-gradient(circle at top right, rgba(255, 255, 255, 0.85), transparent 30%),
+                linear-gradient(135deg, rgba(71, 61, 54, 0.98), rgba(142, 120, 104, 0.96), rgba(201, 135, 108, 0.9));
             color: #fff;
         }
 
@@ -266,8 +268,8 @@
             overflow: hidden;
             border-radius: 2rem;
             padding: 1.1rem;
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(255, 248, 240, 0.62));
-            border: 1px solid rgba(38, 24, 15, 0.08);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(248, 245, 241, 0.65));
+            border: 1px solid var(--line);
         }
 
         .message-thread-button[data-active="true"] {
@@ -310,7 +312,7 @@
 
         .nav-item[data-active="true"]::before {
             background: var(--brand);
-            box-shadow: 0 0 0 6px rgba(200, 111, 56, 0.14);
+            box-shadow: 0 0 0 6px rgba(201, 135, 108, 0.18);
         }
 
         .nav-item:hover {
@@ -329,7 +331,7 @@
         .filter-chip[data-active="true"] {
             background: linear-gradient(135deg, var(--brand-deep), var(--brand));
             color: #fff;
-            box-shadow: 0 12px 24px -18px rgba(143, 71, 35, 0.6);
+            box-shadow: 0 12px 24px -18px rgba(184, 118, 91, 0.6);
         }
 
         .filter-chip {
@@ -358,12 +360,12 @@
         }
 
         [data-section="dashboard"] > .grid > .soft-panel {
-            border-top: 3px solid rgba(200, 111, 56, 0.38);
+            border-top: 3px solid rgba(201, 135, 108, 0.38);
         }
 
         .chart-surface {
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(251, 244, 232, 0.65));
-            border: 1px dashed rgba(200, 111, 56, 0.28);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(248, 245, 241, 0.65));
+            border: 1px dashed rgba(201, 135, 108, 0.28);
         }
 
         .chart-grid-line {
@@ -411,7 +413,7 @@
 
         [data-admin-dashboard] .shadow-slate-900\/10,
         [data-admin-dashboard] .shadow-orange-900\/20 {
-            --tw-shadow-color: rgba(143, 71, 35, 0.24);
+            --tw-shadow-color: rgba(184, 118, 91, 0.24);
             --tw-shadow: 0 16px 32px -20px var(--tw-shadow-color);
             box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
         }
@@ -457,6 +459,7 @@
 @php
     $metrics = $metrics ?? [];
     $products = $products ?? [];
+    $promos = $promos ?? [];
     $orders = $orders ?? [];
     $customers = $customers ?? [];
     $admins = $admins ?? [];
@@ -467,6 +470,7 @@
     $reportPayload = $reportPayload ?? [
         'metrics' => $metrics,
         'products' => $products,
+        'promos' => $promos,
         'orders' => $orders,
         'customers' => $customers,
         'admins' => $admins,
@@ -478,6 +482,7 @@
     $sidebarCounts = $sidebarCounts ?? [
         'dashboard' => '•',
         'inventory' => count($products),
+        'promos' => count($promos),
         'orders' => count($orders),
         'customers' => count($customers),
         'notifications' => count($notifications),
@@ -524,7 +529,7 @@
         </div>
 
         <nav class="grid gap-2 px-4 lg:px-5">
-            @foreach ([['dashboard', 'Dashboard'], ['inventory', 'Inventory'], ['orders', 'Orders'], ['customers', 'Customers'], ['notifications', 'Notifications'], ['messages', 'Messages']] as [$key, $label])
+            @foreach ([['dashboard', 'Dashboard'], ['inventory', 'Inventory'], ['promos', 'Promos & Discounts'], ['orders', 'Orders'], ['customers', 'Customers'], ['notifications', 'Notifications'], ['messages', 'Messages']] as [$key, $label])
                 <button type="button" data-nav="{{ $key }}" class="nav-item flex items-center justify-between rounded-2xl border border-transparent px-4 py-3 text-left text-sm font-semibold text-slate-600 transition hover:border-slate-200 hover:bg-white/70">
                     <span class="nav-item-label" data-sidebar-text>{{ $label }}</span>
                     <span data-nav-count="{{ $key }}" class="rounded-full bg-white/70 px-2 py-1 text-xs font-semibold text-slate-500">{{ $sidebarCounts[$key] ?? 0 }}</span>
@@ -916,6 +921,131 @@
                     </select>
                     <button type="button" data-page-prev="inventory" class="rounded-xl bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">Prev</button>
                     <button type="button" data-page-next="inventory" class="rounded-xl bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">Next</button>
+                </div>
+            </div>
+        </section>
+
+
+        <section data-section="promos" hidden class="fade-in space-y-6">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <p class="text-sm font-medium text-slate-500">Promos & Discounts section</p>
+                    <h2 class="font-display section-title mt-1 text-3xl font-bold">Promos & Discounts</h2>
+                </div>
+                <div class="flex gap-2">
+                    <button type="button" data-open-add-promo class="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/10">+ Create Promo</button>
+                </div>
+            </div>
+            
+            <article class="soft-panel rounded-[1.75rem] p-4 sm:p-5">
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <label class="relative block w-full lg:max-w-md">
+                        <span class="pointer-events-none absolute inset-y-0 left-4 flex items-center text-slate-400">
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m1.6-5.15a6.75 6.75 0 11-13.5 0 6.75 6.75 0 0113.5 0z"></path>
+                            </svg>
+                        </span>
+                        <input data-search-input="promos" type="search" placeholder="Search by promo code or description" class="w-full rounded-full border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm text-slate-700 outline-none focus:border-slate-300 focus:ring-2 focus:ring-[rgba(200,111,56,0.18)]">
+                    </label>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" data-filter-button="promos" data-filter-value="all" data-active="true" class="filter-chip rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-600">All</button>
+                        <button type="button" data-filter-button="promos" data-filter-value="active" class="filter-chip rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-600">Active</button>
+                        <button type="button" data-filter-button="promos" data-filter-value="inactive" class="filter-chip rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-600">Inactive</button>
+                    </div>
+                </div>
+            </article>
+
+            <article class="soft-panel panel-lift overflow-hidden rounded-[2rem]">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+                        <thead class="bg-slate-50 text-slate-500">
+                            <tr>
+                                <th class="px-5 py-4 font-medium">Code / Info</th>
+                                <th class="px-5 py-4 font-medium">Discount</th>
+                                <th class="px-5 py-4 font-medium">Constraints</th>
+                                <th class="px-5 py-4 font-medium">Validity Dates</th>
+                                <th class="px-5 py-4 font-medium">Usage</th>
+                                <th class="px-5 py-4 font-medium">Status</th>
+                                <th class="px-5 py-4 font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 bg-white">
+                            @foreach ($promos as $promo)
+                                <tr data-promo-row 
+                                    data-page-item="promos" 
+                                    data-promo-id="{{ $promo['id'] }}" 
+                                    data-promo-code="{{ $promo['code'] }}" 
+                                    data-promo-description="{{ $promo['description'] }}" 
+                                    data-promo-discount-type="{{ $promo['discount_type'] }}" 
+                                    data-promo-discount-value="{{ $promo['discount_value'] }}" 
+                                    data-promo-min-purchase="{{ $promo['min_purchase'] ?? '' }}" 
+                                    data-promo-max-discount="{{ $promo['max_discount'] ?? '' }}" 
+                                    data-promo-usage-limit="{{ $promo['usage_limit'] ?? '' }}" 
+                                    data-promo-limit-per-user="{{ $promo['limit_per_user'] ?? '' }}" 
+                                    data-promo-starts-at="{{ $promo['starts_at'] ?? '' }}" 
+                                    data-promo-expires-at="{{ $promo['expires_at'] ?? '' }}" 
+                                    data-promo-applicable-products="{{ json_encode($promo['applicable_products']) }}"
+                                    data-promo-is-active="{{ !empty($promo['is_active']) ? 1 : 0 }}" 
+                                    class="align-top">
+                                    <td class="px-5 py-4 font-semibold text-slate-900">
+                                        <div class="font-bold text-slate-900 uppercase tracking-wide bg-orange-50 text-orange-850 rounded-lg px-2.5 py-1 inline-block border border-orange-100 mb-1">{{ $promo['code'] }}</div>
+                                        <div class="text-xs text-slate-500 max-w-[200px] line-clamp-2 mt-1">{{ $promo['description'] ?? 'No description.' }}</div>
+                                    </td>
+                                    <td class="px-5 py-4">
+                                        <span class="font-semibold text-slate-900">{{ $promo['formatted_discount'] }}</span>
+                                        <div class="text-xs text-slate-500 capitalize">{{ $promo['discount_type'] }} discount</div>
+                                    </td>
+                                    <td class="px-5 py-4 space-y-1">
+                                        <div class="text-xs"><span class="text-slate-500">Min Purchase:</span> <span class="font-semibold">{{ $promo['formatted_min_purchase'] }}</span></div>
+                                        <div class="text-xs"><span class="text-slate-500">Max Discount:</span> <span class="font-semibold">{{ $promo['formatted_max_discount'] }}</span></div>
+                                        <div class="text-xs">
+                                            <span class="text-slate-500">Products:</span> 
+                                            @if (!empty($promo['applicable_products']))
+                                                <span class="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700 text-[10px]">{{ count($promo['applicable_products']) }} specific</span>
+                                            @else
+                                                <span class="rounded bg-emerald-50 px-1.5 py-0.5 font-medium text-emerald-700 text-[10px]">All Catalog</span>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="px-5 py-4 space-y-1">
+                                        <div class="text-xs"><span class="text-slate-500">Starts:</span> <span class="font-semibold text-slate-700">{{ $promo['formatted_starts_at'] }}</span></div>
+                                        <div class="text-xs"><span class="text-slate-500">Expires:</span> <span class="font-semibold text-slate-700">{{ $promo['formatted_expires_at'] }}</span></div>
+                                    </td>
+                                    <td class="px-5 py-4">
+                                        <div class="font-semibold text-slate-900">{{ $promo['usage_count'] }} used</div>
+                                        @if ($promo['usage_limit'])
+                                            <div class="text-[11px] text-slate-400">Limit: {{ $promo['usage_limit'] }} total</div>
+                                        @endif
+                                    </td>
+                                    <td class="px-5 py-4">
+                                        <span class="rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wider {{ $promo['is_active'] ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100' }}">
+                                            {{ $promo['is_active'] ? 'Active' : 'Inactive' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-5 py-4">
+                                        <div class="flex flex-wrap gap-2">
+                                            <button type="button" data-edit-promo class="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white">Edit</button>
+                                            <button type="button" data-remove-promo class="rounded-full bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">Remove</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <div data-promos-empty hidden class="border-t border-dashed border-slate-200 px-5 py-10 text-center text-sm text-slate-500">No promo codes found.</div>
+            </article>
+
+            <div class="flex flex-wrap items-center justify-between gap-3" data-pagination-controls="promos">
+                <p class="text-sm text-slate-500" data-page-info="promos"></p>
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-slate-500" for="page-size-promos">Items</label>
+                    <select id="page-size-promos" data-page-size="promos" class="rounded-xl border border-slate-200 bg-white px-2 py-1 text-sm text-slate-600">
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                    </select>
+                    <button type="button" data-page-prev="promos" class="rounded-xl bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">Prev</button>
+                    <button type="button" data-page-next="promos" class="rounded-xl bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">Next</button>
                 </div>
             </div>
         </section>
@@ -1346,6 +1476,109 @@
             </div>
         </section>
     </main>
+
+    <div data-promo-drawer hidden class="fixed inset-0 z-40 bg-slate-950/35 p-4 backdrop-blur-sm">
+        <div class="ml-auto flex h-full max-w-xl items-stretch">
+            <div class="soft-panel panel-lift flex w-full flex-col rounded-[2rem] bg-white p-6 overflow-y-auto">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500">Promo & Discount form</p>
+                        <h3 data-promo-title class="font-display mt-1 text-2xl font-bold">Add Promo</h3>
+                        <p data-promo-subtitle class="mt-1 text-sm text-slate-500">Create a new discount code with limit rules.</p>
+                        <p data-promo-feedback class="mt-2 text-sm font-medium text-rose-600"></p>
+                    </div>
+                    <button type="button" data-promo-close class="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-600">✕</button>
+                </div>
+
+                <form data-promo-form class="mt-6 flex flex-1 flex-col gap-4" data-mode="add" action="{{ route('admin.promos.store') }}" method="POST" data-store-url="{{ route('admin.promos.store') }}" data-update-url-base="{{ url('/admin/promos') }}">
+                    @csrf
+                    <input data-promo-id name="promo_id" type="hidden" value="">
+                    <input data-promo-method type="hidden" name="_method" value="" disabled>
+                    
+                    <label class="grid gap-2 text-sm font-medium text-slate-700">
+                        Promo Code
+                        <input data-promo-code-input name="code" type="text" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400 uppercase font-bold text-orange-900" placeholder="e.g. BAKERFRESH20" required>
+                    </label>
+
+                    <label class="grid gap-2 text-sm font-medium text-slate-700">
+                        Description
+                        <textarea data-promo-description name="description" rows="2" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400" placeholder="Short description of benefits and limits"></textarea>
+                    </label>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <label class="grid gap-2 text-sm font-medium text-slate-700">
+                            Discount Type
+                            <select data-promo-discount-type name="discount_type" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400">
+                                <option value="percentage">Percentage (%)</option>
+                                <option value="fixed">Fixed Amount (PHP)</option>
+                            </select>
+                        </label>
+                        <label class="grid gap-2 text-sm font-medium text-slate-700">
+                            Discount Value
+                            <input data-promo-discount-value name="discount_value" type="number" step="0.01" min="0" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400" placeholder="e.g. 15 or 150" required>
+                        </label>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <label class="grid gap-2 text-sm font-medium text-slate-700">
+                            Min Purchase (PHP)
+                            <input data-promo-min-purchase name="min_purchase" type="number" step="0.01" min="0" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400" placeholder="e.g. 500 (Optional)">
+                        </label>
+                        <label class="grid gap-2 text-sm font-medium text-slate-700">
+                            Max Discount (PHP)
+                            <input data-promo-max-discount name="max_discount" type="number" step="0.01" min="0" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400" placeholder="e.g. 200 (Optional)">
+                        </label>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <label class="grid gap-2 text-sm font-medium text-slate-700">
+                            Global Usage Limit
+                            <input data-promo-usage-limit name="usage_limit" type="number" min="1" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400" placeholder="e.g. 100 uses (Optional)">
+                        </label>
+                        <label class="grid gap-2 text-sm font-medium text-slate-700">
+                            Limit Per User
+                            <input data-promo-limit-per-user name="limit_per_user" type="number" min="1" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400" placeholder="e.g. 1 use/user (Optional)">
+                        </label>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <label class="grid gap-2 text-sm font-medium text-slate-700">
+                            Starts At
+                            <input data-promo-starts-at name="starts_at" type="datetime-local" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400">
+                        </label>
+                        <label class="grid gap-2 text-sm font-medium text-slate-700">
+                            Expires At
+                            <input data-promo-expires-at name="expires_at" type="datetime-local" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400">
+                        </label>
+                    </div>
+
+                    <label class="grid gap-2 text-sm font-medium text-slate-700">
+                        Applicable Products (Select specific, leave empty for all)
+                        <div class="rounded-2xl border border-slate-200 p-4 max-h-[160px] overflow-y-auto space-y-2 bg-slate-50/50">
+                            @foreach ($products as $p)
+                                <label class="flex items-center gap-2 text-xs text-slate-600 font-semibold cursor-pointer">
+                                    <input type="checkbox" name="applicable_products[]" value="{{ $p['id'] }}" data-promo-product-checkbox class="rounded text-orange-600 focus:ring-orange-500 h-4 w-4 border-slate-300">
+                                    <span>{{ $p['name'] }} - {{ $p['formatted_price'] }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </label>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <label class="grid gap-2 text-sm font-medium text-slate-700">
+                            Status
+                            <select data-promo-is-active name="is_active" class="rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400">
+                                <option value="1">Active</option>
+                                <option value="0">Inactive</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="mt-4 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white">Save Promo</button>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <div data-inventory-drawer hidden class="fixed inset-0 z-40 bg-slate-950/35 p-4 backdrop-blur-sm">
         <div class="ml-auto flex h-full max-w-xl items-stretch">

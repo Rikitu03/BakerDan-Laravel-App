@@ -9,6 +9,7 @@ use App\Models\CustomerNotification;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\Promo;
 use App\Services\CustomOrderImageService;
 use App\Services\PendingOrderService;
 use App\Services\PayMongoService;
@@ -296,6 +297,7 @@ class CartController extends Controller
             'fulfillment_method' => 'nullable|string|in:delivery,pickup',
             'shipping_address' => 'nullable|string|max:1000',
             'shipping_pin_link' => 'nullable|string|max:1000',
+            'promo_code' => 'nullable|string|max:100',
         ]);
 
         $validator->after(function ($validator) use ($request): void {
@@ -339,10 +341,38 @@ class CartController extends Controller
 
         $itemsSubtotal = $items->sum(fn (CartItem $item) => $this->cartItemUnitPrice($item) * $item->quantity);
         $shippingFee = $this->shippingFeeFor($fulfillmentMethod, $items->isNotEmpty());
+
+        $promoId = null;
+        $discountAmount = 0.00;
+        $promoCode = isset($validated['promo_code']) ? strtoupper(trim($validated['promo_code'])) : null;
+
+        if ($promoCode) {
+            $promo = Promo::where('code', $promoCode)->first();
+            if (!$promo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid promo code.',
+                ], 422);
+            }
+
+            $result = $this->calculatePromoDiscount($promo, $itemIds->all(), (int) Auth::id());
+            if (!$result['valid']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['message'],
+                ], 422);
+            }
+
+            $promoId = $promo->id;
+            $discountAmount = $result['discount_amount'];
+        }
+
         $expiresAt = now()->addHours(2);
         $pendingOrder = $pendingOrders->create([
             'user_id' => (int) Auth::id(),
-            'total_amount' => $itemsSubtotal + $shippingFee,
+            'total_amount' => max(0.00, $itemsSubtotal + $shippingFee - $discountAmount),
+            'promo_id' => $promoId,
+            'discount_amount' => $discountAmount,
             'payment_method' => $validated['payment_method'],
             'payment_provider' => 'paymongo',
             'shipping_address' => $this->formatShippingAddress(
@@ -699,5 +729,156 @@ class CartController extends Controller
             ],
             'image_url' => null,
         ]);
+    }
+
+    public function getActivePromos(): JsonResponse
+    {
+        $now = now();
+        $promos = Promo::where('is_active', true)
+            ->where(function ($query) use ($now) {
+                $query->whereNull('starts_at')
+                      ->orWhere('starts_at', '<=', $now);
+            })
+            ->where(function ($query) use ($now) {
+                $query->whereNull('expires_at')
+                      ->orWhere('expires_at', '>=', $now);
+            })
+            ->get();
+
+        $promos = $promos->filter(function ($promo) {
+            if ($promo->usage_limit !== null && $promo->usage_count >= $promo->usage_limit) {
+                return false;
+            }
+            return true;
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'promos' => $promos,
+        ]);
+    }
+
+    public function validatePromoCode(Request $request): JsonResponse
+    {
+        $request->validate([
+            'code' => 'required|string',
+            'item_ids' => 'required|array',
+            'item_ids.*' => 'integer',
+        ]);
+
+        $code = strtoupper(trim($request->input('code')));
+        $itemIds = $request->input('item_ids');
+
+        $promo = Promo::where('code', $code)->first();
+
+        if (!$promo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid promo code.',
+            ], 422);
+        }
+
+        $result = $this->calculatePromoDiscount($promo, $itemIds, (int) Auth::id());
+
+        if (!$result['valid']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'],
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'promo_id' => $promo->id,
+            'code' => $promo->code,
+            'discount_amount' => $result['discount_amount'],
+            'applicable_subtotal' => $result['applicable_subtotal'],
+            'message' => 'Promo code applied successfully!',
+        ]);
+    }
+
+    private function calculatePromoDiscount(Promo $promo, array $itemIds, int $userId): array
+    {
+        $now = now();
+
+        if (!$promo->is_active) {
+            return ['valid' => false, 'message' => 'This promo code is no longer active.'];
+        }
+
+        if ($promo->starts_at && $now->lt($promo->starts_at)) {
+            return ['valid' => false, 'message' => 'This promo code is not available yet.'];
+        }
+        if ($promo->expires_at && $now->gt($promo->expires_at)) {
+            return ['valid' => false, 'message' => 'This promo code has expired.'];
+        }
+
+        if ($promo->usage_limit !== null && $promo->usage_count >= $promo->usage_limit) {
+            return ['valid' => false, 'message' => 'This promo code has reached its global limit.'];
+        }
+
+        if ($promo->limit_per_user !== null) {
+            $userUsage = Order::where('user_id', $userId)
+                ->where('promo_id', $promo->id)
+                ->where('payment_status', 'paid')
+                ->count();
+            if ($userUsage >= $promo->limit_per_user) {
+                return ['valid' => false, 'message' => 'You have already reached the maximum usage limit for this promo code.'];
+            }
+        }
+
+        $cart = $this->userCart();
+        if (!$cart) {
+            return ['valid' => false, 'message' => 'Cart not found.'];
+        }
+
+        $items = $cart->items()
+            ->with('product')
+            ->whereIn('id', $itemIds)
+            ->get();
+
+        if ($items->isEmpty()) {
+            return ['valid' => false, 'message' => 'No items found for checkout.'];
+        }
+
+        $applicableProducts = $promo->applicable_products;
+        $applicableItems = $items;
+
+        if (is_array($applicableProducts) && count($applicableProducts) > 0) {
+            $applicableItems = $items->filter(function (CartItem $item) use ($applicableProducts) {
+                return in_array((int)$item->product_id, $applicableProducts);
+            });
+
+            if ($applicableItems->isEmpty()) {
+                return ['valid' => false, 'message' => 'This promo code is not applicable to any of the selected products.'];
+            }
+        }
+
+        $applicableSubtotal = $applicableItems->sum(fn (CartItem $item) => $this->cartItemUnitPrice($item) * $item->quantity);
+
+        if ($promo->min_purchase !== null && $applicableSubtotal < $promo->min_purchase) {
+            return [
+                'valid' => false, 
+                'message' => 'Minimum purchase of PHP ' . number_format($promo->min_purchase, 2) . ' is required for applicable products.'
+            ];
+        }
+
+        $discountAmount = 0.00;
+        if ($promo->discount_type === 'percentage') {
+            $discountAmount = ($applicableSubtotal * $promo->discount_value) / 100;
+            if ($promo->max_discount !== null && $discountAmount > $promo->max_discount) {
+                $discountAmount = $promo->max_discount;
+            }
+        } else {
+            $discountAmount = $promo->discount_value;
+            if ($discountAmount > $applicableSubtotal) {
+                $discountAmount = $applicableSubtotal;
+            }
+        }
+
+        return [
+            'valid' => true,
+            'discount_amount' => round($discountAmount, 2),
+            'applicable_subtotal' => round($applicableSubtotal, 2),
+        ];
     }
 }
