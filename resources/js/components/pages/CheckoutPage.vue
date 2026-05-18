@@ -257,10 +257,125 @@
               <h2 class="mt-2 text-xl font-black text-[#473D36]" style="font-family: 'Urbanist', sans-serif;">Order total</h2>
             </div>
 
+            <!-- Promo / Discount Code Block -->
+            <div class="my-5 border-b border-[#F0E5DC] pb-5">
+              <label class="mb-3 block text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9E8E81]">
+                Available Promos & Discounts
+              </label>
+              
+              <div v-if="!appliedPromo">
+                <div v-if="isLoadingPromos" class="flex flex-col items-center justify-center py-6 text-center">
+                  <svg class="animate-spin h-5 w-5 text-[#8E7868]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <p class="mt-2 text-[11px] font-semibold text-[#8E7868]">Loading discount codes...</p>
+                </div>
+                
+                <div v-else-if="!activePromos.length" class="rounded-2xl border border-dashed border-[#E5D8CC] bg-[#FAF8F5] p-5 text-center">
+                  <svg class="mx-auto h-7 w-7 text-[#C4B7AE]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7.5 7.5h-.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <p class="mt-2 text-xs font-semibold text-[#8C7D73]">No discounts or promos available right now.</p>
+                </div>
+
+                <div v-else class="space-y-2.5 max-h-[220px] overflow-y-auto pr-1 select-none custom-scrollbar">
+                  <button
+                    v-for="promo in activePromos"
+                    :key="promo.id"
+                    type="button"
+                    @click="validateAndApplyPromo(promo.code)"
+                    :disabled="isApplyingPromo"
+                    class="w-full text-left flex items-stretch rounded-2xl border border-[#ECE1D8] bg-white transition hover:border-[#C9876C] hover:bg-[#FCFAF8] focus:outline-none overflow-hidden group shadow-sm animate-fade-in"
+                  >
+                    <!-- Left ticket shape with accent background -->
+                    <div class="w-16 bg-gradient-to-br from-[#8E7868] to-[#796353] flex flex-col items-center justify-center text-white p-2 text-center shrink-0 relative">
+                      <!-- Punch holes simulation -->
+                      <div class="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full"></div>
+                      
+                      <span class="text-[9px] uppercase font-bold tracking-wider opacity-85">Get</span>
+                      <span class="text-xs font-extrabold tracking-tight mt-0.5">
+                        {{ promo.discount_type === 'percentage' ? promo.discount_value + '%' : '₱' + Math.round(promo.discount_value) }}
+                      </span>
+                      <span class="text-[8px] uppercase font-bold tracking-wider opacity-85">Off</span>
+                    </div>
+                    
+                    <!-- Right card details -->
+                    <div class="flex-1 p-3 flex flex-col justify-between min-w-0 relative">
+                      <!-- Inner dash line -->
+                      <div class="absolute left-0 top-0 bottom-0 border-l border-dashed border-[#ECE1D8]"></div>
+                      
+                      <div class="pl-2.5">
+                        <div class="flex items-center justify-between gap-1.5">
+                          <span class="inline-block rounded bg-[#FAF2EC] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#9E6D4E] border border-[#F5E6DC] truncate">
+                            {{ promo.code }}
+                          </span>
+                          <span v-if="promo.expires_at" class="text-[8px] font-semibold text-[#A0938A] uppercase shrink-0">
+                            Exp: {{ formatDateString(promo.expires_at) }}
+                          </span>
+                        </div>
+                        <p class="mt-1 text-[10px] font-semibold text-[#52473E] line-clamp-1">
+                          {{ promo.description || 'Enjoy premium savings on your order' }}
+                        </p>
+                        <div class="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[8px] text-[#918175] font-semibold">
+                          <span v-if="promo.min_purchase">Min. spend: ₱{{ Math.round(promo.min_purchase) }}</span>
+                          <span v-if="promo.max_discount">Max disc: ₱{{ Math.round(promo.max_discount) }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Applied Promo Tag -->
+              <div v-else class="rounded-2xl bg-[#F4F9F4] border border-[#CDE5CD] p-3 shadow-[0_4px_12px_-4px_rgba(74,153,74,0.15)] flex flex-col gap-2">
+                <div class="flex items-start justify-between min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="inline-block rounded bg-[#E1EFE1] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#2B602B] border border-[#CCDCCD]">
+                      {{ appliedPromo.code }}
+                    </span>
+                    <span class="text-[10px] text-[#397839] font-bold flex items-center gap-0.5">
+                      <svg class="h-3.5 w-3.5 text-[#3E8B3E] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                      </svg>
+                      Applied
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    @click="removePromo"
+                    class="text-[9px] font-extrabold text-[#A53A3A] hover:text-[#802B2B] transition-colors uppercase tracking-wider pl-2"
+                  >
+                    Change Promo
+                  </button>
+                </div>
+                
+                <div class="border-t border-[#DCECDC] pt-1.5 flex items-center justify-between text-xs text-[#2B602B] font-semibold">
+                  <span class="text-[#397839] font-medium text-[10px]">Estimated Savings:</span>
+                  <span>- PHP {{ formatPrice(appliedPromo.discount_amount) }}</span>
+                </div>
+              </div>
+
+              <!-- Error message -->
+              <p v-if="promoError" class="mt-2 text-xs font-semibold text-[#C84B31]">
+                {{ promoError }}
+              </p>
+            </div>
+
             <div class="mt-5 space-y-4">
               <div class="flex items-center justify-between text-sm text-[#6E6259]">
                 <span>Subtotal Items</span>
                 <span class="font-semibold text-[#4B413B]">PHP {{ formatPrice(subtotalItems) }}</span>
+              </div>
+
+              <div v-if="appliedPromo" class="flex items-center justify-between text-sm text-[#2E682E]">
+                <span class="flex items-center gap-1.5">
+                  <svg class="h-4 w-4 text-current" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Discount Applied
+                </span>
+                <span class="font-semibold">- PHP {{ formatPrice(appliedPromo.discount_amount) }}</span>
               </div>
 
               <div class="flex items-center justify-between text-sm text-[#6E6259]">
@@ -343,6 +458,38 @@ const customPinLink = ref('');
 const fulfillmentMethod = ref('delivery');
 const selectedPaymentMethod = ref('gcash');
 
+// Promo state variables
+const promoCodeInput = ref('');
+const appliedPromo = ref(null);
+const promoError = ref('');
+const isApplyingPromo = ref(false);
+const activePromos = ref([]);
+const isLoadingPromos = ref(false);
+
+const loadActivePromos = async () => {
+  isLoadingPromos.value = true;
+  try {
+    const response = await api.getActivePromos();
+    if (response.data?.success) {
+      activePromos.value = response.data.promos || [];
+    }
+  } catch (e) {
+    console.error('Failed to load active promos:', e);
+  } finally {
+    isLoadingPromos.value = false;
+  }
+};
+
+const formatDateString = (dateTimeStr) => {
+  if (!dateTimeStr) return '';
+  try {
+    const date = new Date(dateTimeStr.replace(' ', 'T'));
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch (e) {
+    return '';
+  }
+};
+
 const fulfillmentOptions = [
   {
     value: 'delivery',
@@ -409,7 +556,10 @@ const subtotalItems = computed(() =>
   checkoutItems.value.reduce((total, item) => total + Number(item.line_total || 0), 0),
 );
 const shippingCost = computed(() => (checkoutItems.value.length && isDelivery.value ? SHIPPING_COST : 0));
-const orderTotal = computed(() => subtotalItems.value + shippingCost.value);
+const orderTotal = computed(() => {
+  const total = subtotalItems.value + shippingCost.value - (appliedPromo.value ? Number(appliedPromo.value.discount_amount || 0) : 0);
+  return Math.max(0, total);
+});
 const currentAddress = computed(() => String(profile.value.address || '').trim());
 const activeAddress = computed(() =>
   isDelivery.value
@@ -518,6 +668,33 @@ const loadProfile = async () => {
   }
 };
 
+const validateAndApplyPromo = async (code = null) => {
+  const codeToApply = String(code || promoCodeInput.value || '').trim();
+  if (!codeToApply) return;
+
+  isApplyingPromo.value = true;
+  promoError.value = '';
+
+  try {
+    const response = await api.validatePromo({
+      code: codeToApply,
+      item_ids: checkoutItemIds.value,
+    });
+    appliedPromo.value = response.data;
+  } catch (error) {
+    appliedPromo.value = null;
+    promoError.value = error.response?.data?.message || 'Invalid or expired promo code.';
+  } finally {
+    isApplyingPromo.value = false;
+  }
+};
+
+const removePromo = () => {
+  appliedPromo.value = null;
+  promoCodeInput.value = '';
+  promoError.value = '';
+};
+
 const backToCart = () => {
   push('/customer/cart');
 };
@@ -538,6 +715,7 @@ const placeOrder = async () => {
       fulfillmentMethod: fulfillmentMethod.value,
       shippingAddress: activeAddress.value,
       shippingPinLink: activePinLink.value,
+      promo_code: appliedPromo.value ? appliedPromo.value.code : null,
     });
 
     if (order?.checkout_url) {
@@ -564,6 +742,7 @@ onMounted(async () => {
     await Promise.all([
       loadCart({ force: true }),
       loadProfile(),
+      loadActivePromos(),
     ]);
 
     if (!currentAddress.value) {
@@ -577,3 +756,20 @@ onMounted(async () => {
   }
 });
 </script>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #FAF8F5;
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #ECE1D8;
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #C9876C;
+}
+</style>

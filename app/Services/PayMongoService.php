@@ -209,9 +209,19 @@ class PayMongoService
 
     private function lineItems(Order $order): array
     {
-        $items = $order->items->map(function ($item): array {
+        $discountAmount = (float) ($order->discount_amount ?? 0);
+        $itemsRaw = $order->items;
+        $itemsSubtotal = $itemsRaw->sum(fn ($item) => (float) $item->price * (int) $item->quantity);
+        
+        $discountRatio = 1.0;
+        if ($discountAmount > 0 && $itemsSubtotal > 0) {
+            $discountRatio = 1.0 - ($discountAmount / $itemsSubtotal);
+        }
+
+        $items = $itemsRaw->map(function ($item) use ($discountRatio): array {
+            $adjustedPrice = round((float) $item->price * $discountRatio, 2);
             return [
-                'amount' => $this->toCentavos((float) $item->price),
+                'amount' => $this->toCentavos($adjustedPrice),
                 'currency' => 'PHP',
                 'description' => Str::limit((string) ($item->description ?: $item->product_name ?: 'Bakerdan item'), 255, ''),
                 'name' => Str::limit((string) ($item->product_name ?: 'Bakerdan item'), 120, ''),
@@ -219,11 +229,17 @@ class PayMongoService
             ];
         })->values();
 
-        $itemsSubtotal = $order->items->sum(fn ($item) => (float) $item->price * (int) $item->quantity);
-        $shippingLineItem = $this->shippingLineItem((float) $order->total_amount, (float) $itemsSubtotal);
+        $adjustedSubtotal = $items->sum(fn (array $item) => $item['amount'] * $item['quantity']) / 100.0;
+        $shippingAmount = round((float) $order->total_amount - $adjustedSubtotal, 2);
 
-        if ($shippingLineItem) {
-            $items->push($shippingLineItem);
+        if ($shippingAmount > 0) {
+            $items->push([
+                'amount' => $this->toCentavos($shippingAmount),
+                'currency' => 'PHP',
+                'description' => 'Fulfillment shipping / pickup adjustments',
+                'name' => 'Fulfillment Fee',
+                'quantity' => 1,
+            ]);
         }
 
         return $items->all();
@@ -231,41 +247,40 @@ class PayMongoService
 
     private function pendingOrderLineItems(array $pendingOrder): array
     {
-        $items = collect($pendingOrder['items'] ?? [])->map(function (array $item): array {
+        $discountAmount = (float) ($pendingOrder['discount_amount'] ?? 0);
+        $itemsRaw = collect($pendingOrder['items'] ?? []);
+        $itemsSubtotal = $itemsRaw->sum(fn (array $item) => (float) ($item['unit_price'] ?? 0) * (int) ($item['quantity'] ?? 1));
+        
+        $discountRatio = 1.0;
+        if ($discountAmount > 0 && $itemsSubtotal > 0) {
+            $discountRatio = 1.0 - ($discountAmount / $itemsSubtotal);
+        }
+
+        $items = $itemsRaw->map(function (array $item) use ($discountRatio): array {
+            $adjustedUnitPrice = round((float) ($item['unit_price'] ?? 0) * $discountRatio, 2);
             return [
-                'amount' => $this->toCentavos((float) ($item['unit_price'] ?? 0)),
+                'amount' => $this->toCentavos($adjustedUnitPrice),
                 'currency' => 'PHP',
                 'description' => Str::limit((string) ($item['description'] ?? $item['product_name'] ?? 'Bakerdan item'), 255, ''),
                 'name' => Str::limit((string) ($item['product_name'] ?? 'Bakerdan item'), 120, ''),
                 'quantity' => (int) ($item['quantity'] ?? 1),
             ];
         })->values();
-        $itemsSubtotal = collect($pendingOrder['items'] ?? [])
-            ->sum(fn (array $item) => (float) ($item['unit_price'] ?? 0) * (int) ($item['quantity'] ?? 1));
-        $shippingLineItem = $this->shippingLineItem((float) ($pendingOrder['total_amount'] ?? 0), (float) $itemsSubtotal);
 
-        if ($shippingLineItem) {
-            $items->push($shippingLineItem);
+        $adjustedSubtotal = $items->sum(fn (array $item) => $item['amount'] * $item['quantity']) / 100.0;
+        $shippingAmount = round((float) ($pendingOrder['total_amount'] ?? 0) - $adjustedSubtotal, 2);
+
+        if ($shippingAmount > 0) {
+            $items->push([
+                'amount' => $this->toCentavos($shippingAmount),
+                'currency' => 'PHP',
+                'description' => 'Fulfillment shipping / pickup adjustments',
+                'name' => 'Fulfillment Fee',
+                'quantity' => 1,
+            ]);
         }
 
         return $items->all();
-    }
-
-    private function shippingLineItem(float $totalAmount, float $itemsSubtotal): ?array
-    {
-        $shippingAmount = round($totalAmount - $itemsSubtotal, 2);
-
-        if ($shippingAmount <= 0) {
-            return null;
-        }
-
-        return [
-            'amount' => $this->toCentavos($shippingAmount),
-            'currency' => 'PHP',
-            'description' => 'Fixed shipping fee',
-            'name' => 'Shipping Fee',
-            'quantity' => 1,
-        ];
     }
 
     private function payMongoPaymentMethod(?string $paymentMethod): string

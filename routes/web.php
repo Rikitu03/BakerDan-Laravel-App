@@ -114,6 +114,8 @@ Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
     Route::delete('/cart/items/{itemId}', [CartController::class, 'remove']);
     Route::delete('/cart/clear', [CartController::class, 'clear']);
     Route::post('/checkout', [CartController::class, 'checkout']);
+    Route::get('/promos/active', [CartController::class, 'getActivePromos']);
+    Route::post('/promos/validate', [CartController::class, 'validatePromoCode']);
     Route::get('/orders', [CustomerOrderController::class, 'index']);
     Route::get('/purchases', [CustomerOrderController::class, 'purchaseHistory']);
     Route::patch('/orders/{order}/cancel', [CustomerOrderController::class, 'cancel']);
@@ -149,6 +151,12 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('/inventory/bulk', [AdminController::class, 'bulkUploadInventory'])->name('admin.inventory.bulk');
     Route::put('/inventory/{product}', [AdminController::class, 'updateInventory'])->name('admin.inventory.update');
     Route::delete('/inventory/{product}', [AdminController::class, 'destroyInventory'])->name('admin.inventory.destroy');
+    
+    // Promos & Discounts
+    Route::post('/promos', [AdminController::class, 'storePromo'])->name('admin.promos.store');
+    Route::put('/promos/{promo}', [AdminController::class, 'updatePromo'])->name('admin.promos.update');
+    Route::delete('/promos/{promo}', [AdminController::class, 'destroyPromo'])->name('admin.promos.destroy');
+
     Route::post('/orders/walkin', [AdminController::class, 'storeWalkinOrder'])->name('admin.orders.walkin');
     Route::patch('/orders/{order}/status', [AdminController::class, 'updateOrderStatus'])->name('admin.orders.status');
     Route::patch('/orders/{order}/payment-status', [AdminController::class, 'updateOrderPaymentStatus'])->name('admin.orders.payment-status');

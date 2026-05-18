@@ -88,6 +88,14 @@ export default {
     return api.post('/checkout', data)
   },
 
+  validatePromo(data) {
+    return api.post('/promos/validate', data)
+  },
+
+  getActivePromos() {
+    return api.get('/promos/active')
+  },
+
   getOrders(params = {}, config = {}) {
     return api.get('/orders', { ...config, params })
   },

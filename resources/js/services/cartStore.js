@@ -166,6 +166,7 @@ const checkout = async (itemIds, data = {}) => {
       fulfillment_method: data.fulfillmentMethod,
       shipping_address: data.shippingAddress,
       shipping_pin_link: data.shippingPinLink,
+      promo_code: data.promo_code,
     });
     const payload = response.data?.data || {};
     syncCart(payload.cart);

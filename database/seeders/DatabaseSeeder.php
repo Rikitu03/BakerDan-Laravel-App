@@ -43,6 +43,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(ProductCatalogSeeder::class);
+        $this->call(PromoSeeder::class);
 
         foreach (self::DEMO_ACCOUNTS as $account) {
             $this->createDemoAccount(...$account);

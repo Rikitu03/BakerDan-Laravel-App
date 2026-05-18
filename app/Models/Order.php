@@ -23,6 +23,8 @@ class Order extends Model
         'payment_expires_at',
         'payment_metadata',
         'shipping_address',
+        'promo_id',
+        'discount_amount',
     ];
 
     protected $casts = [
@@ -30,6 +32,7 @@ class Order extends Model
         'payment_paid_at' => 'datetime',
         'payment_expires_at' => 'datetime',
         'payment_metadata' => 'array',
+        'discount_amount' => 'decimal:2',
     ];
 
     public function isPaymentExpired(): bool
@@ -52,5 +55,10 @@ class Order extends Model
     public function reviews()
     {
         return $this->hasMany(Review::class);
+    }
+
+    public function promo()
+    {
+        return $this->belongsTo(Promo::class, 'promo_id');
     }
 }

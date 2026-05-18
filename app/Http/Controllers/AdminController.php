@@ -6,6 +6,7 @@ use App\Models\CustomerNotification;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\Promo;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\JsonResponse;
@@ -273,6 +274,61 @@ class AdminController extends Controller
         return redirect()->route('admin.home')->with('status', 'Product removed successfully.');
     }
 
+    public function storePromo(Request $request): RedirectResponse
+    {
+        $data = $this->validatePromo($request);
+        $promo = new Promo();
+        $promo->fill($data);
+        $promo->is_active = $request->boolean('is_active', true);
+        
+        if ($request->has('applicable_products')) {
+            $promo->applicable_products = is_array($request->input('applicable_products')) 
+                ? array_map('intval', $request->input('applicable_products'))
+                : [];
+        } else {
+            $promo->applicable_products = null;
+        }
+
+        $promo->save();
+
+        return redirect()
+            ->route('admin.home')
+            ->with('status', 'Promo code created successfully.')
+            ->with('admin_section', 'promos');
+    }
+
+    public function updatePromo(Request $request, Promo $promo): RedirectResponse
+    {
+        $data = $this->validatePromo($request, $promo);
+        $promo->fill($data);
+        $promo->is_active = $request->boolean('is_active', true);
+
+        if ($request->has('applicable_products')) {
+            $promo->applicable_products = is_array($request->input('applicable_products')) 
+                ? array_map('intval', $request->input('applicable_products'))
+                : [];
+        } else {
+            $promo->applicable_products = null;
+        }
+
+        $promo->save();
+
+        return redirect()
+            ->route('admin.home')
+            ->with('status', 'Promo code updated successfully.')
+            ->with('admin_section', 'promos');
+    }
+
+    public function destroyPromo(Promo $promo): RedirectResponse
+    {
+        $promo->delete();
+
+        return redirect()
+            ->route('admin.home')
+            ->with('status', 'Promo code removed successfully.')
+            ->with('admin_section', 'promos');
+    }
+
     public function updateOrderStatus(Request $request, Order $order): JsonResponse
     {
         $validated = $request->validate([
@@ -336,7 +392,8 @@ class AdminController extends Controller
     private function dashboardData(): array
     {
         $products = Product::query()->latest('id')->get();
-        $orders = Order::with(['user.detail', 'items.product'])->latest('id')->get();
+        $promos = Promo::query()->latest('id')->get();
+        $orders = Order::with(['user.detail', 'items.product', 'promo'])->latest('id')->get();
         $customers = User::with('detail')->where('role', 'customer')->latest('user_id')->get();
         $admins = User::with('detail')->where('role', 'admin')->latest('user_id')->get();
 
@@ -348,6 +405,7 @@ class AdminController extends Controller
         ];
 
         $productCards = $products->map(fn (Product $product) => $this->productCard($product))->values()->all();
+        $promoCards = $promos->map(fn (Promo $promo) => $this->promoCard($promo))->values()->all();
         $orderCards = $orders->map(fn (Order $order) => $this->orderCard($order))->values()->all();
         $customerCards = $customers->map(fn (User $user) => $this->personCard($user, 'customer'))->values()->all();
         $adminCards = $admins->map(fn (User $user) => $this->personCard($user, 'admin'))->values()->all();
@@ -359,6 +417,7 @@ class AdminController extends Controller
         return [
             'metrics' => $metrics,
             'products' => $productCards,
+            'promos' => $promoCards,
             'orders' => $orderCards,
             'customers' => $customerCards,
             'admins' => $adminCards,
@@ -373,6 +432,7 @@ class AdminController extends Controller
                 ],
                 'metrics' => $metrics,
                 'products' => $productCards,
+                'promos' => $promoCards,
                 'orders' => $orderCards,
                 'customers' => $customerCards,
                 'admins' => $adminCards,
@@ -384,6 +444,7 @@ class AdminController extends Controller
             'sidebarCounts' => [
                 'dashboard' => '*',
                 'inventory' => $products->count(),
+                'promos' => $promos->count(),
                 'orders' => $orders->count(),
                 'customers' => $customers->count(),
                 'notifications' => $notifications->count(),
@@ -418,6 +479,58 @@ class AdminController extends Controller
             'image_url' => $this->resolveImageUrl($product->image_url),
             'is_active' => (bool) $product->is_active,
             'status' => $product->is_active ? 'active' : 'inactive',
+        ];
+    }
+
+    private function validatePromo(Request $request, ?Promo $promo = null): array
+    {
+        $promoId = $promo ? $promo->id : 'NULL';
+        return $request->validate([
+            'code' => ['required', 'string', 'max:50', 'unique:promos,code,' . $promoId],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'discount_type' => ['required', 'string', Rule::in(['percentage', 'fixed'])],
+            'discount_value' => ['required', 'numeric', 'min:0'],
+            'min_purchase' => ['nullable', 'numeric', 'min:0'],
+            'max_discount' => ['nullable', 'numeric', 'min:0'],
+            'usage_limit' => ['nullable', 'integer', 'min:1'],
+            'limit_per_user' => ['nullable', 'integer', 'min:1'],
+            'starts_at' => ['nullable', 'date'],
+            'expires_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
+            'is_active' => ['nullable', 'boolean'],
+            'applicable_products' => ['nullable', 'array'],
+            'applicable_products.*' => ['integer', 'exists:inventory_products,id'],
+        ]);
+    }
+
+    private function promoCard(Promo $promo): array
+    {
+        return [
+            'id' => $promo->id,
+            'code' => $promo->code,
+            'description' => $promo->description,
+            'discount_type' => $promo->discount_type,
+            'discount_value' => $promo->discount_value,
+            'formatted_discount' => $promo->discount_type === 'percentage'
+                ? number_format((float) $promo->discount_value, 0) . '%'
+                : 'PHP ' . number_format((float) $promo->discount_value, 2),
+            'min_purchase' => $promo->min_purchase,
+            'formatted_min_purchase' => $promo->min_purchase
+                ? 'PHP ' . number_format((float) $promo->min_purchase, 2)
+                : 'None',
+            'max_discount' => $promo->max_discount,
+            'formatted_max_discount' => $promo->max_discount
+                ? 'PHP ' . number_format((float) $promo->max_discount, 2)
+                : 'None',
+            'usage_limit' => $promo->usage_limit,
+            'limit_per_user' => $promo->limit_per_user,
+            'usage_count' => $promo->usage_count,
+            'applicable_products' => $promo->applicable_products ?? [],
+            'starts_at' => $promo->starts_at?->format('Y-m-d H:i') ?? $promo->starts_at?->format('Y-m-d\TH:i') ?? null,
+            'expires_at' => $promo->expires_at?->format('Y-m-d H:i') ?? $promo->expires_at?->format('Y-m-d\TH:i') ?? null,
+            'formatted_starts_at' => $promo->starts_at?->format('M d, Y h:i A') ?? 'N/A',
+            'formatted_expires_at' => $promo->expires_at?->format('M d, Y h:i A') ?? 'N/A',
+            'is_active' => (bool) $promo->is_active,
+            'status' => $promo->is_active ? 'active' : 'inactive',
         ];
     }
 
@@ -470,6 +583,9 @@ class AdminController extends Controller
             'payment_status' => $order->payment_status,
             'payment_status_label' => $this->paymentStatusLabel($order->payment_status),
             'placed_at' => $order->created_at?->format('M d, Y h:i A'),
+            'discount_amount' => (float) $order->discount_amount,
+            'discount_amount_label' => $order->discount_amount > 0 ? ('- PHP ' . number_format((float) $order->discount_amount, 2)) : null,
+            'promo_code' => $order->promo?->code,
             'status' => $order->status,
             'status_label' => $this->orderStatusLabel($order->status, $containsCustom),
             'workflow_note' => $containsCustom
