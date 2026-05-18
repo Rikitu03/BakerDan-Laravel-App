@@ -67,7 +67,7 @@ Route::prefix('forgot-password')->group(function () {
 
 // Protected customer routes
 Route::middleware(['auth', 'role:customer'])->group(function () {
-    Route::get('/cart', fn () => redirect('/customer/cart'))->name('cart');
+    Route::get('/cart', fn() => redirect('/customer/cart'))->name('cart');
 
     Route::post('/customer/cart/add/{productId}', [CartController::class, 'addAndRedirect'])
         ->name('customer.cart.add');
@@ -151,7 +151,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('/inventory/bulk', [AdminController::class, 'bulkUploadInventory'])->name('admin.inventory.bulk');
     Route::put('/inventory/{product}', [AdminController::class, 'updateInventory'])->name('admin.inventory.update');
     Route::delete('/inventory/{product}', [AdminController::class, 'destroyInventory'])->name('admin.inventory.destroy');
-    
+
     // Promos & Discounts
     Route::post('/promos', [AdminController::class, 'storePromo'])->name('admin.promos.store');
     Route::put('/promos/{promo}', [AdminController::class, 'updatePromo'])->name('admin.promos.update');

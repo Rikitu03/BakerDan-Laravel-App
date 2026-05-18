@@ -27,6 +27,10 @@
             --shadow: 0 18px 40px -24px rgba(71, 61, 54, 0.12);
         }
 
+        .panel-open .hide-on-panel {
+            display: none !important;
+        }
+
         body {
             font-family: 'Poppins', sans-serif;
             color: var(--ink);
@@ -1663,8 +1667,8 @@
                     </div>
                 </div>
 
-                <div class="grid gap-6 xl:grid-cols-[1fr_0.38fr]">
-                    <article class="soft-panel panel-lift rounded-[2rem] p-4 sm:p-5">
+                <div class="flex flex-col xl:flex-row gap-6 items-start">
+                    <article class="soft-panel panel-lift rounded-[2rem] p-4 sm:p-5 flex-1 min-w-0">
                         <div data-person-panel="customers">
                             <div class="overflow-x-auto">
                                 <table class="min-w-full text-left text-sm">
@@ -1672,10 +1676,10 @@
                                         <tr>
                                             <th class="px-4 py-3 font-medium">Name</th>
                                             <th class="px-4 py-3 font-medium">Username</th>
-                                            <th class="px-4 py-3 font-medium">Age</th>
-                                            <th class="px-4 py-3 font-medium">Email</th>
-                                            <th class="px-4 py-3 font-medium">Contact</th>
-                                            <th class="px-4 py-3 font-medium">Address</th>
+                                            <th class="px-4 py-3 font-medium hide-on-panel">Age</th>
+                                            <th class="px-4 py-3 font-medium hide-on-panel">Email</th>
+                                            <th class="px-4 py-3 font-medium hide-on-panel">Contact</th>
+                                            <th class="px-4 py-3 font-medium hide-on-panel">Address</th>
                                             <th class="px-4 py-3 font-medium">Actions</th>
                                         </tr>
                                     </thead>
@@ -1689,10 +1693,10 @@
                                                 <td class="px-4 py-4 font-semibold text-slate-900">{{ $person['name'] }}
                                                 </td>
                                                 <td class="px-4 py-4 text-slate-600">{{ $person['username'] }}</td>
-                                                <td class="px-4 py-4 text-slate-600">{{ $person['age'] }}</td>
-                                                <td class="px-4 py-4 text-slate-600">{{ $person['email'] }}</td>
-                                                <td class="px-4 py-4 text-slate-600">{{ $person['contact'] }}</td>
-                                                <td class="px-4 py-4 text-slate-600">{{ $person['address'] }}</td>
+                                                <td class="px-4 py-4 text-slate-600 hide-on-panel">{{ $person['age'] }}</td>
+                                                <td class="px-4 py-4 text-slate-600 hide-on-panel">{{ $person['email'] }}</td>
+                                                <td class="px-4 py-4 text-slate-600 hide-on-panel">{{ $person['contact'] }}</td>
+                                                <td class="px-4 py-4 text-slate-600 hide-on-panel">{{ $person['address'] }}</td>
                                                 <td class="px-4 py-4">
                                                     <div class="flex flex-wrap gap-2">
                                                         <button type="button" data-view-person
@@ -1718,7 +1722,15 @@
                                                                 <span
                                                                     data-person-status>{{ ucfirst($person['status']) }}</span>
                                                             </p>
-                                                        </div>
+                                                        
+                                                             <div class="mt-4 pt-4 border-t border-[#ece1d8] flex flex-col gap-2">
+                                                                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Actions</p>
+                                                                 <button type="button" data-toggle-person data-person-id="{{ $person['id'] }}" data-person-status="{{ $person['status'] }}"
+                                                                     class="w-full text-center rounded-full {{ $person['status'] === 'active' ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' }} px-4 py-2.5 text-xs font-semibold active:scale-95 transition-all">
+                                                                     {{ $person['status'] === 'active' ? 'Suspend Account' : 'Unsuspend Account' }}
+                                                                 </button>
+                                                             </div>
+                                                         </div>
                                                     </template>
                                                 </td>
                                             </tr>
@@ -1752,10 +1764,10 @@
                                         <tr>
                                             <th class="px-4 py-3 font-medium">Name</th>
                                             <th class="px-4 py-3 font-medium">Username</th>
-                                            <th class="px-4 py-3 font-medium">Age</th>
-                                            <th class="px-4 py-3 font-medium">Email</th>
-                                            <th class="px-4 py-3 font-medium">Contact</th>
-                                            <th class="px-4 py-3 font-medium">Address</th>
+                                            <th class="px-4 py-3 font-medium hide-on-panel">Age</th>
+                                            <th class="px-4 py-3 font-medium hide-on-panel">Email</th>
+                                            <th class="px-4 py-3 font-medium hide-on-panel">Contact</th>
+                                            <th class="px-4 py-3 font-medium hide-on-panel">Address</th>
                                             <th class="px-4 py-3 font-medium">Actions</th>
                                         </tr>
                                     </thead>
@@ -1769,10 +1781,10 @@
                                                 <td class="px-4 py-4 font-semibold text-slate-900">{{ $person['name'] }}
                                                 </td>
                                                 <td class="px-4 py-4 text-slate-600">{{ $person['username'] }}</td>
-                                                <td class="px-4 py-4 text-slate-600">{{ $person['age'] }}</td>
-                                                <td class="px-4 py-4 text-slate-600">{{ $person['email'] }}</td>
-                                                <td class="px-4 py-4 text-slate-600">{{ $person['contact'] }}</td>
-                                                <td class="px-4 py-4 text-slate-600">{{ $person['address'] }}</td>
+                                                <td class="px-4 py-4 text-slate-600 hide-on-panel">{{ $person['age'] }}</td>
+                                                <td class="px-4 py-4 text-slate-600 hide-on-panel">{{ $person['email'] }}</td>
+                                                <td class="px-4 py-4 text-slate-600 hide-on-panel">{{ $person['contact'] }}</td>
+                                                <td class="px-4 py-4 text-slate-600 hide-on-panel">{{ $person['address'] }}</td>
                                                 <td class="px-4 py-4">
                                                     <div class="flex flex-wrap gap-2">
                                                         <button type="button" data-view-person
@@ -1798,7 +1810,15 @@
                                                                 <span
                                                                     data-person-status>{{ ucfirst($person['status']) }}</span>
                                                             </p>
-                                                        </div>
+                                                        
+                                                             <div class="mt-4 pt-4 border-t border-[#ece1d8] flex flex-col gap-2">
+                                                                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Actions</p>
+                                                                 <button type="button" data-toggle-person data-person-id="{{ $person['id'] }}" data-person-status="{{ $person['status'] }}"
+                                                                     class="w-full text-center rounded-full {{ $person['status'] === 'active' ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' }} px-4 py-2.5 text-xs font-semibold active:scale-95 transition-all">
+                                                                     {{ $person['status'] === 'active' ? 'Suspend Account' : 'Unsuspend Account' }}
+                                                                 </button>
+                                                             </div>
+                                                         </div>
                                                     </template>
                                                 </td>
                                             </tr>
@@ -1826,11 +1846,11 @@
                         </div>
                     </article>
 
-                    <aside data-customer-panel hidden class="soft-panel panel-lift rounded-[2rem] p-5">
+                    <aside data-customer-panel hidden class="soft-panel panel-lift rounded-[2rem] p-5 w-full xl:w-[360px] shrink-0 min-w-0 overflow-hidden break-words">
                         <p class="text-sm font-medium text-slate-500">Detail panel</p>
                         <h3 data-customer-panel-title class="font-display mt-1 text-2xl font-bold">Account details</h3>
                         <p data-customer-panel-meta class="mt-1 text-sm text-slate-500"></p>
-                        <div data-customer-panel-body class="mt-5 space-y-3 text-sm text-slate-600"></div>
+                        <div data-customer-panel-body class="mt-5 space-y-3 text-sm text-slate-600 break-words min-w-0"></div>
                     </aside>
                 </div>
             </section>
@@ -2493,16 +2513,31 @@
         </div>
 
         <div data-modal-shell hidden
-            class="fixed inset-0 z-50 grid place-items-center bg-[#473D36]/25 p-4 backdrop-blur-md">
-            <div class="soft-panel panel-lift w-full max-w-md rounded-[2rem] backdrop-blur-lg p-6">
-                <p class="text-sm font-medium text-slate-500">Confirmation</p>
-                <h3 data-modal-title class="font-display mt-1 text-2xl font-bold">Title</h3>
-                <p data-modal-message class="mt-3 text-sm leading-6 text-slate-600">Message</p>
-                <div class="mt-6 flex items-center justify-end gap-3">
-                    <button data-modal-cancel type="button"
-                        class="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600">Cancel</button>
-                    <button data-modal-confirm type="button"
-                        class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Confirm</button>
+            class="fixed inset-0 z-50 flex items-center justify-center bg-[#473D36]/25 p-4 backdrop-blur-md">
+            <div class="w-full max-w-md animate-fade-in">
+                <div class="soft-panel panel-lift max-h-[90vh] w-full overflow-y-auto rounded-[2.5rem] !bg-white p-6 shadow-2xl md:p-8"
+                    style="background-color: #ffffff !important;">
+                    <!-- Modal Header -->
+                    <div class="flex items-start justify-between gap-4 border-b border-[#ece1d8] pb-5">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500">Security & Access</p>
+                            <h3 data-modal-title class="font-display mt-1 text-2xl font-bold text-slate-850">Title</h3>
+                        </div>
+                        <button type="button" data-modal-cancel
+                            class="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">✕</button>
+                    </div>
+
+                    <div class="mt-6">
+                        <p data-modal-message class="text-sm leading-relaxed text-slate-600">Message</p>
+                    </div>
+
+                    <!-- Footer Actions -->
+                    <div class="border-t border-[#ece1d8] pt-5 mt-6 flex justify-end gap-3">
+                        <button data-modal-cancel type="button"
+                            class="rounded-full border border-slate-200 hover:bg-slate-50 px-6 py-3.5 text-sm font-semibold text-slate-700 active:scale-95 transition-all">Cancel</button>
+                        <button data-modal-confirm type="button"
+                            class="rounded-full bg-slate-900 hover:bg-slate-850 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-slate-900/10 active:scale-95 transition-all">Confirm</button>
+                    </div>
                 </div>
             </div>
         </div>
