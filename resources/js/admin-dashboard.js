@@ -1152,6 +1152,7 @@ if (dashboard) {
                 panel.hidden = panel.dataset.personPanel !== key;
             });
             customerPanel.hidden = true;
+            customerPanel.closest('[data-section="customers"]').classList.remove('panel-open');
             syncPeoplePaginationControls(key);
             renderPagination(key);
             return;
@@ -1229,6 +1230,7 @@ if (dashboard) {
         if (viewCustomer) {
             const row = viewCustomer.closest('[data-person-card]');
             customerPanel.hidden = false;
+            customerPanel.closest('[data-section="customers"]').classList.add('panel-open');
             customerPanelTitle.textContent = row.dataset.personName;
             customerPanelMeta.textContent = `${row.dataset.personRole} | ${row.dataset.personEmail}`;
             customerPanel.querySelector('[data-customer-panel-body]').innerHTML = row.querySelector('[data-person-details]').innerHTML;
@@ -1238,20 +1240,29 @@ if (dashboard) {
         const togglePerson = event.target.closest('[data-toggle-person]');
         if (togglePerson) {
             const row = togglePerson.closest('[data-person-card]');
-            openModal({
-                title: row.dataset.personStatus === 'active' ? 'Suspend Account' : 'Unsuspend Account',
-                message: row.dataset.personStatus === 'active'
-                    ? 'Are you sure you want to suspend this account?'
-                    : 'Are you sure you want to unsuspend this account?',
-                confirmLabel: row.dataset.personStatus === 'active' ? 'Suspend' : 'Unsuspend',
-                personId: row.dataset.personId,
-            });
+            const personId = togglePerson.dataset.personId || (row ? row.dataset.personId : null);
+            const personStatus = togglePerson.dataset.personStatus || (row ? row.dataset.personStatus : null);
+            
+            if (personId) {
+                openModal({
+                    title: personStatus === 'active' ? 'Suspend Account' : 'Unsuspend Account',
+                    message: personStatus === 'active'
+                        ? 'Are you sure you want to suspend this account?'
+                        : 'Are you sure you want to unsuspend this account?',
+                    confirmLabel: personStatus === 'active' ? 'Suspend' : 'Unsuspend',
+                    personId: personId,
+                });
+            }
             return;
         }
 
         const removeNotification = event.target.closest('[data-remove-notification]');
         if (removeNotification) {
-            removeNotification.closest('[data-notification-item]').dataset.removed = '1';
+            const item = removeNotification.closest('[data-notification-item]');
+            if (item) {
+                item.dataset.removed = '1';
+                item.hidden = true;
+            }
             renderPagination('notifications');
             return;
         }
@@ -1260,6 +1271,7 @@ if (dashboard) {
         if (clearNotifications) {
             dashboard.querySelectorAll('[data-notification-item]').forEach((item) => {
                 item.dataset.removed = '1';
+                item.hidden = true;
             });
             paginations.notifications.page = 1;
             renderPagination('notifications');
@@ -1341,9 +1353,10 @@ if (dashboard) {
         closeModal();
     });
 
-    modalCancel?.addEventListener('click', closeModal);
     modalShell?.addEventListener('click', (event) => {
-        if (event.target === modalShell) closeModal();
+        if (event.target === modalShell || event.target.closest('[data-modal-cancel]')) {
+            closeModal();
+        }
     });
 
     sidebarCompactButton?.addEventListener('click', () => {
