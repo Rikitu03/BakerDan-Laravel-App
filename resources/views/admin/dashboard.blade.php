@@ -85,10 +85,15 @@
         }
 
         [data-sidebar] {
-            background:
-                radial-gradient(circle at top, rgba(255, 255, 255, 0.96), transparent 50%),
-                linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(248, 245, 241, 0.95));
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), var(--shadow);
+            background: linear-gradient(180deg, #2b211a 0%, #1e1611 100%);
+            border-color: rgba(201, 135, 108, 0.08) !important;
+            box-shadow: 10px 0 30px rgba(0, 0, 0, 0.08);
+            transition: width 350ms cubic-bezier(0.4, 0, 0.2, 1), background-color 300ms ease;
+            overflow-y: auto;
+            scrollbar-width: none; /* Firefox */
+        }
+        [data-sidebar]::-webkit-scrollbar {
+            display: none; /* Safari/Chrome */
         }
 
         .soft-panel {
@@ -283,58 +288,282 @@
 
         @media (min-width: 1024px) {
             [data-admin-dashboard].is-sidebar-compact [data-sidebar] {
-                width: 6.8rem;
+                width: 6.2rem;
             }
-
             [data-admin-dashboard].is-sidebar-compact [data-sidebar-text],
-            [data-admin-dashboard].is-sidebar-compact [data-sidebar-footer],
+            [data-admin-dashboard].is-sidebar-compact [data-sidebar-footer] > div:first-child {
+                opacity: 0;
+                pointer-events: none;
+                max-width: 0;
+                overflow: hidden;
+                margin: 0 !important;
+                padding: 0 !important;
+                transform: scale(0.9);
+            }
+            [data-admin-dashboard].is-sidebar-compact .nav-item {
+                justify-content: center;
+                padding: 0.85rem 0;
+                width: 3.2rem;
+                margin: 0 auto;
+                gap: 0;
+            }
             [data-admin-dashboard].is-sidebar-compact .nav-item-label {
                 display: none;
             }
-
-            [data-admin-dashboard].is-sidebar-compact .nav-item {
-                justify-content: center;
-                padding-left: 0.75rem;
-                padding-right: 0.75rem;
+            
+            /* CSS Tooltips for Compact Sidebar Items */
+            [data-admin-dashboard].is-sidebar-compact .nav-item::after {
+                content: attr(data-tooltip);
+                position: absolute;
+                left: 100%;
+                margin-left: 1.25rem;
+                top: 50%;
+                transform: translateY(-50%) translateX(-10px);
+                background: #1e1611;
+                border: 1px solid rgba(201, 135, 108, 0.15);
+                color: #fff;
+                font-size: 0.75rem;
+                font-weight: 600;
+                padding: 0.4rem 0.8rem;
+                border-radius: 0.75rem;
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+                transition: opacity 200ms ease, transform 200ms ease;
+                z-index: 50;
             }
-
+            [data-admin-dashboard].is-sidebar-compact .nav-item:hover::after {
+                opacity: 1;
+                transform: translateY(-50%) translateX(0);
+            }
         }
 
+        /* Sidebar Logo Header */
+        .brand-logo-wrap {
+            border: 2px solid rgba(201, 135, 108, 0.25);
+            padding: 2px;
+            border-radius: 999px;
+            transition: border-color 300ms ease, transform 300ms ease;
+        }
+        .brand-logo-wrap:hover {
+            border-color: #c9876c;
+            transform: rotate(5deg) scale(1.05);
+        }
+
+        /* Sidebar Compact Toggle Button */
+        [data-sidebar-compact] {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.6);
+            transition: all 250ms ease;
+        }
+        [data-sidebar-compact]:hover {
+            background: rgba(201, 135, 108, 0.15);
+            border-color: rgba(201, 135, 108, 0.3);
+            color: #fff;
+            transform: scale(1.05);
+        }
+        [data-admin-dashboard].is-sidebar-compact [data-sidebar-compact] svg {
+            transform: rotate(180deg);
+        }
+        [data-sidebar-compact] svg {
+            transition: transform 300ms ease;
+        }
+
+        /* Sidebar text transitions */
+        [data-sidebar-text], [data-sidebar-footer] {
+            transition: opacity 250ms ease, max-width 300ms ease, transform 250ms ease;
+        }
+
+        /* Navigation items */
+        .nav-item {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            padding: 0.85rem 1.15rem;
+            border-radius: 1.25rem;
+            color: rgba(248, 244, 240, 0.65) !important;
+            border: 1px solid transparent;
+            background: transparent;
+            transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: left center;
+        }
+        .nav-item svg {
+            color: rgba(201, 135, 108, 0.65);
+            transition: color 250ms ease, transform 250ms ease;
+        }
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.05);
+            color: #fff !important;
+            transform: translateX(3px);
+        }
+        .nav-item:hover svg {
+            color: #c9876c;
+            transform: scale(1.1);
+        }
+
+        /* Active Navigation Item */
+        .nav-item[data-active="true"] {
+            background: #c9876c !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
+            color: #fff !important;
+            box-shadow: 0 8px 20px -6px rgba(201, 135, 108, 0.4);
+        }
+        .nav-item[data-active="true"] svg {
+            color: #fff !important;
+        }
+
+        /* Active indicator glow bar */
         .nav-item::before {
             content: '';
-            width: 0.45rem;
-            height: 0.45rem;
-            border-radius: 999px;
-            background: rgba(109, 89, 73, 0.28);
             position: absolute;
-            left: 0.9rem;
-            top: 50%;
-            transform: translateY(-50%);
-            transition: background-color 180ms ease, box-shadow 180ms ease;
+            left: 0;
+            top: 25%;
+            height: 50%;
+            width: 3px;
+            background: #c9876c;
+            border-radius: 0 4px 4px 0;
+            opacity: 0;
+            transition: opacity 250ms ease, height 250ms ease;
         }
-
         .nav-item[data-active="true"]::before {
-            background: var(--brand);
-            box-shadow: 0 0 0 6px rgba(201, 135, 108, 0.18);
+            opacity: 1;
+            height: 50%;
+            background: #fff;
         }
 
-        .nav-item:hover {
-            transform: translateX(2px);
+        /* Navigation counter badge floated on the icon */
+        [data-nav-count] {
+            background: linear-gradient(135deg, #c9876c 0%, #b8765b 100%);
+            border: 1.5px solid #2b211a !important;
+            color: #ffffff !important;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4), 0 0 0 2px rgba(201, 135, 108, 0.15);
+            transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10;
         }
 
-        .nav-item span:first-child {
-            padding-left: 0.9rem;
+        .nav-item:hover [data-nav-count] {
+            background: linear-gradient(135deg, #ffffff 0%, #ece1d8 100%);
+            border-color: #1e1611 !important;
+            color: #2b211a !important;
+            box-shadow: 0 4px 10px rgba(255, 255, 255, 0.25), 0 0 0 3px rgba(255, 255, 255, 0.1);
+            transform: scale(1.15) translate(1px, -1px);
+        }
+
+        .nav-item[data-active="true"] [data-nav-count] {
+            background: #ffffff !important;
+            border-color: #c9876c !important;
+            color: #c9876c !important;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Today card inside premium dark sidebar */
+        .dark-pill {
+            background: linear-gradient(135deg, rgba(201, 135, 108, 0.1) 0%, rgba(184, 118, 91, 0.05) 100%);
+            border: 1px solid rgba(201, 135, 108, 0.15);
+            transition: all 300ms ease;
+        }
+        .dark-pill:hover {
+            border-color: rgba(201, 135, 108, 0.35);
+            transform: translateY(-2px);
+        }
+
+        /* Logout button inside dark sidebar */
+        .logout-card {
+            margin-top: 1rem;
+        }
+        .logout-button {
+            position: relative;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.85rem;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: rgba(244, 63, 94, 0.8);
+            background: rgba(244, 63, 94, 0.05);
+            border: 1px solid rgba(244, 63, 94, 0.15);
+            border-radius: 1.25rem;
+            transition: all 250ms ease;
+            cursor: pointer;
+        }
+        .logout-button:hover {
+            color: #fff;
+            background: rgb(244, 63, 94);
+            border-color: transparent;
+            box-shadow: 0 8px 20px -6px rgba(244, 63, 94, 0.4);
+            transform: scale(0.98);
+        }
+        .logout-button .logout-icon {
+            display: none;
+        }
+
+        @media (min-width: 1024px) {
+            /* When compact, morph the logout button into a perfect circular icon button! */
+            [data-admin-dashboard].is-sidebar-compact .logout-button {
+                width: 3.2rem;
+                height: 3.2rem;
+                padding: 0;
+                border-radius: 999px;
+                margin: 0 auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            [data-admin-dashboard].is-sidebar-compact .logout-button .logout-text {
+                display: none;
+            }
+            [data-admin-dashboard].is-sidebar-compact .logout-button .logout-icon {
+                display: block;
+            }
+            [data-admin-dashboard].is-sidebar-compact .logout-card {
+                display: flex;
+                justify-content: center;
+                margin-top: 0.5rem;
+            }
+            
+            /* Add standard compact tooltip to compact logout button */
+            [data-admin-dashboard].is-sidebar-compact .logout-button::after {
+                content: attr(data-tooltip);
+                position: absolute;
+                left: 100%;
+                margin-left: 1.25rem;
+                top: 50%;
+                transform: translateY(-50%) translateX(-10px);
+                background: #1e1611;
+                border: 1px solid rgba(244, 63, 94, 0.3);
+                color: #ff8595;
+                font-size: 0.75rem;
+                font-weight: 600;
+                padding: 0.4rem 0.8rem;
+                border-radius: 0.75rem;
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+                transition: opacity 200ms ease, transform 200ms ease;
+                z-index: 50;
+            }
+            [data-admin-dashboard].is-sidebar-compact .logout-button:hover::after {
+                opacity: 1;
+                transform: translateY(-50%) translateX(0);
+            }
         }
 
         .tab-item[data-active="true"] {
-            background: linear-gradient(135deg, var(--brand-deep), var(--brand));
-            color: #fff;
+            background: #2b211a !important;
+            color: #ffffff !important;
+            box-shadow: 0 8px 20px -8px rgba(43, 33, 26, 0.35) !important;
         }
 
         .filter-chip[data-active="true"] {
-            background: linear-gradient(135deg, var(--brand-deep), var(--brand));
-            color: #fff;
-            box-shadow: 0 12px 24px -18px rgba(184, 118, 91, 0.6);
+            background: #2b211a !important;
+            color: #ffffff !important;
+            box-shadow: 0 8px 20px -8px rgba(43, 33, 26, 0.35) !important;
         }
 
         .filter-chip {
@@ -533,21 +762,21 @@
     <div data-admin-dashboard data-default-section="{{ $defaultSection }}" data-open-modal="{{ $modalToOpen }}"
         class="page-shell min-h-screen lg:flex lg:h-screen lg:overflow-hidden">
         <aside data-sidebar
-            class="glass-panel sticky top-0 z-20 flex w-full flex-col gap-6 border-b lg:h-screen lg:w-80 lg:shrink-0 lg:self-start lg:border-b-0 lg:border-r">
+            class="sticky top-0 z-20 flex w-full flex-col gap-6 lg:h-screen lg:w-80 lg:shrink-0 lg:self-start border-b lg:border-b-0 lg:border-r border-white/5">
             <div class="flex items-center justify-between px-6 pt-6 lg:block lg:px-7">
                 <div class="flex items-center gap-3">
-                    <div class="brand-logo-wrap">
-                        <img src="{{ asset('images/logo/BAKERDAN LOGO.jpg') }}" alt="BakerDan logo">
+                    <div class="brand-logo-wrap overflow-hidden h-10 w-10 shrink-0">
+                        <img src="{{ asset('images/logo/BAKERDAN LOGO.jpg') }}" alt="BakerDan logo" class="h-full w-full object-cover rounded-full">
                     </div>
                     <div data-sidebar-text>
-                        <p class="font-display text-xl font-bold">BakerDan</p>
-                        <p class="text-sm text-slate-500">Admin Control Center</p>
+                        <p class="font-display text-xl font-bold text-white">BakerDan</p>
+                        <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Admin Center</p>
                     </div>
                 </div>
                 <button type="button" data-sidebar-compact
-                    class="hidden lg:grid h-9 w-9 place-items-center rounded-full bg-white/70 text-slate-500"
+                    class="hidden lg:grid h-9 w-9 place-items-center rounded-full bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all shadow-md mt-4 lg:mt-6 border border-white/10"
                     title="Toggle sidebar size" aria-label="Toggle sidebar size">
-                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <rect x="3" y="5" width="18" height="14" rx="2"></rect>
                         <path d="M9 5v14"></path>
@@ -556,28 +785,53 @@
             </div>
 
             <nav class="grid gap-2 px-4 lg:px-5">
-                @foreach ([['dashboard', 'Dashboard'], ['inventory', 'Inventory'], ['promos', 'Promos & Discounts'], ['orders', 'Orders'], ['customers', 'Customers'], ['notifications', 'Notifications'], ['messages', 'Messages']] as [$key, $label])
-                    <button type="button" data-nav="{{ $key }}"
-                        class="nav-item flex items-center justify-between rounded-2xl border border-transparent px-4 py-3 text-left text-sm font-semibold text-slate-600 transition hover:border-slate-200 hover:bg-white/70">
-                        <span class="nav-item-label" data-sidebar-text>{{ $label }}</span>
-                        <span data-nav-count="{{ $key }}"
-                            class="rounded-full bg-white/70 px-2 py-1 text-xs font-semibold text-slate-500">{{ $sidebarCounts[$key] ?? 0 }}</span>
+                @foreach ([
+                    ['dashboard', 'Dashboard', '<svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg>'],
+                    ['inventory', 'Inventory', '<svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>'],
+                    ['promos', 'Promos & Discounts', '<svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82zM7 7h.01"></path></svg>'],
+                    ['orders', 'Orders', '<svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18M16 10a4 4 0 01-8 0"></path></svg>'],
+                    ['customers', 'Customers', '<svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100-8 4 4 0 000 8zm14 14v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"></path></svg>'],
+                    ['notifications', 'Notifications', '<svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"></path></svg>'],
+                    ['messages', 'Messages', '<svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"></path></svg>']
+                ] as [$key, $label, $iconSvg])
+                    <button type="button" data-nav="{{ $key }}" data-tooltip="{{ $label }}"
+                        class="nav-item flex items-center rounded-2xl border border-transparent px-4 py-3 text-left text-sm font-semibold transition">
+                        <div class="flex items-center gap-3.5">
+                            <div class="relative flex items-center justify-center shrink-0">
+                                {!! $iconSvg !!}
+                                @php
+                                    $cnt = $sidebarCounts[$key] ?? 0;
+                                @endphp
+                                @if($cnt > 0)
+                                    <span data-nav-count="{{ $key }}"
+                                        class="absolute -top-1.5 -right-2 flex h-4 min-w-[1rem] items-center justify-center rounded-full text-[8px] font-extrabold px-1">
+                                        {{ $cnt }}
+                                    </span>
+                                @endif
+                            </div>
+                            <span class="nav-item-label" data-sidebar-text>{{ $label }}</span>
+                        </div>
                     </button>
                 @endforeach
             </nav>
 
             <div class="mx-4 mt-auto space-y-3 lg:mx-5 lg:mb-5" data-sidebar-footer>
                 <div class="rounded-3xl dark-pill px-5 py-5">
-                    <p class="text-xs uppercase tracking-[0.24em] text-white/60">Today</p>
-                    <p class="mt-2 font-display text-2xl font-bold">{{ now()->format('M d') }}</p>
-                    <p class="mt-2 text-sm text-white/70">Bakery operations are live and ready for review.</p>
+                    <p class="text-xs uppercase tracking-[0.24em] text-white/50">Today</p>
+                    <p class="mt-2 font-display text-2xl font-bold text-[#e9bc9f]">{{ now()->format('M d') }}</p>
+                    <p class="mt-2 text-sm text-slate-300">Bakery operations are live and ready.</p>
                 </div>
 
                 <div class="logout-card">
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
-                        <button type="submit" class="logout-button">
-                            Log Out
+                        <button type="submit" class="logout-button" data-tooltip="Log Out">
+                            <span class="logout-text" data-sidebar-text>Log Out</span>
+                            <span class="logout-icon">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"></path>
+                                </svg>
+                            </span>
                         </button>
                     </form>
                 </div>
@@ -618,130 +872,126 @@
             @endif
 
             <div id="walkin-order-modal" hidden
-                class="fixed inset-0 z-50 flex items-center justify-center bg-[#473D36]/25 p-4 backdrop-blur-md">
-                <div
-                    class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] bg-white/80 backdrop-blur-lg border border-[#ece1d8] p-6 shadow-2xl sm:p-8">
-                    <div class="flex items-start justify-between gap-4">
-                        <div>
-                            <h2 class="font-display text-2xl font-bold">New Walk-in Order</h2>
-                            <p class="mt-1 text-sm text-slate-500">Build a counter order using live inventory items and
-                                save it directly to the order queue.</p>
-                        </div>
-                        <button type="button" data-close-walkin-order
-                            class="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">Close</button>
-                    </div>
-
-                    @if ($errors->walkinOrder->any())
-                        <div class="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                            <p class="font-semibold">Please fix the walk-in order form.</p>
-                            <ul class="mt-2 list-disc pl-5">
-                                @foreach ($errors->walkinOrder->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
-
-                    <form id="walkin-order-form" method="POST" action="{{ route('admin.orders.walkin') }}"
-                        class="mt-6 space-y-5">
-                        @csrf
-                        <input type="hidden" name="_admin_section" value="orders">
-
-                        <div class="grid gap-4 sm:grid-cols-2">
-                            <label class="grid gap-2 text-sm font-medium text-slate-700">
-                                Customer name
-                                <input type="text" name="customer_name" value="{{ old('customer_name') }}"
-                                    class="w-full rounded-2xl border border-slate-200 px-4 py-3"
-                                    placeholder="Walk-in Customer">
-                            </label>
-                            <label class="grid gap-2 text-sm font-medium text-slate-700">
-                                Registered customer
-                                <select name="linked_customer_user_id"
-                                    class="w-full rounded-2xl border border-slate-200 px-4 py-3">
-                                    <option value="">Guest / no linked account</option>
-                                    @foreach ($customers as $customer)
-                                        <option value="{{ $customer['id'] }}" @selected((string) old('linked_customer_user_id') === (string) $customer['id'])>
-                                            {{ $customer['name'] }}{{ $customer['email'] ? ' - ' . $customer['email'] : '' }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </label>
-                        </div>
-
-                        <div class="grid gap-4 sm:grid-cols-2">
-                            <label class="grid gap-2 text-sm font-medium text-slate-700">
-                                Payment status
-                                <select name="payment_status"
-                                    class="w-full rounded-2xl border border-slate-200 px-4 py-3">
-                                    <option value="unpaid" @selected(old('payment_status', 'unpaid') === 'unpaid')>Unpaid
-                                    </option>
-                                    <option value="paid" @selected(old('payment_status') === 'paid')>Paid</option>
-                                </select>
-                            </label>
-                            <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                                Link a registered customer if you want the walk-in order to appear in their in-app
-                                notifications.
+                class="fixed inset-0 z-40 flex items-center justify-center bg-[#473D36]/25 p-4 backdrop-blur-md">
+                <div class="w-full max-w-2xl animate-fade-in">
+                    <div class="soft-panel panel-lift max-h-[90vh] w-full overflow-y-auto rounded-[2.5rem] !bg-white p-6 shadow-2xl md:p-8"
+                        style="background-color: #ffffff !important;">
+                        <!-- Modal Header -->
+                        <div class="flex items-start justify-between gap-4 border-b border-[#ece1d8] pb-5">
+                            <div>
+                                <p class="text-sm font-medium text-slate-500">Counter Terminal</p>
+                                <h3 class="font-display mt-1 text-2xl font-bold text-slate-850">New Walk-in Order</h3>
+                                <p class="mt-1 text-sm text-slate-500">Build a counter order using live inventory items and save it directly to the order queue.</p>
                             </div>
-                        </div>
-
-                        <div class="space-y-3">
-                            <div class="flex items-center justify-between gap-3">
-                                <div>
-                                    <p class="text-sm font-semibold text-slate-900">Order items</p>
-                                    <p class="text-xs text-slate-500">Add one or more catalog products with their
-                                        quantities.</p>
-                                </div>
-                                <button type="button" data-add-walkin-item
-                                    class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Add
-                                    item</button>
-                            </div>
-
-                            <div data-walkin-items class="space-y-3">
-                                @foreach ($walkinItems as $index => $item)
-                                    <div data-walkin-item
-                                        class="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:grid-cols-[minmax(0,1fr)_120px_auto]">
-                                        <label class="grid gap-2 text-sm font-medium text-slate-700">
-                                            Product
-                                            <select name="items[{{ $index }}][product_id]"
-                                                class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                                                <option value="">Select a product</option>
-                                                @foreach ($products as $product)
-                                                    <option value="{{ $product['id'] }}" @selected((string) ($item['product_id'] ?? '') === (string) $product['id'])>
-                                                        {{ $product['product_name'] ?? $product['name'] }} -
-                                                        {{ $product['formatted_price'] }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </label>
-                                        <label class="grid gap-2 text-sm font-medium text-slate-700">
-                                            Quantity
-                                            <input type="number" min="1" max="999" name="items[{{ $index }}][quantity]"
-                                                value="{{ $item['quantity'] ?? 1 }}"
-                                                class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                                        </label>
-                                        <div class="flex items-end">
-                                            <button type="button" data-remove-walkin-item
-                                                class="w-full rounded-full bg-white px-4 py-3 text-sm font-semibold text-slate-700">Remove</button>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-
-                        <label class="grid gap-2 text-sm font-medium text-slate-700">
-                            Notes
-                            <textarea name="notes" rows="3" class="w-full rounded-2xl border border-slate-200 px-4 py-3"
-                                placeholder="Optional counter notes or customer instructions">{{ old('notes') }}</textarea>
-                        </label>
-
-                        <div class="flex flex-wrap gap-3 pt-2">
-                            <button type="submit"
-                                class="rounded-full bg-emerald-700 px-5 py-3 text-sm font-semibold text-white">Create
-                                walk-in order</button>
                             <button type="button" data-close-walkin-order
-                                class="rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700">Cancel</button>
+                                class="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">✕</button>
                         </div>
-                    </form>
+
+                        @if ($errors->walkinOrder->any())
+                            <div class="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                                <p class="font-semibold">Please fix the walk-in order form.</p>
+                                <ul class="mt-2 list-disc pl-5">
+                                    @foreach ($errors->walkinOrder->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+
+                        <form id="walkin-order-form" method="POST" action="{{ route('admin.orders.walkin') }}"
+                            class="mt-6 flex flex-col gap-6">
+                            @csrf
+                            <input type="hidden" name="_admin_section" value="orders">
+
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <label class="grid gap-2 text-sm font-medium text-slate-700">
+                                    Customer name
+                                    <input type="text" name="customer_name" value="{{ old('customer_name') }}"
+                                        class="w-full rounded-2xl border border-slate-200 px-4 py-3 focus:outline-none focus:border-[#c9876c] focus:ring-2 focus:ring-[#c9876c]/20 transition-all"
+                                        placeholder="Walk-in Customer">
+                                </label>
+                                <label class="grid gap-2 text-sm font-medium text-slate-700">
+                                    Registered customer
+                                    <select name="linked_customer_user_id"
+                                        class="w-full rounded-2xl border border-slate-200 px-4 py-3 focus:outline-none focus:border-[#c9876c] focus:ring-2 focus:ring-[#c9876c]/20 transition-all">
+                                        <option value="">Guest / no linked account</option>
+                                        @foreach ($customers as $customer)
+                                            <option value="{{ $customer['id'] }}" @selected((string) old('linked_customer_user_id') === (string) $customer['id'])>
+                                                {{ $customer['name'] }}{{ $customer['email'] ? ' - ' . $customer['email'] : '' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </label>
+                            </div>
+
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <label class="grid gap-2 text-sm font-medium text-slate-700">
+                                    Payment status
+                                    <select name="payment_status"
+                                        class="w-full rounded-2xl border border-slate-200 px-4 py-3 focus:outline-none focus:border-[#c9876c] focus:ring-2 focus:ring-[#c9876c]/20 transition-all">
+                                        <option value="unpaid" @selected(old('payment_status', 'unpaid') === 'unpaid')>Unpaid</option>
+                                        <option value="paid" @selected(old('payment_status') === 'paid')>Paid</option>
+                                    </select>
+                                </label>
+                                <div class="rounded-2xl bg-slate-50 border border-slate-100 px-4 py-4 text-xs leading-relaxed text-slate-500 flex items-center">
+                                    Link a registered customer if you want the walk-in order to appear in their in-app notifications queue.
+                                </div>
+                            </div>
+
+                            <div class="border-t border-[#ece1d8] pt-5">
+                                <div class="flex items-center justify-between gap-4 mb-4">
+                                    <div>
+                                        <h4 class="text-base font-bold text-slate-800">Order Items</h4>
+                                        <p class="text-xs text-slate-500">Add one or more catalog products with their quantities.</p>
+                                    </div>
+                                    <button type="button" data-add-walkin-item
+                                        class="rounded-full bg-slate-100 hover:bg-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 active:scale-95 transition-all">+ Add Item</button>
+                                </div>
+                                <div data-walkin-items class="space-y-3">
+                                    @foreach ($walkinItems as $index => $item)
+                                        <div data-walkin-item
+                                            class="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:grid-cols-[minmax(0,1fr)_120px_auto]">
+                                            <label class="grid gap-2 text-sm font-medium text-slate-700">
+                                                Product
+                                                <select name="items[{{ $index }}][product_id]"
+                                                    class="w-full max-w-xs rounded-2xl border border-slate-200 bg-white px-4 py-3 focus:outline-none focus:border-[#c9876c] focus:ring-2 focus:ring-[#c9876c]/20 transition-all">
+                                                    <option value="">Select a product</option>
+                                                    @foreach ($products as $product)
+                                                        <option value="{{ $product['id'] }}" @selected((string) ($item['product_id'] ?? '') === (string) $product['id'])>
+                                                            {{ $product['product_name'] ?? $product['name'] }} - {{ $product['formatted_price'] }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </label>
+                                            <label class="grid gap-2 text-sm font-medium text-slate-700">
+                                                Quantity
+                                                <input type="number" min="1" max="999" name="items[{{ $index }}][quantity]"
+                                                    value="{{ $item['quantity'] ?? 1 }}"
+                                                    class="rounded-2xl border border-slate-200 bg-white px-4 py-3 focus:outline-none focus:border-[#c9876c] focus:ring-2 focus:ring-[#c9876c]/20 transition-all">
+                                            </label>
+                                            <div class="flex items-end">
+                                                <button type="button" data-remove-walkin-item
+                                                    class="w-full rounded-full bg-white hover:bg-slate-100 border border-slate-200 px-4 py-3 text-sm font-semibold text-rose-600 active:scale-95 transition-all">✕ Remove</button>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+
+                            <label class="grid gap-2 text-sm font-medium text-slate-700">
+                                Notes
+                                <textarea name="notes" rows="3" class="w-full rounded-2xl border border-slate-200 px-4 py-3 focus:outline-none focus:border-[#c9876c] focus:ring-2 focus:ring-[#c9876c]/20 transition-all"
+                                    placeholder="Optional counter notes or customer instructions">{{ old('notes') }}</textarea>
+                            </label>
+
+                            <div class="flex flex-wrap gap-3 pt-4 border-t border-[#ece1d8]">
+                                <button type="submit"
+                                    class="rounded-full bg-emerald-700 hover:bg-emerald-800 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-emerald-700/20 active:scale-95 transition-all">Create Walk-in Order</button>
+                                <button type="button" data-close-walkin-order
+                                    class="rounded-full border border-slate-200 hover:bg-slate-50 px-6 py-3.5 text-sm font-semibold text-slate-700 active:scale-95 transition-all">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
 
@@ -751,7 +1001,7 @@
                     <label class="grid gap-2 text-sm font-medium text-slate-700">
                         Product
                         <select data-walkin-product
-                            class="rounded-2xl border border-slate-200 bg-white px-4 py-3"></select>
+                            class="w-full max-w-xs rounded-2xl border border-slate-200 bg-white px-4 py-3"></select>
                     </label>
                     <label class="grid gap-2 text-sm font-medium text-slate-700">
                         Quantity
@@ -766,54 +1016,56 @@
             </template>
 
             <div id="bulk-upload-modal" hidden
-                class="fixed inset-0 z-50 flex items-center justify-center bg-[#473D36]/25 p-4 backdrop-blur-md">
-                <div
-                    class="w-full max-w-xl rounded-[2rem] bg-white/80 backdrop-blur-lg border border-[#ece1d8] p-6 shadow-2xl sm:p-8">
-                    <div class="flex items-start justify-between gap-4">
-                        <div>
-                            <h2 class="font-display text-2xl font-bold">Bulk Product Upload</h2>
-                            <p class="mt-1 text-sm text-slate-500">Import inventory rows from CSV using the bakery
-                                catalog fields already used in the app.</p>
-                        </div>
-                        <button type="button" data-close-bulk-upload
-                            class="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">Close</button>
-                    </div>
-
-                    @if ($errors->bulkUpload->any())
-                        <div class="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                            @foreach ($errors->bulkUpload->all() as $error)
-                                <p>{{ $error }}</p>
-                            @endforeach
-                        </div>
-                    @endif
-
-                    <form id="bulk-upload-form" method="POST" action="{{ route('admin.inventory.bulk') }}"
-                        enctype="multipart/form-data" class="mt-6 space-y-4">
-                        @csrf
-                        <input type="hidden" name="_admin_section" value="inventory">
-                        <label class="grid gap-2 text-sm font-medium text-slate-700">
-                            CSV file
-                            <input type="file" name="csv" accept=".csv,text/csv"
-                                class="w-full rounded-2xl border border-slate-200 px-4 py-3">
-                        </label>
-                        <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                            Required columns: <span class="font-semibold">name</span> or <span
-                                class="font-semibold">product_name</span>, <span class="font-semibold">price</span>,
-                            <span class="font-semibold">category</span>.
-                            Optional columns: <span class="font-semibold">description</span>, <span
-                                class="font-semibold">image_url</span>, <span class="font-semibold">is_active</span>.
-                        </div>
-                        <div class="flex flex-wrap gap-3 pt-2">
-                            <button type="submit"
-                                class="rounded-full bg-emerald-700 px-5 py-3 text-sm font-semibold text-white">Upload
-                                products</button>
-                            <button type="button" data-download-bulk-template
-                                class="rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700">Download
-                                template</button>
+                class="fixed inset-0 z-40 flex items-center justify-center bg-[#473D36]/25 p-4 backdrop-blur-md">
+                <div class="w-full max-w-xl animate-fade-in">
+                    <div class="soft-panel panel-lift max-h-[90vh] w-full overflow-y-auto rounded-[2.5rem] !bg-white p-6 shadow-2xl md:p-8"
+                        style="background-color: #ffffff !important;">
+                        <!-- Modal Header -->
+                        <div class="flex items-start justify-between gap-4 border-b border-[#ece1d8] pb-5">
+                            <div>
+                                <p class="text-sm font-medium text-slate-500">Bulk Import</p>
+                                <h3 class="font-display mt-1 text-2xl font-bold text-slate-850">Bulk Product Upload</h3>
+                                <p class="mt-1 text-sm text-slate-500">Import inventory rows from CSV using the bakery catalog fields already used in the app.</p>
+                            </div>
                             <button type="button" data-close-bulk-upload
-                                class="rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-700">Cancel</button>
+                                class="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">✕</button>
                         </div>
-                    </form>
+
+                        @if ($errors->bulkUpload->any())
+                            <div class="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                                @foreach ($errors->bulkUpload->all() as $error)
+                                    <p>{{ $error }}</p>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        <form id="bulk-upload-form" method="POST" action="{{ route('admin.inventory.bulk') }}"
+                            enctype="multipart/form-data" class="mt-6 flex flex-col gap-6">
+                            @csrf
+                            <input type="hidden" name="_admin_section" value="inventory">
+                            
+                            <label class="grid gap-2 text-sm font-medium text-slate-700">
+                                CSV File
+                                <input type="file" name="csv" accept=".csv,text/csv"
+                                    class="w-full rounded-2xl border border-slate-200 px-4 py-3 focus:outline-none focus:border-[#c9876c] focus:ring-2 focus:ring-[#c9876c]/20 transition-all">
+                            </label>
+
+                            <div class="rounded-2xl bg-slate-50 border border-slate-100 px-4 py-4 text-xs leading-relaxed text-slate-600 space-y-1">
+                                <p class="font-semibold text-slate-800 text-sm mb-1.5">Template Format Instructions</p>
+                                <p>• <span class="font-semibold">Required Columns</span>: <code class="bg-slate-200/60 px-1 rounded">name</code> (or <code class="bg-slate-200/60 px-1 rounded">product_name</code>), <code class="bg-slate-200/60 px-1 rounded">price</code>, <code class="bg-slate-200/60 px-1 rounded">category</code>.</p>
+                                <p>• <span class="font-semibold">Optional Columns</span>: <code class="bg-slate-200/60 px-1 rounded">description</code>, <code class="bg-slate-200/60 px-1 rounded">image_url</code>, <code class="bg-slate-200/60 px-1 rounded">is_active</code>.</p>
+                            </div>
+
+                            <div class="flex flex-wrap gap-3 pt-2 border-t border-[#ece1d8]">
+                                <button type="submit"
+                                    class="rounded-full bg-emerald-700 hover:bg-emerald-800 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-emerald-700/20 active:scale-95 transition-all">Upload Products</button>
+                                <button type="button" data-download-bulk-template
+                                    class="rounded-full bg-slate-100 hover:bg-slate-200 px-6 py-3.5 text-sm font-semibold text-slate-700 active:scale-95 transition-all">Download Template</button>
+                                <button type="button" data-close-bulk-upload
+                                    class="rounded-full border border-slate-200 hover:bg-slate-50 px-6 py-3.5 text-sm font-semibold text-slate-700 active:scale-95 transition-all">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
 
