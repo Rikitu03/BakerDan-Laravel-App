@@ -70,6 +70,31 @@ class NotificationController extends Controller
         ]);
     }
 
+    public function destroy(Request $request, int $notificationId): JsonResponse
+    {
+        \App\Models\CustomerNotification::query()
+            ->where('user_id', $request->user()->user_id)
+            ->where('id', $notificationId)
+            ->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Notification removed.',
+        ]);
+    }
+
+    public function destroyAll(Request $request): JsonResponse
+    {
+        \App\Models\CustomerNotification::query()
+            ->where('user_id', $request->user()->user_id)
+            ->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'All notifications removed.',
+        ]);
+    }
+
     private function resolveImageUrl(?string $imagePath): ?string
     {
         if (! $imagePath) {

@@ -283,6 +283,21 @@ class PendingOrderService
 
         $this->rememberMaterializedOrder((string) $pendingOrder['id'], (int) $order->id);
         $this->forget((string) $pendingOrder['id']);
+        
+        $customerName = $order->user?->detail?->name ?? 'Customer';
+        CustomerNotification::notifyAdmins(
+            'order',
+            'Payment received',
+            'Order #' . $order->id . ' from ' . $customerName . ' is paid and ready for admin handling.',
+            [
+                'order_id' => $order->id,
+                'customer_name' => $customerName,
+                'payment_status' => 'paid',
+                'contains_custom' => $order->items->contains(fn ($item) => $item->item_type === 'custom'),
+                'source' => 'online_payment'
+            ]
+        );
+
         $this->notifyCustomerPaymentConfirmed($order);
 
         return $order->loadMissing(['items.product']);

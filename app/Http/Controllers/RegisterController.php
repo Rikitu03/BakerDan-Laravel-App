@@ -270,6 +270,17 @@ class RegisterController extends Controller
                 'address' => $validated['address'],
                 'password' => Hash::make((string) $validated['password']),
             ]);
+
+            \App\Models\CustomerNotification::notifyAdmins(
+                'customer',
+                'New customer account',
+                'New customer account for ' . $validated['name'] . ' is active.',
+                [
+                    'user_id' => $user->user_id,
+                    'customer_name' => $validated['name'],
+                    'source' => 'registration'
+                ]
+            );
         });
 
         Session::forget(['registration_email', 'otp_verified', 'registration_otp_verified_at']);
