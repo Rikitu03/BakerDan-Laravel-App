@@ -1790,7 +1790,7 @@
                                                         <button type="button" data-view-person
                                                             class="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white">View</button>
                                                         <button type="button" data-toggle-person
-                                                            class="rounded-full bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">Suspend</button>
+                                                            class="rounded-full {{ $person['status'] === 'active' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700' }} px-3 py-2 text-xs font-semibold">{{ $person['status'] === 'active' ? 'Suspend' : 'Unsuspend' }}</button>
                                                     </div>
                                                     <template data-person-details>
                                                         <div class="grid gap-3 text-sm text-slate-600">
@@ -1858,112 +1858,83 @@
             <section data-section="messages" hidden class="fade-in space-y-6">
                 <div class="flex flex-wrap items-center justify-between gap-4">
                     <div>
-                        <p class="text-sm font-medium text-slate-500">Messages section</p>
-                        <h2 class="font-display section-title mt-1 text-3xl font-bold">Admin inbox and replies</h2>
+                        <p class="text-sm font-medium text-slate-500">Communications</p>
+                        <h2 class="font-display section-title mt-1 text-3xl font-bold">Inbox</h2>
                     </div>
                     <div class="flex items-center gap-3">
                         <span
-                            class="rounded-full bg-[#FFF4EB] px-4 py-2 text-sm font-semibold text-[#8F4723]">{{ collect($messages)->where('unread', true)->count() }}
+                            class="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">{{ collect($messages)->where('unread', true)->count() }}
                             unread</span>
                         <button type="button" data-admin-message-mark-read
-                            class="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white">Mark thread as
-                            read</button>
+                            class="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-95">Mark as read</button>
                     </div>
                 </div>
 
-                <section class="section-shell">
-                    <div class="grid gap-4 xl:h-[76vh] xl:grid-cols-[340px_minmax(0,1fr)]">
-                        <aside
-                            class="overflow-hidden rounded-[28px] border border-[#EEE2D7] bg-[#FBF7F3] xl:flex xl:min-h-0 xl:flex-col">
-                            <div class="border-b border-[#EADDD2] px-5 py-5">
-                                <div class="flex items-center justify-between gap-3">
+                <div class="grid gap-6 xl:h-[calc(100vh-220px)] xl:grid-cols-[360px_1fr]">
+                    <!-- Sidebar: Conversations List -->
+                    <aside class="flex flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+                        <div class="border-b border-slate-100 p-5">
+                            <h3 class="font-display text-xl font-bold text-slate-900">Conversations</h3>
+                            <div class="relative mt-4">
+                                <span class="pointer-events-none absolute inset-y-0 left-4 flex items-center text-slate-400">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </span>
+                                <input data-admin-message-search type="text" placeholder="Search by customer name..."
+                                    class="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pr-4 pl-11 text-sm text-slate-700 outline-none transition focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]">
+                            </div>
+                        </div>
+
+                        <div data-admin-message-list class="flex-1 overflow-y-auto p-3 space-y-1">
+                            <!-- Populated by JS -->
+                        </div>
+                    </aside>
+
+                    <!-- Main: Chat Interface -->
+                    <section data-admin-message-panel class="flex flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+                        <!-- Chat Header -->
+                        <div class="shrink-0 border-b border-slate-100 bg-white px-6 py-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div data-admin-message-avatar class="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--brand)] text-sm font-bold text-white">
+                                        --
+                                    </div>
                                     <div>
-                                        <p class="text-xs font-semibold uppercase tracking-[0.28em] text-[#C19370]">
-                                            Messages</p>
-                                        <h3 class="mt-2 text-3xl font-black text-[#4E3527]"
-                                            style="font-family: 'Sora', sans-serif;">Inbox</h3>
-                                    </div>
-                                    <span data-admin-message-unread
-                                        class="rounded-full bg-[#FDEBDC] px-3 py-1 text-xs font-semibold text-[#B96D3F]">{{ collect($messages)->where('unread', true)->count() }}
-                                        unread</span>
-                                </div>
-
-                                <label class="relative mt-5 block">
-                                    <span
-                                        class="pointer-events-none absolute inset-y-0 left-4 flex items-center text-[#BBA89A]">
-                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                                                d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                        </svg>
-                                    </span>
-                                    <input data-admin-message-search type="text" placeholder="Search conversations"
-                                        class="h-12 w-full rounded-full border border-[#E4D6CB] bg-white pr-4 pl-11 text-sm text-[#4F4944] outline-none transition focus:border-transparent focus:ring-2 focus:ring-[#C9876C]">
-                                </label>
-                            </div>
-
-                            <div data-admin-message-list
-                                class="max-h-[28rem] overflow-y-auto px-3 py-3 xl:max-h-none xl:min-h-0 xl:flex-1">
-                            </div>
-                        </aside>
-
-                        <section data-admin-message-panel
-                            class="flex min-h-[60vh] flex-col overflow-hidden rounded-[30px] border border-[#E9DDD3] bg-[#FFFCF9] xl:h-full xl:min-h-0">
-                            <div class="shrink-0 border-b border-[#EEE1D7] bg-white px-6 py-5">
-                                <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                                    <div class="flex items-center gap-4">
-                                        <div data-admin-message-avatar
-                                            class="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#D59A72] to-[#C27A51] text-base font-bold text-white shadow-md">
-                                            --</div>
-                                        <div>
-                                            <h3 data-admin-message-name class="text-2xl font-bold text-[#4C3326]"
-                                                style="font-family: 'Sora', sans-serif;">Select a thread</h3>
-                                            <p data-admin-message-subtitle class="mt-1 text-sm text-[#8A7A6E]">Choose a
-                                                conversation from the inbox.</p>
-                                        </div>
-                                    </div>
-
-                                    <div class="flex flex-wrap gap-2">
-                                        <span data-admin-message-label
-                                            class="rounded-full bg-[#F8EADF] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#B46C42]">Inbox</span>
-                                        <span
-                                            class="rounded-full bg-[#F3EEE8] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#7E736B]">Admin
-                                            reply demo</span>
+                                        <h3 data-admin-message-name class="font-display text-lg font-bold text-slate-900 leading-tight">Select a conversation</h3>
+                                        <p data-admin-message-subtitle class="text-xs text-slate-500">Pick a thread from the list to start chatting.</p>
                                     </div>
                                 </div>
-                            </div>
-
-                            <div data-admin-message-feed
-                                class="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,#fffaf5_0%,#f8f1e8_58%,#f3e8dd_100%)] px-4 py-5 md:px-6">
-                            </div>
-
-                            <div class="shrink-0 border-t border-[#EEE1D7] bg-white px-4 py-4 md:px-6">
-                                <div class="flex flex-col gap-3 md:flex-row md:items-end">
-                                    <label class="block flex-1">
-                                        <span class="sr-only">Type a message</span>
-                                        <textarea data-admin-message-draft rows="3"
-                                            placeholder="Write a message to the customer or operations team"
-                                            class="w-full rounded-[24px] border border-[#E1D5CA] bg-[#FCFAF8] px-5 py-4 text-sm text-[#4F4944] outline-none transition focus:border-transparent focus:ring-2 focus:ring-[#C9876C]"></textarea>
-                                    </label>
-
-                                    <div class="flex items-center gap-3">
-                                        <button type="button"
-                                            class="flex h-12 w-12 items-center justify-center rounded-full border border-[#E2D6CC] bg-white text-[#786D66] transition hover:border-[#D3B6A0] hover:text-[#B36F46]"
-                                            aria-label="Attach file">
-                                            <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                                                    d="M16.5 6.5l-7.78 7.78a3 3 0 104.24 4.24l8.49-8.48a5 5 0 10-7.07-7.07L5.2 12.15" />
-                                            </svg>
-                                        </button>
-
-                                        <button type="button" data-admin-message-send
-                                            class="rounded-full bg-[#4A4541] px-6 py-3 font-semibold text-white shadow-md transition hover:bg-[#383431]">Send</button>
-                                    </div>
+                                <div class="hidden sm:block">
+                                    <span data-admin-message-label class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Inbound</span>
                                 </div>
                             </div>
-                        </section>
-                    </div>
-                </section>
+                        </div>
+
+                        <!-- Chat Feed -->
+                        <div data-admin-message-feed class="flex-1 overflow-y-auto bg-slate-50/50 p-6">
+                            <!-- Populated by JS -->
+                        </div>
+
+                        <!-- Chat Input -->
+                        <div class="shrink-0 border-t border-slate-100 bg-white p-4">
+                            <div class="flex items-end gap-3">
+                                <div class="relative flex-1">
+                                    <textarea data-admin-message-draft rows="1" 
+                                        placeholder="Type your message here..."
+                                        class="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 py-3 px-4 pr-12 text-sm text-slate-700 outline-none transition focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
+                                        style="min-height: 46px; max-height: 120px;"></textarea>
+                                </div>
+                                <button type="button" data-admin-message-send
+                                    class="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-2xl bg-[var(--brand)] text-white shadow-md transition hover:bg-[var(--brand-deep)] active:scale-90 disabled:opacity-50 disabled:pointer-events-none">
+                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14M12 5l7 7-7 7" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
             </section>
 
             <section data-section="notifications" hidden class="fade-in space-y-6">
@@ -2014,6 +1985,7 @@
                 <div class="grid gap-4">
                     @foreach ($notifications as $notification)
                         <article data-notification-item data-page-item="notifications"
+                            data-notification-id="{{ $notification['id'] }}"
                             data-notification-category="{{ $notification['category'] ?? 'orders' }}"
                             data-notification-title="{{ $notification['title'] ?? '' }}"
                             data-notification-message="{{ $notification['message'] }}"

@@ -104,7 +104,16 @@ Route::prefix('api')->group(function () {
     Route::get('/products/{id}/reviews', [ReviewController::class, 'index']);
 });
 
-// Protected API routes - requires authentication
+// Protected API routes - requires authentication for both customers and admins
+Route::prefix('api')->middleware(['auth'])->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/{notificationId}/read', [NotificationController::class, 'markRead']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+    Route::delete('/notifications/{notificationId}', [NotificationController::class, 'destroy']);
+    Route::delete('/notifications', [NotificationController::class, 'destroyAll']);
+});
+
+// Protected API routes - requires authentication and customer role
 Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
     // Cart
     Route::get('/cart', [CartController::class, 'index']);
@@ -130,9 +139,6 @@ Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);
     Route::put('/profile/password', [ProfileController::class, 'updatePassword']);
-    Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::post('/notifications/{notificationId}/read', [NotificationController::class, 'markRead']);
-    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
 
     // Reviews - authenticated
     Route::post('/reviews', [ReviewController::class, 'store']);
@@ -160,6 +166,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('/orders/walkin', [AdminController::class, 'storeWalkinOrder'])->name('admin.orders.walkin');
     Route::patch('/orders/{order}/status', [AdminController::class, 'updateOrderStatus'])->name('admin.orders.status');
     Route::patch('/orders/{order}/payment-status', [AdminController::class, 'updateOrderPaymentStatus'])->name('admin.orders.payment-status');
+    Route::patch('/users/{user}/status', [AdminController::class, 'toggleUserStatus'])->name('admin.users.status');
 });
 
 // Shared Messaging Routes

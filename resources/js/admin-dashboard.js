@@ -70,6 +70,10 @@ if (dashboard) {
     const adminMessages = adminMessagesElement ? JSON.parse(adminMessagesElement.textContent) : [];
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
+    if (window.axios) {
+        window.axios.defaults.headers.common['X-CSRF-TOKEN'] = csrfToken;
+    }
+
     const paginationKeys = ['inventory', 'promos', 'orders', 'customers', 'admins', 'notifications'];
     const paginations = {
         inventory: { page: 1, size: 10 },
@@ -484,8 +488,8 @@ if (dashboard) {
 
         if (!filtered.length) {
             adminMessageList.innerHTML = `
-                <div class="rounded-[24px] border border-dashed border-[#E4D5C8] bg-white px-5 py-8 text-center text-sm text-[#7F746D]">
-                    No conversations match your search.
+                <div class="rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 px-5 py-10 text-center">
+                    <p class="text-sm font-medium text-slate-400">No conversations found</p>
                 </div>
             `;
             return;
@@ -495,26 +499,26 @@ if (dashboard) {
             <button
                 type="button"
                 data-admin-message-thread="${conversation.id}"
-                class="message-thread-button mb-2 flex w-full items-start gap-3 rounded-[22px] border border-transparent px-3 py-3 text-left transition-all hover:bg-white/80"
+                class="group relative flex w-full items-start gap-3 rounded-2xl p-3 text-left transition-all hover:bg-slate-50 active:scale-[0.98] ${conversation.id === activeAdminMessageId ? 'bg-slate-50 ring-1 ring-slate-100' : ''}"
                 data-active="${conversation.id === activeAdminMessageId ? 'true' : 'false'}"
             >
-                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#C9876C] to-[#B8765B] text-sm font-bold text-white shadow-sm">
+                <div class="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500 shadow-sm transition-transform group-hover:scale-105">
                     ${escapeHtml(conversation.avatar)}
+                    ${conversation.unread ? '<span class="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-rose-500"></span>' : ''}
                 </div>
                 <div class="min-w-0 flex-1">
-                    <div class="flex items-center justify-between gap-3">
-                        <p class="truncate text-sm font-semibold text-[#453A35]">${escapeHtml(conversation.name)}</p>
-                        <span class="shrink-0 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#B79F8F]">${escapeHtml(conversation.time)}</span>
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="truncate text-sm font-bold text-slate-900">${escapeHtml(conversation.name)}</p>
+                        <span class="shrink-0 text-[10px] font-medium text-slate-400">${escapeHtml(conversation.time)}</span>
                     </div>
-                    <p class="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-[#C68D64]">${escapeHtml(conversation.label)}</p>
-                    <p class="mt-1 truncate text-sm text-[#796F68]">${escapeHtml(conversation.preview)}</p>
+                    <p class="mt-1 truncate text-xs font-medium text-slate-600">${escapeHtml(conversation.preview)}</p>
                 </div>
-                ${conversation.unread ? '<span class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-[#D96D45]"></span>' : ''}
+                ${conversation.id === activeAdminMessageId ? '<div class="absolute left-0 top-3 bottom-3 w-1 rounded-r-full bg-[var(--brand)]"></div>' : ''}
             </button>
         `).join('');
     };
 
-    const renderAdminMessageFeed = () => {
+    const renderAdminMessageFeed = (options = {}) => {
         const conversation = getActiveAdminMessage();
 
         if (!adminMessageName || !adminMessageSubtitle || !adminMessageAvatar || !adminMessageLabel || !adminMessageFeed) {
@@ -523,49 +527,61 @@ if (dashboard) {
 
         if (!conversation) {
             adminMessageAvatar.textContent = '--';
-            adminMessageName.textContent = 'Select a thread';
-            adminMessageSubtitle.textContent = 'Choose a conversation from the inbox.';
-            adminMessageLabel.textContent = 'Inbox';
+            adminMessageName.textContent = 'Select a conversation';
+            adminMessageSubtitle.textContent = 'Pick a thread from the list to start chatting.';
+            adminMessageLabel.textContent = 'Inbound';
             adminMessageFeed.innerHTML = `
-                <div class="flex h-full min-h-[20rem] items-center justify-center">
-                    <div class="text-center">
-                        <h3 class="text-2xl font-bold text-[#50382A]" style="font-family: 'Sora', sans-serif;">No conversation selected</h3>
-                        <p class="mt-3 text-sm text-[#7F746C]">Pick a message thread from the left to continue chatting.</p>
+                <div class="flex h-full items-center justify-center text-center">
+                    <div class="max-w-xs">
+                        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-300">
+                             <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                        </div>
+                        <h3 class="font-display text-xl font-bold text-slate-900">No thread selected</h3>
+                        <p class="mt-2 text-sm text-slate-500">Select a customer conversation on the left to view the full message history.</p>
                     </div>
                 </div>
             `;
             return;
         }
 
+        // Check if user is near bottom before re-rendering
+        const threshold = 100; // pixels
+        const isNearBottom = adminMessageFeed.scrollHeight - adminMessageFeed.scrollTop - adminMessageFeed.clientHeight < threshold;
+
         adminMessageAvatar.textContent = conversation.avatar;
         adminMessageName.textContent = conversation.name;
         adminMessageSubtitle.textContent = conversation.subtitle;
         adminMessageLabel.textContent = conversation.label;
+        
         adminMessageFeed.innerHTML = `
-            <div class="mx-auto flex min-h-full max-w-4xl flex-col justify-end gap-4">
-                <div class="self-center rounded-full bg-white/85 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#B7A08F] shadow-sm">
-                    Today
-                </div>
+            <div class="flex flex-col gap-4">
                 ${conversation.messages.map((message) => `
                     <div class="flex ${message.sender === 'me' ? 'justify-end' : 'justify-start'}">
-                        <div class="max-w-[85%] rounded-[24px] px-4 py-3 shadow-[0_18px_36px_-32px_rgba(95,59,35,0.5)] md:max-w-[70%] ${message.sender === 'me'
-                            ? 'rounded-br-[8px] bg-[#C9876C] text-white'
-                            : 'rounded-bl-[8px] bg-white text-[#5D534D] ring-1 ring-[#E9DDD3]'}">
-                            <p class="text-sm leading-6">${escapeHtml(message.text)}</p>
-                            <p class="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] ${message.sender === 'me' ? 'text-white/75' : 'text-[#B49A89]'}">${escapeHtml(message.time)}</p>
+                        <div class="flex flex-col ${message.sender === 'me' ? 'items-end' : 'items-start'} max-w-[85%] md:max-w-[70%]">
+                            <div class="rounded-2xl px-4 py-3 shadow-sm ${message.sender === 'me'
+                                ? 'bg-[var(--brand)] text-white rounded-br-none'
+                                : 'bg-white text-slate-700 border border-slate-100 rounded-bl-none'}">
+                                <p class="text-sm leading-relaxed">${escapeHtml(message.text)}</p>
+                            </div>
+                            <span class="mt-1.5 px-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">${escapeHtml(message.time)}</span>
                         </div>
                     </div>
                 `).join('')}
             </div>
         `;
 
-        adminMessageFeed.scrollTop = adminMessageFeed.scrollHeight;
+        // Scroll to bottom if requested, or if it's a new conversation, or if we were already at the bottom
+        if (options.forceScroll || options.isNewConversation || isNearBottom) {
+            adminMessageFeed.scrollTop = adminMessageFeed.scrollHeight;
+        }
     };
 
-    const renderAdminMessages = () => {
+    const renderAdminMessages = (options = {}) => {
         renderAdminMessageSummary();
         renderAdminMessageList();
-        renderAdminMessageFeed();
+        renderAdminMessageFeed(options);
     };
 
     const getPageItems = (key) => {
@@ -907,6 +923,11 @@ if (dashboard) {
         renderAdminMessageList();
     });
 
+    adminMessageDraft?.addEventListener('input', () => {
+        adminMessageDraft.style.height = 'auto';
+        adminMessageDraft.style.height = `${adminMessageDraft.scrollHeight}px`;
+    });
+
     adminMessageDraft?.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
@@ -938,7 +959,8 @@ if (dashboard) {
         
         const messageContent = draft;
         adminMessageDraft.value = '';
-        renderAdminMessageFeed();
+        adminMessageDraft.style.height = 'auto';
+        renderAdminMessageFeed({ forceScroll: true });
 
         try {
             const response = await axios.post('/api/messages', {
@@ -1021,7 +1043,10 @@ if (dashboard) {
 
         const messageThread = event.target.closest('[data-admin-message-thread]');
         if (messageThread) {
-            activeAdminMessageId = Number(messageThread.dataset.adminMessageThread);
+            const threadId = Number(messageThread.dataset.adminMessageThread);
+            const isNewThread = threadId !== activeAdminMessageId;
+            activeAdminMessageId = threadId;
+            
             const conversation = getActiveAdminMessage();
             if (conversation) {
                 if (!conversation.loaded) {
@@ -1032,7 +1057,7 @@ if (dashboard) {
                     conversation.unread = false;
                 }
             }
-            renderAdminMessages();
+            renderAdminMessages({ isNewConversation: isNewThread });
             updateNavCounts();
             return;
         }
@@ -1260,10 +1285,19 @@ if (dashboard) {
         if (removeNotification) {
             const item = removeNotification.closest('[data-notification-item]');
             if (item) {
+                const notificationId = item.dataset.notificationId;
+                
+                // Optmistic UI removal
                 item.dataset.removed = '1';
                 item.hidden = true;
+                renderPagination('notifications');
+
+                // Persist to database
+                if (notificationId && window.axios) {
+                    window.axios.delete(`/api/notifications/${notificationId}`)
+                        .catch(err => console.error('Error removing notification:', err));
+                }
             }
-            renderPagination('notifications');
             return;
         }
 
@@ -1275,6 +1309,12 @@ if (dashboard) {
             });
             paginations.notifications.page = 1;
             renderPagination('notifications');
+
+            // Persist to database
+            if (window.axios) {
+                window.axios.delete('/api/notifications')
+                    .catch(err => console.error('Error clearing notifications:', err));
+            }
         }
     });
 
@@ -1342,12 +1382,22 @@ if (dashboard) {
         }
 
         if (modalAction.personId) {
-            const personCard = dashboard.querySelector(`[data-person-card][data-person-id="${modalAction.personId}"]`);
-            if (personCard) {
-                const current = personCard.dataset.personStatus;
-                personCard.dataset.personStatus = current === 'active' ? 'inactive' : 'active';
-                personCard.querySelector('[data-person-status]').textContent = current === 'active' ? 'Suspended' : 'Active';
+            if (window.axios) {
+                window.axios.patch(`/admin/users/${modalAction.personId}/status`)
+                    .then(response => {
+                        if (response.data.success) {
+                            window.location.reload();
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error toggling user status:', err);
+                        if (err.response && err.response.data && err.response.data.message) {
+                            alert(err.response.data.message);
+                        }
+                    });
             }
+            closeModal();
+            return;
         }
 
         closeModal();
@@ -1410,10 +1460,10 @@ if (dashboard) {
             return;
         }
 
-        fetchAdminConversations({ silent: false });
+        fetchAdminConversations({ silent: true });
 
         if (activeAdminMessageId) {
-            fetchAdminMessages(activeAdminMessageId, { incremental: true, silent: false });
+            fetchAdminMessages(activeAdminMessageId, { incremental: true, silent: true });
         }
     };
 
@@ -1430,7 +1480,7 @@ if (dashboard) {
 
         adminConversationPollTimer = window.setInterval(() => {
             if (!document.hidden) {
-                fetchAdminConversations({ silent: false });
+                fetchAdminConversations({ silent: true });
             }
         }, ADMIN_CONVERSATION_POLL_MS);
     };

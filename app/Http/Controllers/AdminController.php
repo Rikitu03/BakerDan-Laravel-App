@@ -110,6 +110,18 @@ class AdminController extends Controller
             return $order;
         });
 
+        CustomerNotification::notifyAdmins(
+            'order',
+            'New walk-in order',
+            'Order #' . $order->id . ' from ' . $customerName . ' was created by admin.',
+            [
+                'order_id' => $order->id,
+                'customer_name' => $customerName,
+                'payment_status' => $order->payment_status,
+                'source' => 'walk_in'
+            ]
+        );
+
         if ($linkedCustomer) {
             $this->notifyWalkInCustomer($linkedCustomer, $order);
         }
@@ -389,6 +401,32 @@ class AdminController extends Controller
         ]);
     }
 
+    public function toggleUserStatus(User $user): JsonResponse
+    {
+        if ($user->user_id === auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You cannot suspend your own account.',
+            ], 422);
+        }
+
+        $user->update([
+            'is_active' => ! $user->is_active,
+        ]);
+
+        session()->flash('admin_section', 'customers');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User account ' . ($user->is_active ? 'activated' : 'suspended') . ' successfully.',
+            'data' => [
+                'user_id' => $user->user_id,
+                'is_active' => (bool) $user->is_active,
+                'status' => $user->is_active ? 'active' : 'inactive',
+            ],
+        ]);
+    }
+
     private function dashboardData(): array
     {
         $products = Product::query()->latest('id')->get();
@@ -409,7 +447,7 @@ class AdminController extends Controller
         $orderCards = $orders->map(fn (Order $order) => $this->orderCard($order))->values()->all();
         $customerCards = $customers->map(fn (User $user) => $this->personCard($user, 'customer'))->values()->all();
         $adminCards = $admins->map(fn (User $user) => $this->personCard($user, 'admin'))->values()->all();
-        $notifications = $this->notificationsFromOrders($orders, $customers);
+        $notifications = $this->adminNotifications();
         $messages = $this->adminMessages($orders, $customers);
         $weeklyCompletions = $this->weeklyCompletionSeries($orders);
         $productTypeBreakdown = $this->productTypeBreakdown($products);
@@ -615,58 +653,40 @@ class AdminController extends Controller
         ];
     }
 
-    /**
-     * @param EloquentCollection<int, Order> $orders
-     * @param EloquentCollection<int, User> $customers
-     */
-    private function notificationsFromOrders(EloquentCollection $orders, EloquentCollection $customers): SupportCollection
+    private function adminNotifications(): SupportCollection
     {
-        $orderNotifications = $orders->map(function (Order $order): array {
-            $customerName = data_get($order->payment_metadata, 'walk_in_customer_name')
-                ?: ($order->user?->detail?->name ?? 'Customer');
-            $isPaid = $order->payment_status === 'paid';
-            $containsCustom = $order->items->contains(fn (OrderItem $item) => $item->item_type === 'custom');
+        return CustomerNotification::where('user_id', auth()->id())
+            ->latest()
+            ->take(50)
+            ->get()
+            ->map(function ($notification) {
+                $payload = $notification->payload ?? [];
+                $category = 'orders';
+                $categoryLabel = 'Order';
 
-            return [
-                'id' => 'order-' . $order->id,
-                'customer_name' => $customerName,
-                'title' => $isPaid ? 'Payment received' : 'New customer order',
-                'message' => $isPaid
-                    ? 'Order #' . $order->id . ' from ' . $customerName . ' is paid and ready for admin handling.'
-                    : 'Order #' . $order->id . ' from ' . $customerName . ' was sent to admin and is waiting for review.',
-                'category' => $isPaid ? 'payments' : 'orders',
-                'category_label' => $isPaid ? 'Payment' : 'Order',
-                'order_id' => $order->id,
-                'status' => $order->status,
-                'payment_status' => $order->payment_status,
-                'contains_custom' => $containsCustom,
-                'date' => $order->updated_at?->format('Y-m-d H:i') ?? now()->format('Y-m-d H:i'),
-                'timestamp' => $order->updated_at?->timestamp ?? now()->timestamp,
-            ];
-        });
+                if ($notification->type === 'customer') {
+                    $category = 'customers';
+                    $categoryLabel = 'Customer';
+                } elseif (($payload['payment_status'] ?? '') === 'paid') {
+                    $category = 'payments';
+                    $categoryLabel = 'Payment';
+                }
 
-        $newCustomers = $customers->take(2)->map(function (User $user): array {
-            return [
-                'id' => 'customer-' . $user->user_id,
-                'customer_name' => $user->detail?->name ?? 'Customer',
-                'title' => 'New customer account',
-                'message' => 'New customer account is active.',
-                'category' => 'customers',
-                'category_label' => 'Customer',
-                'order_id' => null,
-                'status' => null,
-                'payment_status' => null,
-                'contains_custom' => false,
-                'date' => $user->created_at?->format('Y-m-d H:i') ?? now()->format('Y-m-d H:i'),
-                'timestamp' => $user->created_at?->timestamp ?? now()->timestamp,
-            ];
-        });
-
-        return $orderNotifications
-            ->concat($newCustomers)
-            ->sortByDesc('timestamp')
-            ->take(30)
-            ->values();
+                return [
+                    'id' => $notification->id,
+                    'customer_name' => $payload['customer_name'] ?? 'System',
+                    'title' => $notification->title,
+                    'message' => $notification->message,
+                    'category' => $category,
+                    'category_label' => $categoryLabel,
+                    'order_id' => $payload['order_id'] ?? null,
+                    'status' => $payload['status'] ?? null,
+                    'payment_status' => $payload['payment_status'] ?? null,
+                    'contains_custom' => $payload['contains_custom'] ?? false,
+                    'date' => $notification->created_at->format('Y-m-d H:i'),
+                    'timestamp' => $notification->created_at->timestamp,
+                ];
+            });
     }
 
     /**
@@ -701,7 +721,7 @@ class AdminController extends Controller
                 'name' => $customerName,
                 'avatar' => strtoupper(substr($customerName, 0, 2)),
                 'label' => 'Direct Message',
-                'subtitle' => 'Customer since ' . $conversation->customer->created_at->format('M Y'),
+                'subtitle' => 'Customer since ' . ($conversation->customer->created_at ? $conversation->customer->created_at->format('M Y') : 'N/A'),
                 'time' => $conversation->last_message_at ? $conversation->last_message_at->diffForHumans() : 'No messages',
                 'unread' => (int) $conversation->unread_count > 0,
                 'preview' => $conversation->lastMessage?->content ?? 'No messages yet',
