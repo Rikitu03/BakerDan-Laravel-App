@@ -74,13 +74,6 @@ const addCatalogItem = async (productId, data = {}) => {
     hasLoaded.value = true;
 
     return payload.item || null;
-  } catch (error) {
-    // Redirect to login for guests trying to add to cart
-    if (error.response?.status === 401) {
-      window.location.href = '/login';
-      return null;
-    }
-    throw error;
   } finally {
     isSubmitting.value = false;
   }
@@ -108,13 +101,6 @@ const addCustomItem = async (data = {}) => {
     hasLoaded.value = true;
 
     return payload.item || null;
-  } catch (error) {
-    // Redirect to login for guests trying to add to cart
-    if (error.response?.status === 401) {
-      window.location.href = '/login';
-      return null;
-    }
-    throw error;
   } finally {
     isSubmitting.value = false;
   }
@@ -175,10 +161,8 @@ const checkout = async (itemIds, data = {}) => {
 
     return payload.order || null;
   } catch (error) {
-    // Redirect to login for guests trying to checkout
     if (error.response?.status === 401) {
-      window.location.href = '/login';
-      return null;
+      error.authRequired = true;
     }
     throw error;
   } finally {

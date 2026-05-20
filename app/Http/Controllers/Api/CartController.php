@@ -11,6 +11,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Promo;
 use App\Services\CustomOrderImageService;
+use App\Services\GuestCartService;
 use App\Services\PendingOrderService;
 use App\Services\PayMongoService;
 use App\Services\ProductOptionService;
@@ -30,15 +31,20 @@ class CartController extends Controller
     private const PICKUP_SHOP_ADDRESS = 'Bakerdan Shop, 28 Market Avenue, San Nicolas, Pasig City, Metro Manila';
     private const PICKUP_SHOP_PIN_LINK = 'https://maps.app.goo.gl/bakerdan-pickup-placeholder';
 
-    public function __construct(private ProductOptionService $productOptions)
+    public function __construct(
+        private ProductOptionService $productOptions,
+        private GuestCartService $guestCart,
+    )
     {
     }
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         return response()->json([
             'success' => true,
-            'data' => $this->cartSummary($this->userCart()),
+            'data' => Auth::check()
+                ? $this->cartSummary($this->userCart())
+                : $this->guestCartSummary($request),
         ]);
     }
 
@@ -71,7 +77,6 @@ class CartController extends Controller
             ], 422);
         }
 
-        $cart = $this->userCart(true);
         $validated = $validator->validated();
         $option = $this->productOptions->optionFor($product, $validated['option_id'] ?? null);
 
@@ -93,6 +98,26 @@ class CartController extends Controller
         $size = $option['size'] ?? ($validated['size'] ?? null);
         $flavor = $option['flavor'] ?? ($validated['flavor'] ?? null);
         $unitPrice = (float) ($option['price'] ?? $product->price);
+
+        if (! Auth::check()) {
+            $cartItem = $this->guestCart->addCatalogItem($request, $product, $validated, $option);
+            $includeCart = $request->boolean('include_cart', true);
+            $data = [
+                'item' => $this->serializeGuestCartItem($cartItem),
+            ];
+
+            if ($includeCart) {
+                $data['cart'] = $this->guestCartSummary($request);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Item added to cart successfully.',
+                'data' => $data,
+            ]);
+        }
+
+        $cart = $this->userCart(true);
 
         $cartItem = DB::transaction(function () use ($cart, $product, $validated, $size, $flavor, $unitPrice): CartItem {
             $existingItem = $cart->items()
@@ -192,14 +217,13 @@ class CartController extends Controller
         }
 
         $validated = $validator->validated();
-        $cart = $this->userCart(true);
         $imagePath = $validated['image_url'] ?? null;
 
         if ($request->hasFile('image')) {
             $imagePath = $customOrderImageService->storeReferenceImage($request->file('image'));
         }
 
-        $cartItem = $cart->items()->create([
+        $cartItemPayload = [
             'product_id' => null,
             'item_type' => 'custom',
             'quantity' => (int) $validated['quantity'],
@@ -216,7 +240,23 @@ class CartController extends Controller
             'dedication_message' => $validated['dedication_message'] ?? null,
             'size' => $validated['size'],
             'flavor' => $validated['flavor'] ?? null,
-        ]);
+        ];
+
+        if (! Auth::check()) {
+            $cartItem = $this->guestCart->addCustomItem($request, $cartItemPayload);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Custom item added to cart successfully.',
+                'data' => [
+                    'item' => $this->serializeGuestCartItem($cartItem),
+                    'cart' => $this->guestCartSummary($request),
+                ],
+            ]);
+        }
+
+        $cart = $this->userCart(true);
+        $cartItem = $cart->items()->create($cartItemPayload);
 
         return response()->json([
             'success' => true,
@@ -241,6 +281,23 @@ class CartController extends Controller
             ], 422);
         }
 
+        if (! Auth::check()) {
+            $cartItem = $this->guestCart->updateQuantity($request, $itemId, (int) $validator->validated()['quantity']);
+
+            if (! $cartItem) {
+                abort(404, 'Cart item not found.');
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cart updated successfully.',
+                'data' => [
+                    'item' => $this->serializeGuestCartItem($cartItem),
+                    'cart' => $this->guestCartSummary($request),
+                ],
+            ]);
+        }
+
         $cartItem = $this->ownedCartItem($itemId);
         $cartItem->update([
             'quantity' => (int) $validator->validated()['quantity'],
@@ -256,8 +313,24 @@ class CartController extends Controller
         ]);
     }
 
-    public function remove(int $itemId): JsonResponse
+    public function remove(Request $request, int $itemId): JsonResponse
     {
+        if (! Auth::check()) {
+            $removed = $this->guestCart->removeItem($request, $itemId);
+
+            if (! $removed) {
+                abort(404, 'Cart item not found.');
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Item removed from cart.',
+                'data' => [
+                    'cart' => $this->guestCartSummary($request),
+                ],
+            ]);
+        }
+
         $cartItem = $this->ownedCartItem($itemId);
         $cart = $cartItem->cart;
         CartItem::destroy($itemId);
@@ -271,8 +344,20 @@ class CartController extends Controller
         ]);
     }
 
-    public function clear(): JsonResponse
+    public function clear(Request $request): JsonResponse
     {
+        if (! Auth::check()) {
+            $this->guestCart->clear($request);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cart cleared successfully.',
+                'data' => [
+                    'cart' => $this->guestCartSummary($request),
+                ],
+            ]);
+        }
+
         $cart = $this->userCart();
 
         if ($cart) {
@@ -290,6 +375,14 @@ class CartController extends Controller
 
     public function checkout(Request $request, PayMongoService $payMongo, PendingOrderService $pendingOrders): JsonResponse
     {
+        if (! Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please log in or create an account before checkout.',
+                'auth_required' => true,
+            ], 401);
+        }
+
         $validator = Validator::make($request->all(), [
             'item_ids' => 'required|array|min:1',
             'item_ids.*' => 'integer',
@@ -498,6 +591,24 @@ class CartController extends Controller
         ];
     }
 
+    private function guestCartSummary(Request $request): array
+    {
+        $serializedItems = collect($this->guestCart->items($request))
+            ->map(fn (array $item): array => $this->serializeGuestCartItem($item))
+            ->sortByDesc('id')
+            ->values();
+        $subtotal = $serializedItems->sum('line_total');
+
+        return [
+            'items' => $serializedItems,
+            'subtotal' => round($subtotal, 2),
+            'tax' => 0,
+            'total' => round($subtotal, 2),
+            'item_count' => $serializedItems->count(),
+            'quantity_count' => $serializedItems->sum('quantity'),
+        ];
+    }
+
     private function serializeCartItem(CartItem $item): array
     {
         $unitPrice = $this->cartItemUnitPrice($item);
@@ -527,6 +638,46 @@ class CartController extends Controller
         ];
     }
 
+    /**
+     * @param array<string, mixed> $item
+     */
+    private function serializeGuestCartItem(array $item): array
+    {
+        $product = isset($item['product_id'])
+            ? Product::query()->whereKey($item['product_id'])->first()
+            : null;
+        $isCustom = ($item['item_type'] ?? 'catalog') === 'custom';
+        $unitPrice = $isCustom
+            ? (float) ($item['unit_price'] ?? 0)
+            : (float) ($item['unit_price'] ?? $product?->price ?? 0);
+        $quantity = (int) ($item['quantity'] ?? 1);
+        $selectedOption = $product ? $this->selectedGuestCartItemOption($item, $product) : null;
+        $name = $this->guestCartItemName($item, $product);
+
+        return [
+            'basePrice' => $unitPrice,
+            'id' => (int) ($item['id'] ?? 0),
+            'product_id' => $item['product_id'] ?? null,
+            'optionId' => $selectedOption['id'] ?? null,
+            'productName' => $name,
+            'source' => $isCustom ? 'custom' : 'catalog',
+            'name' => $name,
+            'description' => $this->guestCartItemDescription($item, $product),
+            'price' => $unitPrice,
+            'quantity' => $quantity,
+            'size' => $item['size'] ?? null,
+            'flavor' => $item['flavor'] ?? null,
+            'image' => $this->cartItemImageUrlFromPayload($item, $product),
+            'tag' => $isCustom ? 'Custom Order' : ($product?->is_active ? 'Available' : 'Unavailable'),
+            'average_rating' => $product?->average_rating,
+            'review_count' => $product?->review_count,
+            'minimumQuantity' => (int) ($selectedOption['minimum_quantity'] ?? 1),
+            'designDescription' => $item['design_description'] ?? null,
+            'dedicationMessage' => $item['dedication_message'] ?? null,
+            'line_total' => round($unitPrice * $quantity, 2),
+        ];
+    }
+
     private function cartItemUnitPrice(CartItem $item): float
     {
         if ($item->item_type === 'custom') {
@@ -552,6 +703,30 @@ class CartController extends Controller
         }
 
         return $item->product?->description ?? $item->description ?? '';
+    }
+
+    /**
+     * @param array<string, mixed> $item
+     */
+    private function guestCartItemName(array $item, ?Product $product): string
+    {
+        if (($item['item_type'] ?? 'catalog') === 'custom') {
+            return (string) ($item['product_name'] ?? 'Custom Celebration Order');
+        }
+
+        return $product?->product_name ?? (string) ($item['product_name'] ?? 'Bakerdan Product');
+    }
+
+    /**
+     * @param array<string, mixed> $item
+     */
+    private function guestCartItemDescription(array $item, ?Product $product): string
+    {
+        if (($item['item_type'] ?? 'catalog') === 'custom') {
+            return (string) ($item['description'] ?? $this->customDescription($item['size'] ?? null, $item['flavor'] ?? null));
+        }
+
+        return $product?->description ?? (string) ($item['description'] ?? '');
     }
 
     private function customUnitPrice(string $size, ?float $basePrice = null): float
@@ -662,10 +837,41 @@ class CartController extends Controller
         return null;
     }
 
+    /**
+     * @param array<string, mixed> $item
+     */
+    private function selectedGuestCartItemOption(array $item, Product $product): ?array
+    {
+        foreach ($this->productOptions->optionsFor($product) as $option) {
+            $sizeMatches = blank($item['size'] ?? null) || ($option['size'] ?? null) === ($item['size'] ?? null);
+            $flavorMatches = blank($item['flavor'] ?? null) || ($option['flavor'] ?? null) === ($item['flavor'] ?? null);
+
+            if ($sizeMatches && $flavorMatches) {
+                return $option;
+            }
+        }
+
+        return null;
+    }
+
     private function cartItemImageUrl(CartItem $item): string
     {
         $resolved = $this->resolveImageUrl(
             $item->item_type === 'custom' ? $item->image_url : ($item->product?->image_url ?? $item->image_url)
+        );
+
+        return $resolved ?: $this->defaultCustomOrderImageUrl();
+    }
+
+    /**
+     * @param array<string, mixed> $item
+     */
+    private function cartItemImageUrlFromPayload(array $item, ?Product $product): string
+    {
+        $resolved = $this->resolveImageUrl(
+            ($item['item_type'] ?? 'catalog') === 'custom'
+                ? ($item['image_url'] ?? null)
+                : ($product?->image_url ?? ($item['image_url'] ?? null))
         );
 
         return $resolved ?: $this->defaultCustomOrderImageUrl();

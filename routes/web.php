@@ -32,6 +32,7 @@ Route::post('/webhooks/paymongo', [PayMongoWebhookController::class, 'handle']);
 
 Route::get('/login', [LoginController::class, 'show'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
+Route::post('/login/guest', [LoginController::class, 'guest'])->name('login.guest');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 Route::prefix('register')->group(function () {
@@ -65,18 +66,15 @@ Route::prefix('forgot-password')->group(function () {
 | Vue Router handles client-side navigation
 */
 
-// Protected customer routes
-Route::middleware(['auth', 'role:customer'])->group(function () {
-    Route::get('/cart', fn() => redirect('/customer/cart'))->name('cart');
+Route::get('/cart', fn() => redirect('/customer/cart'))->name('cart');
 
-    Route::post('/customer/cart/add/{productId}', [CartController::class, 'addAndRedirect'])
-        ->name('customer.cart.add');
+Route::post('/customer/cart/add/{productId}', [CartController::class, 'addAndRedirect'])
+    ->name('customer.cart.add');
 
-    // All customer routes return the SPA
-    Route::get('/customer/{any?}', [CustomerController::class, 'spa'])
-        ->where('any', '.*')
-        ->name('customer.home');
-});
+// All customer routes return the SPA. Guest-only access is gated inside the SPA.
+Route::get('/customer/{any?}', [CustomerController::class, 'spa'])
+    ->where('any', '.*')
+    ->name('customer.home');
 
 /*
 |--------------------------------------------------------------------------
@@ -102,6 +100,14 @@ Route::prefix('api')->group(function () {
 
     // Reviews - public for viewing
     Route::get('/products/{id}/reviews', [ReviewController::class, 'index']);
+
+    // Cart browsing and edits are session-backed for guests and database-backed for customers.
+    Route::get('/cart', [CartController::class, 'index']);
+    Route::post('/cart/add/{productId}', [CartController::class, 'add']);
+    Route::post('/cart/custom', [CartController::class, 'addCustom']);
+    Route::put('/cart/items/{itemId}', [CartController::class, 'update']);
+    Route::delete('/cart/items/{itemId}', [CartController::class, 'remove']);
+    Route::delete('/cart/clear', [CartController::class, 'clear']);
 });
 
 // Protected API routes - requires authentication for both customers and admins
@@ -115,13 +121,7 @@ Route::prefix('api')->middleware(['auth'])->group(function () {
 
 // Protected API routes - requires authentication and customer role
 Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
-    // Cart
-    Route::get('/cart', [CartController::class, 'index']);
-    Route::post('/cart/add/{productId}', [CartController::class, 'add']);
-    Route::post('/cart/custom', [CartController::class, 'addCustom']);
-    Route::put('/cart/items/{itemId}', [CartController::class, 'update']);
-    Route::delete('/cart/items/{itemId}', [CartController::class, 'remove']);
-    Route::delete('/cart/clear', [CartController::class, 'clear']);
+    // Checkout
     Route::post('/checkout', [CartController::class, 'checkout']);
     Route::get('/promos/active', [CartController::class, 'getActivePromos']);
     Route::post('/promos/validate', [CartController::class, 'validatePromoCode']);
@@ -139,6 +139,7 @@ Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);
     Route::put('/profile/password', [ProfileController::class, 'updatePassword']);
+    Route::post('/profile/verify-password', [ProfileController::class, 'verifyCurrentPassword']);
 
     // Reviews - authenticated
     Route::post('/reviews', [ReviewController::class, 'store']);

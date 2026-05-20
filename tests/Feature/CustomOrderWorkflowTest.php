@@ -2,13 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Mail\OrderShippedNotificationMail;
+use App\Models\OrderItem;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use App\Models\UserDetail;
 use App\Services\PayMongoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Mockery\MockInterface;
 use Tests\TestCase;
 
@@ -85,6 +90,86 @@ class CustomOrderWorkflowTest extends TestCase
             'status' => 'processing',
             'payment_status' => 'paid',
         ]);
+    }
+
+    public function test_admin_marking_order_shipped_emails_customer_with_order_summary(): void
+    {
+        Mail::fake();
+
+        $admin = User::query()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $customer = User::query()->create([
+            'role' => 'customer',
+            'is_active' => true,
+        ]);
+
+        UserDetail::query()->create([
+            'user_id' => $customer->user_id,
+            'name' => 'Shipment Customer',
+            'username' => 'shipmentcustomer',
+            'age' => 29,
+            'email' => 'shipment@example.com',
+            'contact' => '+63 999 123 4567',
+            'address' => 'Pasig City',
+            'password' => Hash::make('password123'),
+        ]);
+
+        $bread = Product::query()->create([
+            'category' => 'Bread',
+            'product_name' => 'Classic Sourdough',
+            'description' => 'Naturally leavened loaf.',
+            'price' => 500,
+            'price_label' => 'PHP 500',
+            'is_active' => true,
+        ]);
+
+        $order = Order::query()->create([
+            'user_id' => $customer->user_id,
+            'total_amount' => 1120,
+            'status' => 'processing',
+            'payment_status' => 'paid',
+            'payment_method' => 'gcash',
+            'shipping_address' => '123 Baker Street, Pasig City',
+            'discount_amount' => 30,
+        ]);
+
+        OrderItem::query()->create([
+            'order_id' => $order->id,
+            'product_id' => $bread->id,
+            'item_type' => 'catalog',
+            'quantity' => 2,
+            'price' => 500,
+            'product_name' => 'Classic Sourdough',
+            'description' => 'Naturally leavened loaf.',
+        ]);
+
+        $this
+            ->actingAs($admin)
+            ->patchJson("/admin/orders/{$order->id}/status", [
+                'status' => 'shipped',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.order.status', 'shipped');
+
+        Mail::assertSent(OrderShippedNotificationMail::class, function (OrderShippedNotificationMail $mail) use ($order): bool {
+            $html = $mail->render();
+
+            return $mail->hasTo('shipment@example.com')
+                && $mail->orderSummary['order_id'] === $order->id
+                && $mail->orderSummary['subtotal'] === 1000.0
+                && $mail->orderSummary['discount'] === 30.0
+                && $mail->orderSummary['shipping'] === 150.0
+                && $mail->orderSummary['total'] === 1120.0
+                && $mail->orderSummary['items'][0]['name'] === 'Classic Sourdough'
+                && $mail->orderSummary['items'][0]['quantity'] === 2
+                && $mail->orderSummary['items'][0]['line_total'] === 1000.0
+                && str_contains($html, 'Classic Sourdough')
+                && str_contains($html, 'PHP 1,000.00')
+                && str_contains($html, 'PHP 1,120.00');
+        });
     }
 
     public function test_customer_can_view_and_cancel_only_their_own_pending_order(): void

@@ -528,6 +528,7 @@ const props = defineProps({
 
 const { push } = useSpaRouter();
 const { addCustomItem, checkout } = useCartStore();
+const isAuthenticated = () => Boolean(window.Laravel?.auth?.check);
 const legacyFlavorOptions = ['Chocolate', 'Vanilla', 'Strawberry', 'Mocha', 'Ube'];
 const checkoutFlowOptions = [
   {
@@ -802,6 +803,11 @@ const directCheckout = async () => {
     addedItem = await addCustomItem(buildCustomPayload());
 
     if (!addedItem?.id) {
+      return;
+    }
+
+    if (!isAuthenticated()) {
+      push(`/customer/checkout?items=${encodeURIComponent(String(addedItem.id))}`);
       return;
     }
 

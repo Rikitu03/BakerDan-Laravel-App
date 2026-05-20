@@ -177,7 +177,7 @@ class CustomerRegistrationWorkflowTest extends TestCase
                 'contact' => '09991234567',
                 'address' => 'San Nicolas, Pasig City',
             ])
-            ->assertRedirect('/')
+            ->assertRedirect('/customer')
             ->assertSessionHas('account_created', true);
 
         $this->assertDatabaseHas('users', [
@@ -233,7 +233,7 @@ class CustomerRegistrationWorkflowTest extends TestCase
                 'contact' => '91234567',
                 'address' => 'Singapore Central Area',
             ])
-            ->assertRedirect('/')
+            ->assertRedirect('/customer')
             ->assertSessionHas('account_created', true);
 
         $this->assertDatabaseHas('user_details', [

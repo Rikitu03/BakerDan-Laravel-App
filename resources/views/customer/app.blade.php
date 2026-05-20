@@ -18,8 +18,13 @@
     <script>
         window.Laravel = {
             csrfToken: @json(csrf_token()),
+            auth: {
+                check: @json(auth()->check() && auth()->user()?->role === 'customer'),
+                role: @json(auth()->user()?->role),
+            },
             flash: {
                 cartError: @json(session('cart_error')),
+                accountCreated: @json(session('account_created') ? true : false),
             },
             user: @json(array_merge($customer, ['role' => 'customer'])),
             customer: @json($customer),

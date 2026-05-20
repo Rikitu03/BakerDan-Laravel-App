@@ -277,7 +277,7 @@
                     </nav>
                     <div class="flex items-center gap-3">
                         <!-- Cart Icon -->
-                        <a href="{{ route('cart') }}" @guest data-requires-auth="true" @endguest class="grid h-10 w-10 place-items-center rounded-full border transition hover:bg-white/60" style="border-color: var(--line);" aria-label="Cart">
+                        <a href="{{ route('cart') }}" class="grid h-10 w-10 place-items-center rounded-full border transition hover:bg-white/60" style="border-color: var(--line);" aria-label="Cart">
                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                 <circle cx="9" cy="20" r="1.25"></circle>
                                 <circle cx="18" cy="20" r="1.25"></circle>
@@ -291,7 +291,7 @@
                                 <circle cx="12" cy="8" r="4"></circle>
                             </svg>
                         </a>
-                        <a href="#order-now" @guest data-requires-auth="true" @endguest class="rounded-full px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5" style="background: var(--ink);">Order now</a>
+                        <a href="/customer" class="rounded-full px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5" style="background: var(--ink);">Order now</a>
                     </div>
                 </div>
             </div>
@@ -468,7 +468,7 @@
                     <div>
                         <h2 class="font-display mt-2 text-4xl font-extrabold sm:text-5xl">Menu</h2>
                     </div>
-                        <a href="#order-now" data-requires-auth="{{ auth()->guest() ? 'true' : 'false' }}" class="rounded-full border px-5 py-2.5 text-sm font-semibold transition hover:bg-white/60 {{ auth()->guest() ? '' : 'cursor-pointer' }}" style="border-color: var(--line);">Request catalog</a>
+                        <a href="/customer" class="rounded-full border px-5 py-2.5 text-sm font-semibold transition hover:bg-white/60" style="border-color: var(--line);">Request catalog</a>
                 </div>
 
                 <div class="grid gap-6 lg:grid-cols-3">
@@ -624,7 +624,7 @@
                     <div>
                         <p class="text-sm font-semibold uppercase tracking-[0.16em]" style="color: var(--ink-soft);">Quick links</p>
                         <div class="mt-4 grid gap-3 text-sm font-medium">
-                            <a href="#order-now" @guest data-requires-auth="true" @endguest class="transition hover:opacity-70">Order now</a>
+                            <a href="/customer" class="transition hover:opacity-70">Order now</a>
                             <a href="#featured" class="transition hover:opacity-70">Featured item</a>
                             <a href="#gallery" class="transition hover:opacity-70">Gallery</a>
                             <a href="#reviews" class="transition hover:opacity-70">Customer reviews</a>

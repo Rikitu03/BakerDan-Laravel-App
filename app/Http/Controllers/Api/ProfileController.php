@@ -53,15 +53,14 @@ class ProfileController extends Controller
 
         $user = Auth::user();
         
-        // TODO: Update in database
-        // Example: $user->detail()->updateOrCreate(
-        //     ['user_id' => $user->user_id],
-        //     [
-        //         'name' => $request->full_name,
-        //         'contact' => $request->phone_number,
-        //         'address' => $request->delivery_address,
-        //     ]
-        // );
+        $user->detail()->updateOrCreate(
+            ['user_id' => $user->user_id],
+            [
+                'name' => $request->full_name,
+                'contact' => $request->phone_number,
+                'address' => $request->delivery_address,
+            ]
+        );
 
         return response()->json([
             'success' => true,
@@ -93,22 +92,88 @@ class ProfileController extends Controller
 
         $user = Auth::user();
 
-        // Verify current password
-        if (!Hash::check($request->current_password, $user->password)) {
+        // Verify current password against user_detail password
+        $userDetail = $user->detail;
+        if (!$userDetail || !Hash::check($request->current_password, $userDetail->password)) {
             return response()->json([
                 'success' => false,
                 'errors' => ['current_password' => ['Current password is incorrect']]
             ], 422);
         }
 
-        // TODO: Update password in database
-        // Example: $user->update([
-        //     'password' => Hash::make($request->new_password)
-        // ]);
+        $newPasswordHash = Hash::make($request->new_password);
+
+        $userDetail->update([
+            'password' => $newPasswordHash,
+        ]);
+
+        $this->storePasswordHashInSession($request, (int) $user->user_id, $newPasswordHash);
 
         return response()->json([
             'success' => true,
             'message' => 'Password updated successfully'
+        ]);
+    }
+
+    /**
+     * Verify current password
+     */
+    public function verifyCurrentPassword(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'current_password' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $user = Auth::user();
+        $passwordHash = $this->passwordHashForFastVerification($request, (int) $user->user_id);
+
+        if (!$passwordHash || !Hash::check($request->current_password, $passwordHash)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Current password is incorrect'
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password verified'
+        ]);
+    }
+
+    private function passwordHashForFastVerification(Request $request, int $userId): ?string
+    {
+        $sessionUserId = (int) $request->session()->get('auth.password_hash_user_id', 0);
+        $sessionHash = $request->session()->get('auth.password_hash');
+
+        if ($sessionUserId === $userId && is_string($sessionHash) && $sessionHash !== '') {
+            return $sessionHash;
+        }
+
+        $user = Auth::user();
+        $user->loadMissing('detail');
+        $passwordHash = $user->detail?->password;
+
+        if (is_string($passwordHash) && $passwordHash !== '') {
+            $this->storePasswordHashInSession($request, $userId, $passwordHash);
+
+            return $passwordHash;
+        }
+
+        return null;
+    }
+
+    private function storePasswordHashInSession(Request $request, int $userId, string $passwordHash): void
+    {
+        $request->session()->put([
+            'auth.password_hash_user_id' => $userId,
+            'auth.password_hash' => $passwordHash,
         ]);
     }
 
