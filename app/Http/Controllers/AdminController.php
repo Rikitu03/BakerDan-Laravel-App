@@ -450,7 +450,44 @@ class AdminController extends Controller
         $notifications = $this->adminNotifications();
         $messages = $this->adminMessages($orders, $customers);
         $weeklyCompletions = $this->weeklyCompletionSeries($orders);
+        $monthlyCompletions = $this->monthlyCompletionSeries($orders);
+        $yearlyCompletions = $this->yearlyCompletionSeries($orders);
+        // reporting aggregates
+        $productSales = $this->productSalesAggregates($orders, $products);
+        $usersWeekly = $this->weeklyUserSeries($customers);
+        $usersMonthly = $this->monthlyUserSeries($customers);
+        $usersYearly = $this->yearlyUserSeries($customers);
+        $ordersWeekly = $this->weeklyOrderSeries($orders);
+        $ordersMonthly = $this->monthlyOrderSeries($orders);
+        $ordersYearly = $this->yearlyOrderSeries($orders);
+        $revenueWeekly = $this->weeklyRevenueSeries($orders);
+        $revenueMonthly = $this->monthlyRevenueSeries($orders);
+        $revenueYearly = $this->yearlyRevenueSeries($orders);
         $productTypeBreakdown = $this->productTypeBreakdown($products);
+
+        // comprehensive summary
+        $totalRevenue = (float) $orders->where('payment_status', 'paid')->sum('total_amount');
+        $topProducts = collect($productSales)->sortByDesc('quantity_sold')->take(10)->values()->all();
+        $summary = [
+            'generated_at' => now()->toIso8601String(),
+            'total_products' => $products->count(),
+            'total_orders' => $orders->count(),
+            'total_customers' => $customers->count(),
+            'total_admins' => $admins->count(),
+            'total_notifications' => $notifications->count(),
+            'total_revenue' => round($totalRevenue, 2),
+            'total_items_sold' => OrderItem::sum('quantity'),
+            'top_products' => $topProducts,
+            'orders_weekly' => $ordersWeekly,
+            'orders_monthly' => $ordersMonthly,
+            'orders_yearly' => $ordersYearly,
+            'revenue_weekly' => $revenueWeekly,
+            'revenue_monthly' => $revenueMonthly,
+            'revenue_yearly' => $revenueYearly,
+            'users_weekly' => $usersWeekly,
+            'users_monthly' => $usersMonthly,
+            'users_yearly' => $usersYearly,
+        ];
 
         return [
             'metrics' => $metrics,
@@ -462,6 +499,18 @@ class AdminController extends Controller
             'notifications' => $notifications,
             'messages' => $messages,
             'weeklyCompletions' => $weeklyCompletions,
+            'monthlyCompletions' => $monthlyCompletions,
+            'yearlyCompletions' => $yearlyCompletions,
+            'productSales' => $productSales,
+            'usersWeekly' => $usersWeekly,
+            'usersMonthly' => $usersMonthly,
+            'usersYearly' => $usersYearly,
+            'ordersWeekly' => $ordersWeekly,
+            'ordersMonthly' => $ordersMonthly,
+            'ordersYearly' => $ordersYearly,
+            'revenueWeekly' => $revenueWeekly,
+            'revenueMonthly' => $revenueMonthly,
+            'revenueYearly' => $revenueYearly,
             'productTypeBreakdown' => $productTypeBreakdown,
             'reportPayload' => [
                 'user' => [
@@ -477,7 +526,20 @@ class AdminController extends Controller
                 'notifications' => $notifications,
                 'messages' => $messages,
                 'weeklyCompletions' => $weeklyCompletions,
+                'monthlyCompletions' => $monthlyCompletions,
+                'yearlyCompletions' => $yearlyCompletions,
+                'productSales' => $productSales,
+                'usersWeekly' => $usersWeekly,
+                'usersMonthly' => $usersMonthly,
+                'usersYearly' => $usersYearly,
+                'ordersWeekly' => $ordersWeekly,
+                'ordersMonthly' => $ordersMonthly,
+                'ordersYearly' => $ordersYearly,
+                'revenueWeekly' => $revenueWeekly,
+                'revenueMonthly' => $revenueMonthly,
+                'revenueYearly' => $revenueYearly,
                 'productTypeBreakdown' => $productTypeBreakdown,
+                'summary' => $summary,
             ],
             'sidebarCounts' => [
                 'dashboard' => '*',
@@ -764,6 +826,60 @@ class AdminController extends Controller
     }
 
     /**
+     * @param EloquentCollection<int, Order> $orders
+     */
+    private function monthlyCompletionSeries(EloquentCollection $orders): array
+    {
+        $start = Carbon::now()->subMonths(11)->startOfMonth();
+        $months = collect(range(0, 11))->map(function (int $offset) use ($start): array {
+            $month = $start->copy()->addMonths($offset);
+
+            return [
+                'label' => $month->format('M y'),
+                'date' => $month->toDateString(),
+            ];
+        });
+
+        return $months->map(function (array $entry) use ($orders): array {
+            $entry['value'] = $orders->filter(function (Order $order) use ($entry): bool {
+                return $order->status === 'delivered'
+                    && $order->updated_at?->format('Y-m') === Carbon::parse($entry['date'])->format('Y-m');
+            })->count();
+
+            unset($entry['date']);
+
+            return $entry;
+        })->all();
+    }
+
+    /**
+     * @param EloquentCollection<int, Order> $orders
+     */
+    private function yearlyCompletionSeries(EloquentCollection $orders): array
+    {
+        $start = Carbon::now()->subYears(4)->startOfYear();
+        $years = collect(range(0, 4))->map(function (int $offset) use ($start): array {
+            $year = $start->copy()->addYears($offset);
+
+            return [
+                'label' => $year->format('Y'),
+                'date' => $year->toDateString(),
+            ];
+        });
+
+        return $years->map(function (array $entry) use ($orders): array {
+            $entry['value'] = $orders->filter(function (Order $order) use ($entry): bool {
+                return $order->status === 'delivered'
+                    && $order->updated_at?->format('Y') === Carbon::parse($entry['date'])->format('Y');
+            })->count();
+
+            unset($entry['date']);
+
+            return $entry;
+        })->all();
+    }
+
+    /**
      * @param EloquentCollection<int, Product> $products
      */
     private function productTypeBreakdown(EloquentCollection $products): array
@@ -776,6 +892,149 @@ class AdminController extends Controller
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * @param EloquentCollection<int, Order> $orders
+     * @param EloquentCollection<int, Product> $products
+     */
+    private function productSalesAggregates(EloquentCollection $orders, EloquentCollection $products): array
+    {
+        $map = [];
+
+        foreach ($orders as $order) {
+            foreach ($order->items as $item) {
+                $pid = $item->product_id ?? null;
+                $name = $item->product?->product_name ?? $item->product_name ?? 'Unknown';
+                $qty = (int) ($item->quantity ?? 0);
+                $linePrice = isset($item->price) ? (float) $item->price : 0.0;
+
+                if (!isset($map[$pid])) {
+                    $map[$pid] = [
+                        'product_id' => $pid,
+                        'name' => $name,
+                        'quantity_sold' => 0,
+                        'buyers' => [],
+                        'revenue' => 0.0,
+                    ];
+                }
+
+                $map[$pid]['quantity_sold'] += $qty;
+                $map[$pid]['revenue'] += $linePrice * $qty;
+
+                $buyerId = $order->user?->user_id ?? ('guest-' . $order->id);
+                $map[$pid]['buyers'][$buyerId] = true;
+            }
+        }
+
+        return collect($map)->map(function ($entry) {
+            return [
+                'product_id' => $entry['product_id'],
+                'name' => $entry['name'],
+                'quantity_sold' => $entry['quantity_sold'],
+                'buyers_count' => count($entry['buyers']),
+                'revenue' => round($entry['revenue'], 2),
+            ];
+        })->values()->all();
+    }
+
+    private function weeklyUserSeries(EloquentCollection $users): array
+    {
+        $start = Carbon::now()->subDays(6)->startOfDay();
+        $days = collect(range(0, 6))->map(fn (int $offset) => $start->copy()->addDays($offset));
+
+        return $days->map(fn ($day) => [
+            'label' => $day->format('D'),
+            'value' => $users->filter(fn($u) => $u->created_at?->toDateString() === $day->toDateString())->count(),
+        ])->all();
+    }
+
+    private function monthlyUserSeries(EloquentCollection $users): array
+    {
+        $start = Carbon::now()->subMonths(11)->startOfMonth();
+        $months = collect(range(0, 11))->map(fn (int $offset) => $start->copy()->addMonths($offset));
+
+        return $months->map(fn ($m) => [
+            'label' => $m->format('M y'),
+            'value' => $users->filter(fn($u) => $u->created_at?->format('Y-m') === $m->format('Y-m'))->count(),
+        ])->all();
+    }
+
+    private function yearlyUserSeries(EloquentCollection $users): array
+    {
+        $start = Carbon::now()->subYears(4)->startOfYear();
+        $years = collect(range(0, 4))->map(fn (int $offset) => $start->copy()->addYears($offset));
+
+        return $years->map(fn ($y) => [
+            'label' => $y->format('Y'),
+            'value' => $users->filter(fn($u) => $u->created_at?->format('Y') === $y->format('Y'))->count(),
+        ])->all();
+    }
+
+    private function weeklyOrderSeries(EloquentCollection $orders): array
+    {
+        $start = Carbon::now()->subDays(6)->startOfDay();
+        $days = collect(range(0, 6))->map(fn (int $offset) => $start->copy()->addDays($offset));
+
+        return $days->map(fn ($d) => [
+            'label' => $d->format('D'),
+            'value' => $orders->filter(fn($o) => $o->created_at?->toDateString() === $d->toDateString())->count(),
+        ])->all();
+    }
+
+    private function monthlyOrderSeries(EloquentCollection $orders): array
+    {
+        $start = Carbon::now()->subMonths(11)->startOfMonth();
+        $months = collect(range(0, 11))->map(fn (int $offset) => $start->copy()->addMonths($offset));
+
+        return $months->map(fn ($m) => [
+            'label' => $m->format('M y'),
+            'value' => $orders->filter(fn($o) => $o->created_at?->format('Y-m') === $m->format('Y-m'))->count(),
+        ])->all();
+    }
+
+    private function yearlyOrderSeries(EloquentCollection $orders): array
+    {
+        $start = Carbon::now()->subYears(4)->startOfYear();
+        $years = collect(range(0, 4))->map(fn (int $offset) => $start->copy()->addYears($offset));
+
+        return $years->map(fn ($y) => [
+            'label' => $y->format('Y'),
+            'value' => $orders->filter(fn($o) => $o->created_at?->format('Y') === $y->format('Y'))->count(),
+        ])->all();
+    }
+
+    private function weeklyRevenueSeries(EloquentCollection $orders): array
+    {
+        $start = Carbon::now()->subDays(6)->startOfDay();
+        $days = collect(range(0, 6))->map(fn (int $offset) => $start->copy()->addDays($offset));
+
+        return $days->map(fn ($d) => [
+            'label' => $d->format('D'),
+            'value' => round($orders->filter(fn($o) => $o->payment_status === 'paid' && $o->created_at?->toDateString() === $d->toDateString())->sum(fn($o) => (float) $o->total_amount), 2),
+        ])->all();
+    }
+
+    private function monthlyRevenueSeries(EloquentCollection $orders): array
+    {
+        $start = Carbon::now()->subMonths(11)->startOfMonth();
+        $months = collect(range(0, 11))->map(fn (int $offset) => $start->copy()->addMonths($offset));
+
+        return $months->map(fn ($m) => [
+            'label' => $m->format('M y'),
+            'value' => round($orders->filter(fn($o) => $o->payment_status === 'paid' && $o->created_at?->format('Y-m') === $m->format('Y-m'))->sum(fn($o) => (float) $o->total_amount), 2),
+        ])->all();
+    }
+
+    private function yearlyRevenueSeries(EloquentCollection $orders): array
+    {
+        $start = Carbon::now()->subYears(4)->startOfYear();
+        $years = collect(range(0, 4))->map(fn (int $offset) => $start->copy()->addYears($offset));
+
+        return $years->map(fn ($y) => [
+            'label' => $y->format('Y'),
+            'value' => round($orders->filter(fn($o) => $o->payment_status === 'paid' && $o->created_at?->format('Y') === $y->format('Y'))->sum(fn($o) => (float) $o->total_amount), 2),
+        ])->all();
     }
 
     /**
