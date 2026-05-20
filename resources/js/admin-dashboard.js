@@ -1,4 +1,5 @@
 import './bootstrap';
+import ExcelJS from 'exceljs';
 
 const dashboard = document.querySelector('[data-admin-dashboard]');
 
@@ -33,6 +34,10 @@ if (dashboard) {
     const linePath = dashboard.querySelector('[data-line-path]');
     const linePoints = dashboard.querySelector('[data-line-points]');
     const lineLabels = dashboard.querySelector('[data-line-labels]');
+    const reportRange = dashboard.querySelector('[data-report-range]');
+    const reportKicker = dashboard.querySelector('[data-report-kicker]');
+    const reportTitle = dashboard.querySelector('[data-report-title]');
+    const reportBadge = dashboard.querySelector('[data-report-badge]');
     const typeBars = dashboard.querySelector('[data-type-bars]');
     const exportTarget = dashboard.querySelector('[data-export-target]');
     const exportFeedback = dashboard.querySelector('[data-export-feedback]');
@@ -107,24 +112,317 @@ if (dashboard) {
         return acc;
     }, {});
 
-    const toCsv = (rows) => {
+    const flattenCsvRow = (row, prefix = '', output = {}) => {
+        Object.entries(row || {}).forEach(([key, value]) => {
+            const path = prefix ? `${prefix}.${key}` : key;
+
+            if (Array.isArray(value)) {
+                if (value.every((item) => item === null || ['string', 'number', 'boolean'].includes(typeof item))) {
+                    output[path] = value.join(' | ');
+                    return;
+                }
+
+                output[path] = JSON.stringify(value);
+                return;
+            }
+
+            if (value && typeof value === 'object') {
+                flattenCsvRow(value, path, output);
+                return;
+            }
+
+            output[path] = value;
+        });
+
+        return output;
+    };
+
+    const csvHeaderLabels = {
+        generated_at: 'Generated At',
+        metric: 'Metric',
+        value: 'Value',
+        label: 'Period',
+        name: 'Name',
+        product_id: 'Product ID',
+        quantity_sold: 'Quantity Sold',
+        buyers_count: 'Number of Buyers',
+        revenue: 'Revenue',
+        id: 'ID',
+        product_name: 'Product Name',
+        formatted_price: 'Formatted Price',
+        image_url: 'Image URL',
+        is_active: 'Active',
+        total_amount: 'Total Amount',
+        formatted_total: 'Formatted Total',
+        payment_status: 'Payment Status',
+        payment_method: 'Payment Method',
+        payment_provider: 'Payment Provider',
+        customer_name: 'Customer Name',
+        created_at: 'Created At',
+        updated_at: 'Updated At',
+        status: 'Status',
+        role: 'Role',
+        username: 'Username',
+        email: 'Email',
+        phone: 'Phone',
+        contact: 'Contact',
+        customer: 'Customer',
+        amount: 'Amount',
+        placed_at: 'Placed At',
+        payment_method_label: 'Payment Method',
+        payment_status_label: 'Payment Status',
+        status_label: 'Order Status',
+        items: 'Items',
+        category_label: 'Category',
+        message: 'Message',
+        title: 'Title',
+        date: 'Date',
+    };
+
+    const csvColumnPriority = [
+        'metric',
+        'label',
+        'name',
+        'product_name',
+        'product_id',
+        'quantity_sold',
+        'buyers_count',
+        'revenue',
+        'value',
+        'status',
+        'payment_status',
+        'total_amount',
+        'formatted_total',
+        'customer_name',
+        'email',
+        'phone',
+        'username',
+        'role',
+        'created_at',
+        'updated_at',
+        'generated_at',
+        'id',
+        'image_url',
+        'is_active',
+    ];
+
+    const humanizeCsvHeader = (header) => {
+        if (csvHeaderLabels[header]) {
+            return csvHeaderLabels[header];
+        }
+
+        return header
+            .split('.')
+            .map((part) => part
+                .replace(/_/g, ' ')
+                .replace(/\b\w/g, (letter) => letter.toUpperCase()))
+            .join(' - ');
+    };
+
+    const sortCsvHeaders = (headers) => [...headers].sort((left, right) => {
+        const leftPriority = csvColumnPriority.indexOf(left);
+        const rightPriority = csvColumnPriority.indexOf(right);
+
+        if (leftPriority !== -1 || rightPriority !== -1) {
+            if (leftPriority === -1) return 1;
+            if (rightPriority === -1) return -1;
+            if (leftPriority !== rightPriority) return leftPriority - rightPriority;
+        }
+
+        return left.localeCompare(right);
+    });
+
+    const csvDatasetColumns = {
+        weeklyCompletions: ['label', 'value'],
+        monthlyCompletions: ['label', 'value'],
+        yearlyCompletions: ['label', 'value'],
+        usersWeekly: ['label', 'value'],
+        usersMonthly: ['label', 'value'],
+        usersYearly: ['label', 'value'],
+        ordersWeekly: ['label', 'value'],
+        ordersMonthly: ['label', 'value'],
+        ordersYearly: ['label', 'value'],
+        revenueWeekly: ['label', 'value'],
+        revenueMonthly: ['label', 'value'],
+        revenueYearly: ['label', 'value'],
+        productSales: ['product_id', 'name', 'quantity_sold', 'buyers_count', 'revenue'],
+        products: ['product_id', 'product_name', 'category', 'price', 'formatted_price', 'status'],
+        orders: ['id', 'customer', 'items', 'amount', 'payment_method_label', 'payment_status_label', 'status_label', 'placed_at'],
+        customers: ['id', 'name', 'username', 'email', 'contact', 'address', 'status'],
+        admins: ['id', 'name', 'username', 'email', 'contact', 'address', 'status'],
+        notifications: ['id', 'customer_name', 'title', 'message', 'category_label', 'status', 'payment_status', 'date'],
+    };
+
+    const pickCsvColumns = (row, columns) => {
+        if (!columns?.length) {
+            return row;
+        }
+
+        return columns.reduce((output, column) => {
+            output[column] = row?.[column] ?? '';
+            return output;
+        }, {});
+    };
+
+    const getCsvRows = (target, rows) => {
+        if (!Array.isArray(rows)) {
+            return [];
+        }
+
+        const columns = csvDatasetColumns[target];
+        return rows.map((row) => pickCsvColumns(row, columns));
+    };
+
+    const toCsv = (rows, options = {}) => {
         if (!Array.isArray(rows) || !rows.length) {
             return '';
         }
 
-        const headers = Object.keys(rows[0]);
-        const lines = [headers.join(',')];
+        const flatRows = rows.map((row) => flattenCsvRow(row));
+        const rawHeaders = Array.from(new Set(flatRows.flatMap((row) => Object.keys(row))));
+        const headers = sortCsvHeaders(rawHeaders);
+        const lines = [];
 
-        rows.forEach((row) => {
+        if (options.title) {
+            lines.push(`"${String(options.title).replace(/"/g, '""')}"`);
+        }
+
+        if (options.meta && Array.isArray(options.meta)) {
+            options.meta.forEach(({ label, value }) => {
+                lines.push(`"${String(label).replace(/"/g, '""')}","${String(value ?? '').replace(/"/g, '""')}"`);
+            });
+        }
+
+        if (options.includeSeparator !== false) {
+            lines.push('sep=,');
+        }
+
+        if (lines.length) {
+            lines.push('');
+        }
+
+        lines.push(headers.map((header) => `"${humanizeCsvHeader(header)}"`).join(','));
+
+        flatRows.forEach((row) => {
             const values = headers.map((header) => {
                 const value = row[header] ?? '';
-                const escaped = String(value).replace(/"/g, '""');
+                const escaped = String(value).replace(/"/g, '""').replace(/\r?\n/g, ' ');
                 return `"${escaped}"`;
             });
             lines.push(values.join(','));
         });
 
         return lines.join('\n');
+    };
+
+    const buildCsvSection = (title, rows, meta = []) => {
+        const csv = toCsv(rows, { title, meta });
+        if (!csv) {
+            return '';
+        }
+
+        return csv;
+    };
+
+    const getLatestSeriesValue = (series) => {
+        if (!Array.isArray(series) || !series.length) {
+            return 0;
+        }
+
+        return Number(series[series.length - 1]?.value ?? 0);
+    };
+
+    const getSeriesWindowTotal = (series) => (
+        Array.isArray(series)
+            ? series.reduce((total, item) => total + Number(item?.value ?? 0), 0)
+            : 0
+    );
+
+    const buildSummaryRows = () => {
+        if (!reportData) {
+            return [];
+        }
+
+        const summary = reportData.summary || {};
+
+        return [
+            { metric: 'Generated At', value: summary.generated_at || new Date().toISOString() },
+            { metric: 'Total Products', value: Number(summary.total_products || reportData.products?.length || 0) },
+            { metric: 'Total Orders', value: Number(summary.total_orders || reportData.orders?.length || 0) },
+            { metric: 'Total Customers', value: Number(summary.total_customers || reportData.customers?.length || 0) },
+            { metric: 'Total Items Sold', value: Number(summary.total_items_sold || 0) },
+            { metric: 'Total Revenue', value: Number(summary.total_revenue || 0).toFixed(2) },
+            { metric: 'Users This Week', value: getSeriesWindowTotal(reportData.usersWeekly) },
+            { metric: 'Users This Month', value: getLatestSeriesValue(reportData.usersMonthly) },
+            { metric: 'Users This Year', value: getLatestSeriesValue(reportData.usersYearly) },
+            { metric: 'Orders This Week', value: getSeriesWindowTotal(reportData.ordersWeekly) },
+            { metric: 'Orders This Month', value: getLatestSeriesValue(reportData.ordersMonthly) },
+            { metric: 'Orders This Year', value: getLatestSeriesValue(reportData.ordersYearly) },
+            { metric: 'Revenue This Week', value: getSeriesWindowTotal(reportData.revenueWeekly).toFixed(2) },
+            { metric: 'Revenue This Month', value: Number(getLatestSeriesValue(reportData.revenueMonthly)).toFixed(2) },
+            { metric: 'Revenue This Year', value: Number(getLatestSeriesValue(reportData.revenueYearly)).toFixed(2) },
+        ];
+    };
+
+    const buildSummarySections = () => [
+        { title: 'Summary Overview', rows: buildSummaryRows() },
+        { title: 'Product Sales', rows: getCsvRows('productSales', reportData?.productSales || []) },
+        { title: 'Completed Orders Weekly', rows: getCsvRows('weeklyCompletions', reportData?.weeklyCompletions || []) },
+        { title: 'Completed Orders Monthly', rows: getCsvRows('monthlyCompletions', reportData?.monthlyCompletions || []) },
+        { title: 'Completed Orders Yearly', rows: getCsvRows('yearlyCompletions', reportData?.yearlyCompletions || []) },
+        { title: 'Users Weekly', rows: getCsvRows('usersWeekly', reportData?.usersWeekly || []) },
+        { title: 'Users Monthly', rows: getCsvRows('usersMonthly', reportData?.usersMonthly || []) },
+        { title: 'Users Yearly', rows: getCsvRows('usersYearly', reportData?.usersYearly || []) },
+        { title: 'Orders Weekly', rows: getCsvRows('ordersWeekly', reportData?.ordersWeekly || []) },
+        { title: 'Orders Monthly', rows: getCsvRows('ordersMonthly', reportData?.ordersMonthly || []) },
+        { title: 'Orders Yearly', rows: getCsvRows('ordersYearly', reportData?.ordersYearly || []) },
+        { title: 'Revenue Weekly', rows: getCsvRows('revenueWeekly', reportData?.revenueWeekly || []) },
+        { title: 'Revenue Monthly', rows: getCsvRows('revenueMonthly', reportData?.revenueMonthly || []) },
+        { title: 'Revenue Yearly', rows: getCsvRows('revenueYearly', reportData?.revenueYearly || []) },
+    ].filter((section) => Array.isArray(section.rows) && section.rows.length);
+
+    const buildSummaryCsv = () => buildSummarySections()
+        .map((section) => buildCsvSection(section.title, section.rows, [
+            { label: 'Report', value: 'BakerDan Summary Export' },
+            { label: 'Section', value: section.title },
+            { label: 'Generated At', value: reportData?.summary?.generated_at || new Date().toISOString() },
+        ]))
+        .filter(Boolean)
+        .join('\n\n');
+
+    const getExportPayload = (target) => {
+        if (!reportData) {
+            return [];
+        }
+
+        if (target === 'summary') {
+            return {
+                overview: buildSummaryRows(),
+                product_sales: reportData.productSales || [],
+                completed_orders: {
+                    weekly: reportData.weeklyCompletions || [],
+                    monthly: reportData.monthlyCompletions || [],
+                    yearly: reportData.yearlyCompletions || [],
+                },
+                users: {
+                    weekly: reportData.usersWeekly || [],
+                    monthly: reportData.usersMonthly || [],
+                    yearly: reportData.usersYearly || [],
+                },
+                orders: {
+                    weekly: reportData.ordersWeekly || [],
+                    monthly: reportData.ordersMonthly || [],
+                    yearly: reportData.ordersYearly || [],
+                },
+                revenue: {
+                    weekly: reportData.revenueWeekly || [],
+                    monthly: reportData.revenueMonthly || [],
+                    yearly: reportData.revenueYearly || [],
+                },
+            };
+        }
+
+        return reportData[target] || [];
     };
 
     const escapeHtml = (value) => String(value ?? '')
@@ -382,30 +680,681 @@ if (dashboard) {
     };
 
     const getReportRows = (target) => {
-        if (!reportData) {
-            return [];
-        }
+        const payload = getExportPayload(target);
 
         if (target === 'summary') {
-            return [{
-                generated_at: new Date().toISOString(),
-                total_products: reportData.products.length,
-                total_orders: reportData.orders.length,
-                total_customers: reportData.customers.length,
-                total_admins: reportData.admins.length,
-                total_notifications: reportData.notifications.length,
-            }];
+            return buildSummaryRows();
         }
 
-        return reportData[target] || [];
+        return Array.isArray(payload) ? getCsvRows(target, payload) : [];
     };
 
-    const renderLineChart = () => {
-        if (!lineChart || !linePath || !linePoints || !lineLabels || !reportData?.weeklyCompletions?.length) {
+    const getExportCsv = (target, rows) => {
+        if (target === 'summary') {
+            return buildSummaryCsv();
+        }
+
+        const datasetLabel = exportTarget?.selectedOptions?.[0]?.textContent?.trim() || target;
+        return toCsv(rows, {
+            title: datasetLabel,
+            meta: [
+                { label: 'Report', value: 'BakerDan Export' },
+                { label: 'Dataset', value: datasetLabel },
+                { label: 'Generated At', value: reportData?.summary?.generated_at || new Date().toISOString() },
+                { label: 'Row Count', value: rows.length },
+            ],
+        });
+    };
+
+    const spreadsheetColumnWidths = {
+        metric: 20,
+        value: 16,
+        label: 14,
+        name: 24,
+        product_name: 26,
+        product_id: 12,
+        quantity_sold: 14,
+        buyers_count: 14,
+        revenue: 16,
+        category: 16,
+        status: 14,
+        price: 14,
+        formatted_price: 16,
+        amount: 16,
+        customer: 24,
+        customer_name: 24,
+        items: 42,
+        payment_method_label: 18,
+        payment_status_label: 18,
+        status_label: 18,
+        placed_at: 20,
+        username: 16,
+        email: 30,
+        contact: 18,
+        address: 34,
+        title: 24,
+        message: 44,
+        category_label: 16,
+        date: 20,
+    };
+
+    const sanitizeWorksheetName = (value, fallback = 'Sheet') => {
+        const cleaned = String(value || fallback)
+            .replace(/[\\/*?:[\]]/g, '')
+            .trim()
+            .slice(0, 31);
+
+        return cleaned || fallback;
+    };
+
+    const isSpreadsheetCurrencyField = (key) => currencyFields.has(String(key));
+
+    const isSpreadsheetDateField = (key) => /(generated at|placed at|date)/i.test(String(key));
+
+    const getSpreadsheetCellValue = (key, value) => {
+        if (value === null || value === undefined || value === '') {
+            return '';
+        }
+
+        if (typeof value === 'number') {
+            return value;
+        }
+
+        if (typeof value === 'string' && !Number.isNaN(Number(value)) && value.trim() !== '' && !/^0\d+/.test(value.trim())) {
+            return Number(value);
+        }
+
+        return formatPdfValue(key, value);
+    };
+
+    const buildSpreadsheetSheet = (workbook, title, sections, meta = []) => {
+        const safeTitle = sanitizeWorksheetName(title);
+        const sheet = workbook.addWorksheet(safeTitle, {
+            views: [{ state: 'frozen', ySplit: 4 }],
+            properties: { defaultRowHeight: 20 },
+        });
+
+        const normalizedSections = Array.isArray(sections) ? sections : [];
+        const allHeaders = Array.from(new Set(normalizedSections.flatMap((section) => {
+            const normalizedRows = Array.isArray(section?.rows) ? section.rows : [];
+            return normalizedRows.flatMap((row) => Object.keys(row || {}));
+        })));
+        const sheetHeaders = allHeaders.length ? sortCsvHeaders(allHeaders) : ['message'];
+
+        sheet.columns = sheetHeaders.map((header) => ({
+            key: header,
+            width: spreadsheetColumnWidths[header] || 18,
+        }));
+
+        let currentRow = 1;
+        const totalColumns = Math.max(sheetHeaders.length, 1);
+
+        const writeMergedTitle = (rowNumber, text, endColumn, options = {}) => {
+            if (endColumn > 1) {
+                sheet.mergeCells(rowNumber, 1, rowNumber, endColumn);
+            }
+
+            const cell = sheet.getCell(rowNumber, 1);
+            cell.value = text;
+            cell.font = options.font || { name: 'Calibri', size: 18, bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = options.fill || { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB76539' } };
+            cell.alignment = options.alignment || { vertical: 'middle', horizontal: 'left' };
+            sheet.getRow(rowNumber).height = options.height || 28;
+        };
+
+        writeMergedTitle(currentRow, title, totalColumns);
+        currentRow += 1;
+
+        meta.forEach(({ label, value }, index) => {
+            const rowNumber = currentRow + index;
+            sheet.getCell(rowNumber, 1).value = label;
+            sheet.getCell(rowNumber, 2).value = String(value ?? '');
+            sheet.getCell(rowNumber, 1).font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF7F3E1F' } };
+            sheet.getCell(rowNumber, 2).font = { name: 'Calibri', size: 10, color: { argb: 'FF5E4B41' } };
+            sheet.getCell(rowNumber, 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9EFE5' } };
+            sheet.getCell(rowNumber, 2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF9F3' } };
+        });
+
+        currentRow += meta.length + 1;
+
+        normalizedSections.forEach((section, sectionIndex) => {
+            const normalizedRows = Array.isArray(section?.rows) ? section.rows : [];
+            const headers = normalizedRows.length
+                ? sortCsvHeaders(Array.from(new Set(normalizedRows.flatMap((row) => Object.keys(row || {})))))
+                : ['message'];
+            const sectionStartRow = currentRow;
+
+            writeMergedTitle(sectionStartRow, section.title, headers.length, {
+                font: { name: 'Calibri', size: 14, bold: true, color: { argb: 'FF7F3E1F' } },
+                fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9EFE5' } },
+                alignment: { vertical: 'middle', horizontal: 'left' },
+                height: 24,
+            });
+
+            const headerRowNumber = sectionStartRow + 1;
+            const headerRow = sheet.getRow(headerRowNumber);
+            headers.forEach((header, index) => {
+                const cell = headerRow.getCell(index + 1);
+                cell.value = humanizeCsvHeader(header);
+                cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF7F3E1F' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF6E8DA' } };
+                cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+            });
+            headerRow.height = 24;
+
+            if (!normalizedRows.length) {
+                const row = sheet.getRow(headerRowNumber + 1);
+                row.getCell(1).value = 'No data available for this section.';
+                if (headers.length > 1) {
+                    sheet.mergeCells(headerRowNumber + 1, 1, headerRowNumber + 1, headers.length);
+                }
+            } else {
+                normalizedRows.forEach((row, rowIndex) => {
+                    const rowNumber = headerRowNumber + 1 + rowIndex;
+                    headers.forEach((header, index) => {
+                        const effectiveKey = header === 'value' && row?.metric ? row.metric : header;
+                        const cell = sheet.getCell(rowNumber, index + 1);
+                        cell.value = getSpreadsheetCellValue(effectiveKey, row?.[header]);
+
+                        if (isSpreadsheetCurrencyField(effectiveKey)) {
+                            cell.numFmt = '"PHP" #,##0.00';
+                        }
+
+                        cell.alignment = {
+                            vertical: 'top',
+                            horizontal: typeof cell.value === 'number' ? 'right' : 'left',
+                            wrapText: true,
+                        };
+                    });
+                });
+            }
+
+            const sectionEndRow = normalizedRows.length ? headerRowNumber + normalizedRows.length : headerRowNumber + 1;
+            for (let rowNumber = sectionStartRow; rowNumber <= sectionEndRow; rowNumber += 1) {
+                const row = sheet.getRow(rowNumber);
+                row.eachCell((cell) => {
+                    cell.border = {
+                        top: { style: 'thin', color: { argb: 'FFE8DCCF' } },
+                        left: { style: 'thin', color: { argb: 'FFE8DCCF' } },
+                        bottom: { style: 'thin', color: { argb: 'FFE8DCCF' } },
+                        right: { style: 'thin', color: { argb: 'FFE8DCCF' } },
+                    };
+
+                    if (rowNumber > sectionStartRow + 1) {
+                        cell.font = { name: 'Calibri', size: 11, color: { argb: 'FF2F241D' } };
+                        cell.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: rowNumber % 2 === 0 ? 'FFFFFFFF' : 'FFFFFBF7' },
+                        };
+                    }
+                });
+            }
+
+            currentRow = sectionEndRow + 2;
+
+            if (sectionIndex < normalizedSections.length - 1) {
+                sheet.getRow(currentRow - 1).height = 8;
+            }
+        });
+
+        return sheet;
+    };
+
+    const getExcelSections = (target, rows) => {
+        if (target === 'summary') {
+            return buildSummarySections();
+        }
+
+        return [{
+            title: getDatasetLabel(target),
+            rows,
+        }];
+    };
+
+    const buildExcelWorkbook = async (target, rows) => {
+        const datasetLabel = getDatasetLabel(target);
+        const generatedAt = formatPdfValue('Generated At', reportData?.summary?.generated_at || new Date().toISOString());
+        const sections = getExcelSections(target, rows);
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'OpenAI Codex';
+        workbook.company = 'BakerDan Bakery';
+        workbook.created = new Date();
+        workbook.modified = new Date();
+
+        buildSpreadsheetSheet(workbook, datasetLabel, sections, [
+            { label: 'Report', value: 'BakerDan Bakery Report' },
+            { label: 'Dataset', value: datasetLabel },
+            { label: 'Generated At', value: generatedAt },
+            { label: 'Export Type', value: 'Formatted Excel Workbook' },
+        ]);
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        return buffer;
+    };
+
+    const currencyFields = new Set([
+        'revenue',
+        'total_revenue',
+        'amount',
+        'price',
+        'discount_amount',
+        'Total Revenue',
+        'Revenue This Week',
+        'Revenue This Month',
+        'Revenue This Year',
+    ]);
+
+    const formatPdfValue = (key, value) => {
+        if (value === null || value === undefined || value === '') {
+            return '—';
+        }
+
+        const isCurrency = currencyFields.has(String(key));
+
+        if (typeof value === 'number') {
+            if (isCurrency) {
+                return `PHP ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            }
+
+            return value.toLocaleString();
+        }
+
+        if (typeof value === 'string' && isCurrency && !Number.isNaN(Number(value))) {
+            return `PHP ${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+
+        if (typeof value === 'string' && /(generated at|placed at|date)/i.test(String(key))) {
+            const parsed = new Date(value);
+            if (!Number.isNaN(parsed.getTime())) {
+                return parsed.toLocaleString();
+            }
+        }
+
+        return String(value);
+    };
+
+    const getDatasetLabel = (target) => exportTarget?.selectedOptions?.[0]?.textContent?.trim() || target;
+
+    const buildPdfTable = (rows) => {
+        if (!Array.isArray(rows) || !rows.length) {
+            return '<p class="pdf-empty">No data available for this section.</p>';
+        }
+
+        const flatRows = rows.map((row) => flattenCsvRow(row));
+        const headers = sortCsvHeaders(Array.from(new Set(flatRows.flatMap((row) => Object.keys(row)))));
+
+        const headerHtml = headers.map((header) => `<th>${escapeHtml(humanizeCsvHeader(header))}</th>`).join('');
+        const bodyHtml = flatRows.map((row) => {
+            const cells = headers.map((header) => {
+                const effectiveKey = header === 'value' && row?.metric ? row.metric : header;
+                return `<td>${escapeHtml(formatPdfValue(effectiveKey, row[header]))}</td>`;
+            }).join('');
+            return `<tr>${cells}</tr>`;
+        }).join('');
+
+        return `
+            <div class="pdf-table-wrap">
+                <table class="pdf-table">
+                    <thead>
+                        <tr>${headerHtml}</tr>
+                    </thead>
+                    <tbody>${bodyHtml}</tbody>
+                </table>
+            </div>
+        `;
+    };
+
+    const buildPdfSummaryCards = () => {
+        const rows = buildSummaryRows().slice(1, 6);
+
+        return rows.map((row, index) => {
+            const tones = ['warm', 'gold', 'sage', 'clay'];
+            const tone = tones[index % tones.length];
+
+            return `
+                <div class="pdf-card ${tone}">
+                    <p class="pdf-card-label">${escapeHtml(row.metric)}</p>
+                    <p class="pdf-card-value">${escapeHtml(formatPdfValue(row.metric, row.value))}</p>
+                </div>
+            `;
+        }).join('');
+    };
+
+    const getPdfSections = (target, payload, rows) => {
+        if (target === 'summary') {
+            return buildSummarySections().map((section) => ({
+                title: section.title,
+                rows: section.rows,
+            }));
+        }
+
+        return [{
+            title: getDatasetLabel(target),
+            rows: Array.isArray(rows) ? rows : [],
+        }];
+    };
+
+    const buildPdfHtml = (target, payload, rows) => {
+        const datasetLabel = getDatasetLabel(target);
+        const generatedAt = formatPdfValue('Generated At', reportData?.summary?.generated_at || new Date().toISOString());
+        const sections = getPdfSections(target, payload, rows);
+        const sectionHtml = sections.map((section) => `
+            <section class="pdf-section">
+                <div class="pdf-section-header">
+                    <p class="pdf-section-kicker">Report Section</p>
+                    <h2>${escapeHtml(section.title)}</h2>
+                </div>
+                ${buildPdfTable(section.rows)}
+            </section>
+        `).join('');
+
+        return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${escapeHtml(`BakerDan Report - ${datasetLabel}`)}</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --ink: #2f241d;
+            --muted: #75655c;
+            --line: #e7d8ca;
+            --paper: #fffaf5;
+            --card: #ffffff;
+            --accent: #b76539;
+            --accent-deep: #7f3e1f;
+            --warm: #fff2e7;
+            --gold: #fff7da;
+            --sage: #edf6ec;
+            --clay: #f8ece8;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            color: var(--ink);
+            background: linear-gradient(180deg, #f8ead9 0%, #fffaf5 22%, #ffffff 100%);
+        }
+        .pdf-page {
+            width: 100%;
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 28px;
+        }
+        .pdf-hero {
+            background: linear-gradient(135deg, var(--accent-deep), var(--accent));
+            color: #fff;
+            border-radius: 24px;
+            padding: 28px;
+            box-shadow: 0 20px 40px rgba(127, 62, 31, 0.16);
+        }
+        .pdf-hero-kicker {
+            margin: 0 0 8px;
+            font-size: 12px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            opacity: 0.82;
+        }
+        .pdf-hero h1 {
+            margin: 0;
+            font-size: 32px;
+            line-height: 1.1;
+        }
+        .pdf-meta {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 18px;
+        }
+        .pdf-meta-item {
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 16px;
+            padding: 12px 14px;
+        }
+        .pdf-meta-label {
+            margin: 0;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            opacity: 0.74;
+        }
+        .pdf-meta-value {
+            margin: 6px 0 0;
+            font-size: 15px;
+            font-weight: 700;
+        }
+        .pdf-card-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+            margin-top: 18px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+        .pdf-card {
+            border-radius: 18px;
+            padding: 14px 16px;
+            background: var(--card);
+            border: 1px solid var(--line);
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+        .pdf-card.warm { background: var(--warm); }
+        .pdf-card.gold { background: var(--gold); }
+        .pdf-card.sage { background: var(--sage); }
+        .pdf-card.clay { background: var(--clay); }
+        .pdf-card-label {
+            margin: 0;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+        }
+        .pdf-card-value {
+            margin: 8px 0 0;
+            font-size: 19px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        .pdf-section {
+            margin-top: 18px;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            padding: 18px;
+            box-shadow: 0 12px 28px rgba(88, 59, 37, 0.06);
+            break-inside: avoid;
+        }
+        .pdf-section-header {
+            margin-bottom: 14px;
+        }
+        .pdf-section-kicker {
+            margin: 0 0 4px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: var(--accent);
+            font-weight: 700;
+        }
+        .pdf-section-header h2 {
+            margin: 0;
+            font-size: 22px;
+        }
+        .pdf-table-wrap {
+            overflow: hidden;
+            border-radius: 18px;
+            border: 1px solid var(--line);
+        }
+        .pdf-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: auto;
+            font-size: 12px;
+        }
+        .pdf-table thead th {
+            background: #f7ecdf;
+            color: var(--accent-deep);
+            text-align: left;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--line);
+        }
+        .pdf-table tbody td {
+            padding: 11px 14px;
+            border-bottom: 1px solid #f1e4d7;
+            vertical-align: top;
+            word-break: break-word;
+        }
+        .pdf-table tbody tr:nth-child(even) td {
+            background: #fffaf6;
+        }
+        .pdf-empty {
+            margin: 0;
+            padding: 14px 0;
+            color: var(--muted);
+        }
+        @page {
+            size: A4 landscape;
+            margin: 12mm;
+        }
+        @media print {
+            body {
+                background: #fff;
+            }
+            .pdf-page {
+                max-width: none;
+                padding: 0;
+            }
+            .pdf-meta {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+            .pdf-card-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+            .pdf-section,
+            .pdf-hero {
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="pdf-page">
+        <section class="pdf-hero">
+            <p class="pdf-hero-kicker">BakerDan Bakery Report</p>
+            <h1>${escapeHtml(datasetLabel)}</h1>
+            <div class="pdf-meta">
+                <div class="pdf-meta-item">
+                    <p class="pdf-meta-label">Generated At</p>
+                    <p class="pdf-meta-value">${escapeHtml(generatedAt)}</p>
+                </div>
+                <div class="pdf-meta-item">
+                    <p class="pdf-meta-label">Dataset</p>
+                    <p class="pdf-meta-value">${escapeHtml(datasetLabel)}</p>
+                </div>
+                <div class="pdf-meta-item">
+                    <p class="pdf-meta-label">Rows / Sections</p>
+                    <p class="pdf-meta-value">${escapeHtml(target === 'summary' ? String(sections.length) : String(rows.length || 0))}</p>
+                </div>
+            </div>
+        </section>
+        ${target === 'summary' ? `<section class="pdf-card-grid">${buildPdfSummaryCards()}</section>` : ''}
+        ${sectionHtml}
+    </main>
+</body>
+</html>
+        `;
+    };
+
+    const exportPdfReport = (target, payload, rows) => {
+        const existingFrame = document.getElementById('report-print-frame');
+        if (existingFrame) {
+            existingFrame.remove();
+        }
+
+        const frame = document.createElement('iframe');
+        frame.id = 'report-print-frame';
+        frame.style.position = 'fixed';
+        frame.style.right = '0';
+        frame.style.bottom = '0';
+        frame.style.width = '0';
+        frame.style.height = '0';
+        frame.style.border = '0';
+        frame.setAttribute('aria-hidden', 'true');
+
+        document.body.appendChild(frame);
+
+        const frameWindow = frame.contentWindow;
+        const frameDocument = frame.contentDocument || frameWindow?.document;
+
+        if (!frameWindow || !frameDocument) {
+            frame.remove();
+            if (exportFeedback) {
+                exportFeedback.textContent = 'PDF export is not available in this browser.';
+            }
+            return false;
+        }
+
+        frameDocument.open();
+        frameDocument.write(buildPdfHtml(target, payload, rows));
+        frameDocument.close();
+
+        const cleanup = () => {
+            window.setTimeout(() => {
+                frame.remove();
+            }, 1000);
+        };
+
+        frame.onload = () => {
+            window.setTimeout(() => {
+                try {
+                    frameWindow.focus();
+                    frameWindow.print();
+                } finally {
+                    cleanup();
+                }
+            }, 250);
+        };
+
+        return true;
+    };
+
+    const reportSeriesMeta = {
+        weekly: {
+            kicker: 'Weekly report graph',
+            title: 'Completed orders trend',
+            badge: '7 days',
+            data: reportData?.weeklyCompletions || [],
+        },
+        monthly: {
+            kicker: 'Monthly report graph',
+            title: 'Completed orders trend',
+            badge: '12 months',
+            data: reportData?.monthlyCompletions || [],
+        },
+        yearly: {
+            kicker: 'Yearly report graph',
+            title: 'Completed orders trend',
+            badge: '5 years',
+            data: reportData?.yearlyCompletions || [],
+        },
+    };
+
+    const renderLineChart = (range = reportRange?.value || 'weekly') => {
+        if (!lineChart || !linePath || !linePoints || !lineLabels) {
             return;
         }
 
-        const data = reportData.weeklyCompletions;
+        const meta = reportSeriesMeta[range] || reportSeriesMeta.weekly;
+        const data = meta.data;
+
+        if (!data.length) {
+            return;
+        }
+
         const width = 680;
         const height = 240;
         const paddingX = 54;
@@ -413,6 +1362,20 @@ if (dashboard) {
         const chartTop = 45;
         const maxValue = Math.max(...data.map((item) => item.value), 1);
         const stepX = (width - paddingX * 2) / Math.max(data.length - 1, 1);
+
+        if (reportKicker) {
+            reportKicker.textContent = meta.kicker;
+        }
+
+        if (reportTitle) {
+            reportTitle.textContent = meta.title;
+        }
+
+        if (reportBadge) {
+            reportBadge.textContent = meta.badge;
+        }
+
+        lineLabels.style.gridTemplateColumns = `repeat(${data.length}, minmax(0, 1fr))`;
 
         const points = data.map((item, index) => {
             const x = paddingX + index * stepX;
@@ -424,6 +1387,10 @@ if (dashboard) {
         linePoints.innerHTML = points.map((point) => `<circle class="chart-point" cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="4"></circle>`).join('');
         lineLabels.innerHTML = points.map((point) => `<span>${point.label}</span>`).join('');
     };
+
+    reportRange?.addEventListener('change', () => {
+        renderLineChart(reportRange.value);
+    });
 
     const renderTypeBars = () => {
         if (!typeBars || !reportData?.productTypeBreakdown?.length) {
@@ -1008,25 +1975,29 @@ if (dashboard) {
         }
     });
 
-    dashboard.addEventListener('click', (event) => {
+    dashboard.addEventListener('click', async (event) => {
         const exportButton = event.target.closest('[data-export-format]');
         if (exportButton) {
             const format = exportButton.dataset.exportFormat;
             const target = exportTarget?.value || 'summary';
+            const payload = getExportPayload(target);
             const rows = getReportRows(target);
             const stamp = new Date().toISOString().slice(0, 10);
 
-            if (format === 'csv') {
-                const csv = toCsv(rows);
-                if (!csv) {
-                    if (exportFeedback) exportFeedback.textContent = 'No data available for CSV export.';
+            if (format === 'excel') {
+                const workbook = await buildExcelWorkbook(target, rows);
+                if (!workbook) {
+                    if (exportFeedback) exportFeedback.textContent = 'No data available for Excel export.';
                     return;
                 }
-                downloadContent(`report-${target}-${stamp}.csv`, csv, 'text/csv;charset=utf-8;');
+                downloadContent(`report-${target}-${stamp}.xlsx`, workbook, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             }
 
-            if (format === 'json') {
-                downloadContent(`report-${target}-${stamp}.json`, JSON.stringify(rows, null, 2), 'application/json;charset=utf-8;');
+            if (format === 'pdf') {
+                const opened = exportPdfReport(target, payload, rows);
+                if (!opened) {
+                    return;
+                }
             }
 
             if (exportFeedback) {

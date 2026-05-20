@@ -721,6 +721,18 @@
         $notifications = $notifications ?? [];
         $messages = $messages ?? [];
         $weeklyCompletions = $weeklyCompletions ?? [];
+        $monthlyCompletions = $monthlyCompletions ?? [];
+        $yearlyCompletions = $yearlyCompletions ?? [];
+        $productSales = $productSales ?? [];
+        $usersWeekly = $usersWeekly ?? [];
+        $usersMonthly = $usersMonthly ?? [];
+        $usersYearly = $usersYearly ?? [];
+        $ordersWeekly = $ordersWeekly ?? [];
+        $ordersMonthly = $ordersMonthly ?? [];
+        $ordersYearly = $ordersYearly ?? [];
+        $revenueWeekly = $revenueWeekly ?? [];
+        $revenueMonthly = $revenueMonthly ?? [];
+        $revenueYearly = $revenueYearly ?? [];
         $productTypeBreakdown = $productTypeBreakdown ?? [];
         $reportPayload = $reportPayload ?? [
             'metrics' => $metrics,
@@ -732,8 +744,31 @@
             'notifications' => $notifications,
             'messages' => $messages,
             'weeklyCompletions' => $weeklyCompletions,
+            'monthlyCompletions' => $monthlyCompletions,
+            'yearlyCompletions' => $yearlyCompletions,
+            'productSales' => $productSales,
+            'usersWeekly' => $usersWeekly,
+            'usersMonthly' => $usersMonthly,
+            'usersYearly' => $usersYearly,
+            'ordersWeekly' => $ordersWeekly,
+            'ordersMonthly' => $ordersMonthly,
+            'ordersYearly' => $ordersYearly,
+            'revenueWeekly' => $revenueWeekly,
+            'revenueMonthly' => $revenueMonthly,
+            'revenueYearly' => $revenueYearly,
             'productTypeBreakdown' => $productTypeBreakdown,
         ];
+        $reportSummary = $reportPayload['summary'] ?? [];
+        $topProductRows = collect($reportPayload['productSales'] ?? [])->sortByDesc('quantity_sold')->take(8)->values();
+        $usersWeeklyTotal = collect($reportPayload['usersWeekly'] ?? [])->sum('value');
+        $usersMonthlyCurrent = data_get(collect($reportPayload['usersMonthly'] ?? [])->last(), 'value', 0);
+        $usersYearlyCurrent = data_get(collect($reportPayload['usersYearly'] ?? [])->last(), 'value', 0);
+        $ordersWeeklyTotal = collect($reportPayload['ordersWeekly'] ?? [])->sum('value');
+        $ordersMonthlyCurrent = data_get(collect($reportPayload['ordersMonthly'] ?? [])->last(), 'value', 0);
+        $ordersYearlyCurrent = data_get(collect($reportPayload['ordersYearly'] ?? [])->last(), 'value', 0);
+        $revenueWeeklyTotal = collect($reportPayload['revenueWeekly'] ?? [])->sum('value');
+        $revenueMonthlyCurrent = data_get(collect($reportPayload['revenueMonthly'] ?? [])->last(), 'value', 0);
+        $revenueYearlyCurrent = data_get(collect($reportPayload['revenueYearly'] ?? [])->last(), 'value', 0);
         $sidebarCounts = $sidebarCounts ?? [
             'dashboard' => '•',
             'inventory' => count($products),
@@ -1134,12 +1169,22 @@
                     <article class="soft-panel panel-lift rounded-[2rem] p-6">
                         <div class="flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <p class="text-sm font-medium text-slate-500">Weekly report graph</p>
-                                <h3 class="font-display mt-1 text-2xl font-bold">Completed orders trend</h3>
+                                <p data-report-kicker class="text-sm font-medium text-slate-500">Weekly report graph</p>
+                                <h3 data-report-title class="font-display mt-1 text-2xl font-bold">Completed orders
+                                    trend</h3>
                             </div>
-                            <span
-                                class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">7
-                                days</span>
+                            <div class="flex flex-wrap items-center gap-3">
+                                <label for="report-range" class="text-sm font-medium text-slate-600">Range</label>
+                                <select id="report-range" data-report-range
+                                    class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+                                    <option value="weekly">Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                    <option value="yearly">Yearly</option>
+                                </select>
+                                <span data-report-badge
+                                    class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">7
+                                    days</span>
+                            </div>
                         </div>
                         <div class="chart-surface mt-5 rounded-3xl p-4">
                             <svg data-line-chart viewBox="0 0 680 240" class="h-56 w-full">
@@ -1150,8 +1195,8 @@
                                 <path data-line-path class="chart-line" d=""></path>
                                 <g data-line-points></g>
                             </svg>
-                            <div data-line-labels
-                                class="mt-2 grid grid-cols-7 text-center text-xs font-semibold text-slate-500"></div>
+                            <div data-line-labels class="mt-2 grid text-center text-xs font-semibold text-slate-500">
+                            </div>
                         </div>
                     </article>
 
@@ -1162,13 +1207,129 @@
                     </article>
                 </div>
 
+                <div class="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+                    <article class="soft-panel panel-lift rounded-[2rem] p-6">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <p class="text-sm font-medium text-slate-500">Report summary</p>
+                                <h3 class="font-display mt-1 text-2xl font-bold">Sales and activity overview</h3>
+                            </div>
+                            <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+                                {{ number_format((float) ($reportSummary['total_items_sold'] ?? 0)) }} items sold
+                            </span>
+                        </div>
+
+                        <div class="mt-5 grid gap-4 sm:grid-cols-2">
+                            <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Products sold</p>
+                                <p class="mt-2 text-3xl font-bold text-slate-900">{{ number_format((float) ($reportSummary['total_items_sold'] ?? 0)) }}</p>
+                                <p class="mt-1 text-sm text-slate-500">All ordered item quantities</p>
+                            </div>
+                            <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Total revenue</p>
+                                <p class="mt-2 text-3xl font-bold text-slate-900">PHP {{ number_format((float) ($reportSummary['total_revenue'] ?? 0), 2) }}</p>
+                                <p class="mt-1 text-sm text-slate-500">Paid orders only</p>
+                            </div>
+                            <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Total orders</p>
+                                <p class="mt-2 text-3xl font-bold text-slate-900">{{ number_format((float) ($reportSummary['total_orders'] ?? 0)) }}</p>
+                                <p class="mt-1 text-sm text-slate-500">All recorded orders</p>
+                            </div>
+                            <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Total users</p>
+                                <p class="mt-2 text-3xl font-bold text-slate-900">{{ number_format((float) ($reportSummary['total_customers'] ?? 0)) }}</p>
+                                <p class="mt-1 text-sm text-slate-500">Registered customers</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 overflow-hidden rounded-3xl border border-slate-200">
+                            <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                                <p class="text-sm font-semibold text-slate-700">Users, orders, and revenue snapshot</p>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                                    <thead class="bg-white text-slate-500">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left font-semibold">Metric</th>
+                                            <th class="px-4 py-3 text-left font-semibold">Weekly</th>
+                                            <th class="px-4 py-3 text-left font-semibold">Monthly</th>
+                                            <th class="px-4 py-3 text-left font-semibold">Yearly</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100 bg-white text-slate-700">
+                                        <tr>
+                                            <td class="px-4 py-3 font-semibold">Users</td>
+                                            <td class="px-4 py-3">{{ number_format((float) $usersWeeklyTotal) }}</td>
+                                            <td class="px-4 py-3">{{ number_format((float) $usersMonthlyCurrent) }}</td>
+                                            <td class="px-4 py-3">{{ number_format((float) $usersYearlyCurrent) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 font-semibold">Orders</td>
+                                            <td class="px-4 py-3">{{ number_format((float) $ordersWeeklyTotal) }}</td>
+                                            <td class="px-4 py-3">{{ number_format((float) $ordersMonthlyCurrent) }}</td>
+                                            <td class="px-4 py-3">{{ number_format((float) $ordersYearlyCurrent) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-3 font-semibold">Revenue</td>
+                                            <td class="px-4 py-3">PHP {{ number_format((float) $revenueWeeklyTotal, 2) }}</td>
+                                            <td class="px-4 py-3">PHP {{ number_format((float) $revenueMonthlyCurrent, 2) }}</td>
+                                            <td class="px-4 py-3">PHP {{ number_format((float) $revenueYearlyCurrent, 2) }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="soft-panel panel-lift rounded-[2rem] p-6">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <p class="text-sm font-medium text-slate-500">Product sales report</p>
+                                <h3 class="font-display mt-1 text-2xl font-bold">Top products and buyers</h3>
+                            </div>
+                            <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                                {{ $topProductRows->count() }} products
+                            </span>
+                        </div>
+
+                        <div class="mt-5 overflow-hidden rounded-3xl border border-slate-200">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-slate-200 text-sm">
+                                    <thead class="bg-slate-50 text-slate-500">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left font-semibold">Product</th>
+                                            <th class="px-4 py-3 text-left font-semibold">Qty Sold</th>
+                                            <th class="px-4 py-3 text-left font-semibold">Buyers</th>
+                                            <th class="px-4 py-3 text-left font-semibold">Revenue</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100 bg-white text-slate-700">
+                                        @forelse ($topProductRows as $productRow)
+                                            <tr>
+                                                <td class="px-4 py-3 font-semibold text-slate-900">{{ $productRow['name'] ?? 'Unknown product' }}</td>
+                                                <td class="px-4 py-3">{{ number_format((float) ($productRow['quantity_sold'] ?? 0)) }}</td>
+                                                <td class="px-4 py-3">{{ number_format((float) ($productRow['buyers_count'] ?? 0)) }}</td>
+                                                <td class="px-4 py-3">PHP {{ number_format((float) ($productRow['revenue'] ?? 0), 2) }}</td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="4" class="px-4 py-6 text-center text-slate-500">No product sales data available yet.</td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+
                 <article class="soft-panel panel-lift rounded-[2rem] p-6">
                     <div class="flex flex-wrap items-start justify-between gap-4">
                         <div>
                             <p class="text-sm font-medium text-slate-500">Report export center</p>
                             <h3 class="font-display mt-1 text-2xl font-bold">Generate report data</h3>
-                            <p class="mt-2 max-w-2xl text-sm text-slate-500">Download bakery report data in CSV or JSON
-                                format for reporting, sharing, and archival.</p>
+                            <p class="mt-2 max-w-2xl text-sm text-slate-500">Download bakery report data in formatted Excel
+                                or PDF format for reporting, sharing, and archival.</p>
                         </div>
                     </div>
 
@@ -1177,18 +1338,31 @@
                         <select id="export-target" data-export-target
                             class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
                             <option value="summary">Summary</option>
+                            <option value="weeklyCompletions">Weekly report</option>
+                            <option value="monthlyCompletions">Monthly report</option>
+                            <option value="yearlyCompletions">Yearly report</option>
+                            <option value="productSales">Product sales</option>
+                            <option value="usersWeekly">User signups (weekly)</option>
+                            <option value="usersMonthly">User signups (monthly)</option>
+                            <option value="usersYearly">User signups (yearly)</option>
+                            <option value="ordersWeekly">Orders (weekly)</option>
+                            <option value="ordersMonthly">Orders (monthly)</option>
+                            <option value="ordersYearly">Orders (yearly)</option>
+                            <option value="revenueWeekly">Revenue (weekly)</option>
+                            <option value="revenueMonthly">Revenue (monthly)</option>
+                            <option value="revenueYearly">Revenue (yearly)</option>
                             <option value="products">Products</option>
                             <option value="orders">Orders</option>
                             <option value="customers">Customers</option>
                             <option value="admins">Admins</option>
                             <option value="notifications">Notifications</option>
                         </select>
-                        <button type="button" data-export-format="csv"
+                        <button type="button" data-export-format="excel"
                             class="export-button rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white">Export
-                            CSV</button>
-                        <button type="button" data-export-format="json"
+                            Excel</button>
+                        <button type="button" data-export-format="pdf"
                             class="export-button rounded-full bg-slate-100 px-5 py-2 text-sm font-semibold text-slate-700">Export
-                            JSON</button>
+                            PDF</button>
                         <p data-export-feedback class="text-sm font-medium text-emerald-700"></p>
                     </div>
                 </article>
