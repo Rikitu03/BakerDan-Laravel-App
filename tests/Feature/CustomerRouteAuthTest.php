@@ -52,6 +52,63 @@ class CustomerRouteAuthTest extends TestCase
             ->assertSee('check: false', false);
     }
 
+    public function test_customer_profile_endpoint_returns_personal_info_from_user_details(): void
+    {
+        $customer = User::query()->create([
+            'role' => 'customer',
+            'is_active' => true,
+        ]);
+
+        UserDetail::query()->create([
+            'user_id' => $customer->user_id,
+            'name' => 'Database Detail Customer',
+            'username' => 'dbdetailcustomer',
+            'age' => 31,
+            'email' => 'dbdetail@example.com',
+            'contact' => '+63 917 111 2222',
+            'address' => '45 Real Street, Pasig City',
+            'password' => Hash::make('password123'),
+        ]);
+
+        $this
+            ->actingAs($customer)
+            ->getJson('/api/profile')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.name', 'Database Detail Customer')
+            ->assertJsonPath('data.email', 'dbdetail@example.com')
+            ->assertJsonPath('data.phone', '+63 917 111 2222')
+            ->assertJsonPath('data.address', '45 Real Street, Pasig City');
+    }
+
+    public function test_customer_spa_bootstraps_personal_info_from_user_details(): void
+    {
+        $customer = User::query()->create([
+            'role' => 'customer',
+            'is_active' => true,
+        ]);
+
+        UserDetail::query()->create([
+            'user_id' => $customer->user_id,
+            'name' => 'Boot Detail Customer',
+            'username' => 'bootdetailcustomer',
+            'age' => 29,
+            'email' => 'bootdetail@example.com',
+            'contact' => '+63 918 333 4444',
+            'address' => '88 Bootstrap Avenue, Pasig City',
+            'password' => Hash::make('password123'),
+        ]);
+
+        $this
+            ->actingAs($customer)
+            ->get('/customer/settings')
+            ->assertOk()
+            ->assertSee('"name":"Boot Detail Customer"', false)
+            ->assertSee('"email":"bootdetail@example.com"', false)
+            ->assertSee('"phone":"+63 918 333 4444"', false)
+            ->assertSee('"address":"88 Bootstrap Avenue, Pasig City"', false);
+    }
+
     public function test_guest_cart_merges_into_customer_cart_on_login(): void
     {
         $customer = User::query()->create([

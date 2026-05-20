@@ -18,16 +18,18 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
         $user->loadMissing('detail');
+        $detail = $user->detail;
+        $name = $detail?->name ?: '';
         
         return response()->json([
             'success' => true,
             'data' => [
                 'id' => $user->user_id,
-                'name' => $user->detail?->name ?? 'Customer',
-                'email' => $user->detail?->email ?? $user->email,
-                'phone' => $user->detail?->contact ?? '',
-                'address' => $user->detail?->address ?? '',
-                'avatar' => $this->generateAvatar($user->detail?->name ?? 'Customer'),
+                'name' => $name,
+                'email' => $detail?->email ?? '',
+                'phone' => $detail?->contact ?? '',
+                'address' => $detail?->address ?? '',
+                'avatar' => $this->generateAvatar($name ?: ($detail?->email ?? 'Customer')),
                 'member_since' => $user->created_at?->format('F Y'),
             ]
         ]);

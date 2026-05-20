@@ -198,14 +198,16 @@ const props = defineProps({
 
 const { push, currentRoute } = useSpaRouter();
 const bootUser = window.Laravel?.customer || window.Laravel?.user || {};
-const rawUserName = bootUser.name || 'Guest Explorer';
 const isAuthenticated = Boolean(window.Laravel?.auth?.check);
+const rawUserName = bootUser.name || (isAuthenticated ? '' : 'Guest Explorer');
 
 const user = ref({
   id: bootUser.id || bootUser.user_id || 0,
   user_id: bootUser.id || bootUser.user_id || 0, // Fallback for components still using user_id
   name: rawUserName,
-  email: bootUser.email || 'customer@bakerdan.local',
+  email: bootUser.email || '',
+  phone: bootUser.phone || '',
+  address: bootUser.address || '',
   avatar: bootUser.avatar || rawUserName
     .split(' ')
     .map((part) => part[0] || '')
