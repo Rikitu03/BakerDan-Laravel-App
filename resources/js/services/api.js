@@ -152,6 +152,10 @@ export default {
     return api.put('/profile/password', data)
   },
 
+  verifyCurrentPassword(data) {
+    return api.post('/profile/verify-password', data)
+  },
+
   // Notifications
   getNotifications() {
     return api.get('/notifications')

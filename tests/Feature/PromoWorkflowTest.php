@@ -10,6 +10,7 @@ use App\Models\Promo;
 use App\Models\User;
 use App\Services\PendingOrderService;
 use App\Services\PayMongoService;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Mockery\MockInterface;
@@ -22,6 +23,7 @@ class PromoWorkflowTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withoutMiddleware(ValidateCsrfToken::class);
         $this->artisan('db:seed', ['--class' => 'ProductCatalogSeeder']);
     }
 

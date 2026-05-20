@@ -12,6 +12,7 @@ import SettingsPage from '../components/pages/SettingsPage.vue';
 const baseLayoutProps = {
   hideSidebar: false,
   mainClass: 'bg-[#F6F4F1]',
+  requiresAuth: false,
 };
 
 const buildRoute = (component, name, path, props = {}, layoutProps = {}) => ({
@@ -63,6 +64,7 @@ const resolveRoute = () => {
         {
           hideSidebar: true,
           mainClass: 'bg-[#FBF7F2]',
+          requiresAuth: true,
         },
       );
     case '/customer/customize':
@@ -82,6 +84,7 @@ const resolveRoute = () => {
         {
           hideSidebar: true,
           mainClass: 'bg-[#FBF7F2]',
+          requiresAuth: true,
         },
       );
     case '/customer/messages':
@@ -93,6 +96,7 @@ const resolveRoute = () => {
         {
           hideSidebar: true,
           mainClass: 'bg-[#F6EFE8]',
+          requiresAuth: true,
         },
       );
     case '/customer/notifications':
@@ -104,6 +108,7 @@ const resolveRoute = () => {
         {
           hideSidebar: true,
           mainClass: 'bg-[#FBF6F0]',
+          requiresAuth: true,
         },
       );
     case '/customer/purchases':
@@ -115,11 +120,14 @@ const resolveRoute = () => {
         {
           hideSidebar: true,
           mainClass: 'bg-[#FBF7F2]',
+          requiresAuth: true,
         },
       );
     case '/customer/settings':
       return buildRoute(SettingsPage, 'customer.settings', path, {
           tab: params.get('tab') || 'personal',
+      }, {
+        requiresAuth: true,
       });
     default:
       return {

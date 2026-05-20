@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\OrderShippedNotificationMail;
 use App\Models\CustomerNotification;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -15,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -362,13 +364,15 @@ class AdminController extends Controller
             'status' => $nextStatus,
         ]);
 
-        $this->notifyCustomerAboutOrderStatus($order->fresh(['user.detail', 'items']));
+        $updatedOrder = $order->fresh(['user.detail', 'items.product', 'promo']);
+        $this->notifyCustomerAboutOrderStatus($updatedOrder);
+        $this->emailCustomerWhenOrderShips($updatedOrder, $currentStatus);
 
         return response()->json([
             'success' => true,
             'message' => 'Order workflow updated successfully.',
             'data' => [
-                'order' => $this->orderCard($order->fresh(['user.detail', 'items.product'])),
+                'order' => $this->orderCard($updatedOrder),
             ],
         ]);
     }
@@ -892,6 +896,25 @@ class AdminController extends Controller
                 'source' => 'admin_order_status_update',
             ],
         ]);
+    }
+
+    private function emailCustomerWhenOrderShips(Order $order, string $previousStatus): void
+    {
+        if ($previousStatus === 'shipped' || $order->status !== 'shipped') {
+            return;
+        }
+
+        $email = $order->user?->detail?->email;
+
+        if (! $email) {
+            return;
+        }
+
+        try {
+            Mail::to($email)->send(new OrderShippedNotificationMail($order));
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
     }
 
     private function notifyCustomerAboutPaymentStatus(Order $order): void

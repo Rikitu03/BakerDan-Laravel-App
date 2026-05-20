@@ -6,8 +6,10 @@ use App\Models\User;
 use App\Models\UserDetail;
 use App\Models\Otp;
 use App\Mail\OtpMail;
+use App\Services\GuestCartService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Hash;
@@ -78,13 +80,21 @@ class RegisterController extends Controller
         ],
     ];
 
-    public function showStep1()
+    public function __construct(private GuestCartService $guestCart)
     {
-        return view('auth.register-step1');
+    }
+
+    public function showStep1(Request $request)
+    {
+        $redirectTo = $this->guestCart->storeIntendedUrl($request, $request->query('redirect'));
+
+        return view('auth.register-step1', compact('redirectTo'));
     }
 
     public function handleStep1(Request $request): RedirectResponse
     {
+        $this->guestCart->storeIntendedUrl($request, $request->input('redirect'));
+
         $request->merge([
             'email' => $this->normalizeEmail((string) $request->input('email')),
         ]);
@@ -254,7 +264,7 @@ class RegisterController extends Controller
                 ->withErrors(['email' => 'An account already exists for this email. Please log in instead.']);
         }
 
-        DB::transaction(function () use ($validated, $email, $formattedContact): void {
+        $user = DB::transaction(function () use ($validated, $email, $formattedContact): User {
             $user = User::query()->create([
                 'role' => 'customer',
                 'is_active' => true,
@@ -281,11 +291,19 @@ class RegisterController extends Controller
                     'source' => 'registration'
                 ]
             );
+
+            return $user;
         });
 
         Session::forget(['registration_email', 'otp_verified', 'registration_otp_verified_at']);
 
-        return redirect('/')->with('account_created', true);
+        Auth::login($user);
+        $request->session()->regenerate();
+        $user->loadMissing('detail');
+        $this->storePasswordHashInSession($request, (int) $user->user_id, (string) $user->detail?->password);
+        $mergeResult = $this->guestCart->mergeIntoUserCart($request, (int) $user->user_id);
+
+        return redirect($this->customerRedirectAfterAuth($request, $mergeResult))->with('account_created', true);
     }
 
     private function issueRegistrationOtp(string $email, bool $forceNew = false): string
@@ -420,5 +438,51 @@ class RegisterController extends Controller
     private function normalizeEmail(string $email): string
     {
         return Str::lower(trim($email));
+    }
+
+    private function storePasswordHashInSession(Request $request, int $userId, string $passwordHash): void
+    {
+        if ($passwordHash === '') {
+            return;
+        }
+
+        $request->session()->put([
+            'auth.password_hash_user_id' => $userId,
+            'auth.password_hash' => $passwordHash,
+        ]);
+    }
+
+    /**
+     * @param array{all_cart_item_ids?: array<int, int>} $mergeResult
+     */
+    private function customerRedirectAfterAuth(Request $request, array $mergeResult): string
+    {
+        $target = $this->guestCart->pullIntendedUrl($request) ?: '/customer';
+
+        if ($target === '/cart') {
+            return '/customer/cart';
+        }
+
+        $parts = parse_url($target);
+        $path = $parts['path'] ?? '/customer';
+
+        if ($path !== '/customer/checkout') {
+            return $target;
+        }
+
+        $cartItemIds = $mergeResult['all_cart_item_ids'] ?? [];
+
+        if ($cartItemIds === []) {
+            return '/customer/cart';
+        }
+
+        $query = [];
+        if (isset($parts['query']) && is_string($parts['query'])) {
+            parse_str($parts['query'], $query);
+        }
+
+        $query['items'] = implode(',', $cartItemIds);
+
+        return $path . '?' . http_build_query($query);
     }
 }

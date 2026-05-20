@@ -29,15 +29,16 @@ class CustomerController extends Controller
         if (!$user || $user->role !== 'customer') {
             return array_merge([
                 'id' => 0,
-                'name' => 'Jason Jay Recto',
-                'first_name' => 'Jason',
-                'email' => 'preview@bakerdan.test',
-                'phone' => '+63 900 000 0000',
-                'address' => 'Metro Manila',
-                'total_orders' => 12,
-                'loyalty_points' => 850,
-                'member_since' => 'Preview mode',
-                'avatar' => 'JR',
+                'name' => 'Guest Customer',
+                'first_name' => 'Guest',
+                'email' => '',
+                'phone' => '',
+                'address' => '',
+                'total_orders' => 0,
+                'loyalty_points' => 0,
+                'member_since' => 'Guest session',
+                'avatar' => 'GC',
+                'is_guest' => true,
             ], $overrides);
         }
 
@@ -66,6 +67,7 @@ class CustomerController extends Controller
             'loyalty_points' => $totalOrders * 10,
             'member_since' => $user->created_at?->format('F Y') ?: 'New member',
             'avatar' => $initials ?: 'BC',
+            'is_guest' => false,
         ], $overrides);
     }
 
