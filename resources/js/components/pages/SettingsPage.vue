@@ -1,85 +1,88 @@
 <template>
-  <div class="p-8">
+  <div class="mx-auto w-full max-w-6xl p-4 sm:p-6 lg:p-8">
     <!-- User Profile Header -->
-    <div class="bg-gray-100 rounded-2xl p-8 mb-8 flex items-center gap-6">
-      <div class="w-24 h-24 rounded-full bg-gradient-to-br from-[#C9876C] to-[#B8765B] flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+    <div class="mb-6 flex flex-col items-center gap-4 rounded-2xl bg-gray-100 p-5 text-center sm:flex-row sm:gap-6 sm:p-6 sm:text-left lg:mb-8 lg:p-8">
+      <div class="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#C9876C] to-[#B8765B] text-2xl font-bold text-white shadow-lg sm:h-24 sm:w-24 sm:text-3xl">
         {{ user.avatar }}
       </div>
-      <div>
-        <h2 class="text-3xl font-bold text-gray-800 mb-1" style="font-family: 'Urbanist', sans-serif;">
+      <div class="min-w-0">
+        <h2 class="mb-1 break-words text-2xl font-bold text-gray-800 sm:text-3xl" style="font-family: 'Urbanist', sans-serif;">
           {{ user.name }}
         </h2>
-        <p class="text-gray-600">{{ user.email }}</p>
+        <p class="break-all text-sm text-gray-600 sm:text-base">{{ user.email }}</p>
       </div>
     </div>
 
     <!-- Settings Container -->
-    <div class="flex gap-8">
+    <div class="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:gap-8">
       <!-- Sidebar Tabs -->
-      <div class="w-64 flex-shrink-0">
-        <div class="space-y-2">
+      <div class="w-full lg:w-64 lg:flex-shrink-0">
+        <div class="grid grid-cols-3 gap-2 lg:block lg:space-y-2">
           <button
             @click="activeTab = 'personal'"
-            class="w-full flex items-center gap-3 px-6 py-3 rounded-lg transition-all duration-200 text-left"
+            class="flex min-h-[4rem] w-full min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-2 py-3 text-center text-xs transition-all duration-200 sm:min-h-[3.25rem] sm:flex-row sm:gap-3 sm:px-4 sm:text-sm lg:justify-start lg:px-6 lg:text-left lg:text-base"
             :class="activeTab === 'personal' 
               ? 'bg-[#C9876C] text-white shadow-md' 
               : 'text-gray-700 hover:bg-gray-100'"
           >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
-            <span class="font-medium">Personal Info</span>
+            <span class="min-w-0 font-medium leading-tight">Personal Info</span>
           </button>
 
           <button
             @click="activeTab = 'security'"
-            class="w-full flex items-center gap-3 px-6 py-3 rounded-lg transition-all duration-200 text-left"
+            class="flex min-h-[4rem] w-full min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-2 py-3 text-center text-xs transition-all duration-200 sm:min-h-[3.25rem] sm:flex-row sm:gap-3 sm:px-4 sm:text-sm lg:justify-start lg:px-6 lg:text-left lg:text-base"
             :class="activeTab === 'security' 
               ? 'bg-[#C9876C] text-white shadow-md' 
               : 'text-gray-700 hover:bg-gray-100'"
           >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            <span class="font-medium">Security</span>
+            <span class="min-w-0 font-medium leading-tight">Security</span>
           </button>
 
           <button
             @click="activeTab = 'preferences'"
-            class="w-full flex items-center gap-3 px-6 py-3 rounded-lg transition-all duration-200 text-left"
+            class="flex min-h-[4rem] w-full min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-2 py-3 text-center text-xs transition-all duration-200 sm:min-h-[3.25rem] sm:flex-row sm:gap-3 sm:px-4 sm:text-sm lg:justify-start lg:px-6 lg:text-left lg:text-base"
             :class="activeTab === 'preferences' 
               ? 'bg-[#C9876C] text-white shadow-md' 
               : 'text-gray-700 hover:bg-gray-100'"
           >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span class="font-medium">Preferences</span>
+            <span class="min-w-0 font-medium leading-tight">Preferences</span>
           </button>
         </div>
       </div>
 
       <!-- Content Area -->
-      <div class="flex-1">
+      <div class="min-w-0 flex-1">
         <!-- Personal Info Tab -->
-        <div v-if="activeTab === 'personal'" class="bg-white rounded-2xl p-8 shadow-md">
-          <h3 class="text-2xl font-bold text-gray-800 mb-6">Personal Info</h3>
+        <div v-if="activeTab === 'personal'" class="rounded-2xl bg-white p-5 shadow-md sm:p-6 lg:p-8">
+          <h3 class="mb-6 text-2xl font-bold text-gray-800">Personal Info</h3>
+          <p v-if="isLoadingPersonalInfo" class="mb-4 text-sm font-medium text-[#A06F50]">
+            Loading saved profile details...
+          </p>
           
           <form @submit.prevent="savePersonalInfo" class="space-y-6">
-            <div class="grid grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
               <!-- Full Name -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Full name</label>
                 <input
                   v-model="personalInfo.fullName"
-                  :disabled="!isEditingPersonal"
+                  :disabled="!isEditingPersonal || isLoadingPersonalInfo"
                   type="text"
                   class="w-full px-4 py-3 border border-gray-300 rounded-lg outline-none transition-colors"
                   :class="isEditingPersonal 
                     ? 'focus:ring-2 focus:ring-[#C9876C] focus:border-transparent cursor-text' 
                     : 'bg-gray-100 cursor-not-allowed text-gray-600'"
-                  placeholder="Jason Jay Recto"
+                  placeholder="Enter full name"
                 />
               </div>
 
@@ -88,13 +91,13 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">Phone number</label>
                 <input
                   v-model="personalInfo.phoneNumber"
-                  :disabled="!isEditingPersonal"
+                  :disabled="!isEditingPersonal || isLoadingPersonalInfo"
                   type="tel"
                   class="w-full px-4 py-3 border border-gray-300 rounded-lg outline-none transition-colors"
                   :class="isEditingPersonal 
                     ? 'focus:ring-2 focus:ring-[#C9876C] focus:border-transparent cursor-text' 
                     : 'bg-gray-100 cursor-not-allowed text-gray-600'"
-                  placeholder="09391654377"
+                  placeholder="Enter phone number"
                 />
               </div>
             </div>
@@ -104,13 +107,13 @@
               <label class="block text-sm font-medium text-gray-700 mb-2">Delivery Address</label>
               <input
                 v-model="personalInfo.deliveryAddress"
-                :disabled="!isEditingPersonal"
+                :disabled="!isEditingPersonal || isLoadingPersonalInfo"
                 type="text"
                 class="w-full px-4 py-3 border border-gray-300 rounded-lg outline-none transition-colors"
                 :class="isEditingPersonal 
                   ? 'focus:ring-2 focus:ring-[#C9876C] focus:border-transparent cursor-text' 
                   : 'bg-gray-100 cursor-not-allowed text-gray-600'"
-                placeholder="123 Sourdough Street, La Vista Ville, Pinagbuhatan, Pasig"
+                placeholder="Enter delivery address"
               />
             </div>
 
@@ -125,12 +128,12 @@
             </div>
 
             <!-- Action Buttons -->
-            <div class="flex justify-end gap-3">
+            <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button
                 v-if="isEditingPersonal"
                 type="button"
                 @click="cancelEditingPersonal"
-                class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-8 py-3 rounded-lg transition-colors shadow-md"
+                class="w-full rounded-lg bg-gray-200 px-8 py-3 font-semibold text-gray-800 shadow-md transition-colors hover:bg-gray-300 sm:w-auto"
               >
                 Cancel
               </button>
@@ -138,15 +141,16 @@
                 v-if="!isEditingPersonal"
                 type="button"
                 @click="isEditingPersonal = true"
-                class="bg-white border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-semibold px-8 py-3 rounded-lg transition-colors shadow-md"
+                :disabled="isLoadingPersonalInfo"
+                class="w-full rounded-lg border-2 border-gray-300 bg-white px-8 py-3 font-semibold text-gray-700 shadow-md transition-colors hover:border-gray-400 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
-                Edit
+                {{ isLoadingPersonalInfo ? 'Loading...' : 'Edit' }}
               </button>
               <button
                 v-if="isEditingPersonal"
                 type="submit"
-                :disabled="isSavingPersonal"
-                class="bg-[#C9876C] hover:bg-[#B8765B] disabled:bg-gray-400 text-white font-semibold px-8 py-3 rounded-lg transition-colors shadow-md disabled:cursor-not-allowed"
+                :disabled="isSavingPersonal || isLoadingPersonalInfo"
+                class="w-full rounded-lg bg-[#C9876C] px-8 py-3 font-semibold text-white shadow-md transition-colors hover:bg-[#B8765B] disabled:cursor-not-allowed disabled:bg-gray-400 sm:w-auto"
               >
                 {{ isSavingPersonal ? 'Saving...' : 'Save Changes' }}
               </button>
@@ -155,8 +159,8 @@
         </div>
 
         <!-- Security Tab -->
-        <div v-if="activeTab === 'security'" class="bg-white rounded-2xl p-8 shadow-md">
-          <h3 class="text-2xl font-bold text-gray-800 mb-6">Security</h3>
+        <div v-if="activeTab === 'security'" class="rounded-2xl bg-white p-5 shadow-md sm:p-6 lg:p-8">
+          <h3 class="mb-6 text-2xl font-bold text-gray-800">Security</h3>
           
           <form @submit.prevent="saveSecuritySettings" class="space-y-6">
             <!-- Current Password -->
@@ -298,12 +302,12 @@
             </div>
 
             <!-- Action Buttons -->
-            <div class="flex justify-end gap-3">
+            <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button
                 v-if="isEditingSecurity"
                 type="button"
                 @click="cancelEditingSecurity"
-                class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-8 py-3 rounded-lg transition-colors shadow-md"
+                class="w-full rounded-lg bg-gray-200 px-8 py-3 font-semibold text-gray-800 shadow-md transition-colors hover:bg-gray-300 sm:w-auto"
               >
                 Cancel
               </button>
@@ -311,7 +315,7 @@
                 v-if="!isEditingSecurity"
                 type="button"
                 @click="isEditingSecurity = true"
-                class="bg-white border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-semibold px-8 py-3 rounded-lg transition-colors shadow-md"
+                class="w-full rounded-lg border-2 border-gray-300 bg-white px-8 py-3 font-semibold text-gray-700 shadow-md transition-colors hover:border-gray-400 sm:w-auto"
               >
                 Edit
               </button>
@@ -319,7 +323,7 @@
                 v-if="isEditingSecurity"
                 type="submit"
                 :disabled="isSavingSecurity || currentPasswordStatus !== 'correct' || passwordsMatch === false"
-                class="bg-[#C9876C] hover:bg-[#B8765B] disabled:bg-gray-400 text-white font-semibold px-8 py-3 rounded-lg transition-colors shadow-md disabled:cursor-not-allowed"
+                class="w-full rounded-lg bg-[#C9876C] px-8 py-3 font-semibold text-white shadow-md transition-colors hover:bg-[#B8765B] disabled:cursor-not-allowed disabled:bg-gray-400 sm:w-auto"
               >
                 {{ isSavingSecurity ? 'Updating...' : 'Update Password' }}
               </button>
@@ -328,8 +332,8 @@
         </div>
 
         <!-- Preferences Tab -->
-        <div v-if="activeTab === 'preferences'" class="bg-white rounded-2xl p-8 shadow-md">
-          <h3 class="text-2xl font-bold text-gray-800 mb-6">Preferences</h3>
+        <div v-if="activeTab === 'preferences'" class="rounded-2xl bg-white p-5 shadow-md sm:p-6 lg:p-8">
+          <h3 class="mb-6 text-2xl font-bold text-gray-800">Preferences</h3>
           <p class="text-gray-600">Preference settings coming soon...</p>
         </div>
       </div>
@@ -338,7 +342,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onBeforeUnmount } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import api from '../../services/api'
 
 const PASSWORD_VERIFY_DEBOUNCE_MS = 350
@@ -347,9 +351,11 @@ const props = defineProps({
   user: {
     type: Object,
     default: () => ({
-      name: 'Jason Jay Recto',
-      email: 'recto_jasonjay@plpasig.edu.ph',
-      avatar: 'JR'
+      name: '',
+      email: '',
+      phone: '',
+      address: '',
+      avatar: ''
     })
   },
   tab: {
@@ -358,17 +364,20 @@ const props = defineProps({
   }
 })
 
+const profileFromUser = (user = {}) => ({
+  fullName: user.name || user.full_name || '',
+  phoneNumber: user.phone || user.phoneNumber || user.phone_number || '',
+  deliveryAddress: user.address || user.deliveryAddress || user.delivery_address || '',
+})
+
 const activeTab = ref(props.tab)
 
-const personalInfo = ref({
-  fullName: 'Jason Jay Recto',
-  phoneNumber: '09391654377',
-  deliveryAddress: '123 Sourdough Street, La Vista Ville, Pinagbuhatan, Pasig'
-})
+const personalInfo = ref(profileFromUser(props.user))
 
 // Personal Info Edit State
 const isEditingPersonal = ref(false)
 const isSavingPersonal = ref(false)
+const isLoadingPersonalInfo = ref(false)
 const personalInfoError = ref('')
 const personalInfoSuccess = ref('')
 const originalPersonalInfo = ref({ ...personalInfo.value })
@@ -416,6 +425,30 @@ const passwordStrengthText = computed(() => {
   return 'Strong'
 })
 
+const applyPersonalInfo = (profile = {}, options = {}) => {
+  const nextPersonalInfo = profileFromUser(profile)
+  originalPersonalInfo.value = { ...nextPersonalInfo }
+
+  if (options.force || !isEditingPersonal.value) {
+    personalInfo.value = { ...nextPersonalInfo }
+  }
+}
+
+const loadPersonalInfo = async () => {
+  isLoadingPersonalInfo.value = true
+  personalInfoError.value = ''
+
+  try {
+    const response = await api.getProfile()
+    applyPersonalInfo(response.data?.data || props.user, { force: true })
+  } catch (error) {
+    applyPersonalInfo(props.user, { force: true })
+    personalInfoError.value = error.response?.data?.message || 'Unable to load profile details right now.'
+  } finally {
+    isLoadingPersonalInfo.value = false
+  }
+}
+
 const cancelEditingPersonal = () => {
   isEditingPersonal.value = false
   personalInfo.value = { ...originalPersonalInfo.value }
@@ -436,7 +469,7 @@ const savePersonalInfo = async () => {
     })
 
     if (response.data.success) {
-      originalPersonalInfo.value = { ...personalInfo.value }
+      applyPersonalInfo(response.data.data || personalInfo.value, { force: true })
       personalInfoSuccess.value = response.data.message || 'Profile updated successfully'
       isEditingPersonal.value = false
       
@@ -598,4 +631,12 @@ onBeforeUnmount(() => {
   clearPasswordVerificationTimer()
   passwordVerificationRequestId += 1
 })
+
+onMounted(() => {
+  loadPersonalInfo()
+})
+
+watch(() => props.user, (user) => {
+  applyPersonalInfo(user)
+}, { deep: true })
 </script>

@@ -44,7 +44,7 @@ class CustomerController extends Controller
 
         $user->loadMissing('detail');
         $detail = $user->detail;
-        $name = $detail?->name ?: 'Bakerdan Customer';
+        $name = $detail?->name ?: '';
         $totalOrders = Order::query()
             ->where('user_id', $user->user_id)
             ->count();
@@ -60,9 +60,9 @@ class CustomerController extends Controller
             'id' => $user->user_id,
             'name' => $name,
             'first_name' => Str::of($name)->before(' ')->value() ?: $name,
-            'email' => $detail?->email ?: 'customer@bakerdan.com',
-            'phone' => $detail?->contact ?: '+63 900 000 0000',
-            'address' => $detail?->address ?: 'Metro Manila',
+            'email' => $detail?->email ?: '',
+            'phone' => $detail?->contact ?: '',
+            'address' => $detail?->address ?: '',
             'total_orders' => $totalOrders,
             'loyalty_points' => $totalOrders * 10,
             'member_since' => $user->created_at?->format('F Y') ?: 'New member',
