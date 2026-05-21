@@ -17,6 +17,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -418,7 +419,7 @@ class AdminController extends Controller
             'is_active' => ! $user->is_active,
         ]);
 
-        session()->flash('admin_section', 'customers');
+        Session::flash('admin_section', 'customers');
 
         return response()->json([
             'success' => true,
@@ -640,6 +641,7 @@ class AdminController extends Controller
 
     private function orderCard(Order $order): array
     {
+        $customerDetail = $order->user?->detail;
         $customerName = data_get($order->payment_metadata, 'walk_in_customer_name')
             ?: ($order->user?->detail?->name ?? 'Unknown customer');
         $containsCustom = $order->items->contains(fn (OrderItem $item) => $item->item_type === 'custom');
@@ -676,6 +678,16 @@ class AdminController extends Controller
             'amount' => 'PHP ' . number_format((float) $order->total_amount, 2),
             'contains_custom' => $containsCustom,
             'custom_items' => $customItems->all(),
+            'customer_details' => [
+                'address' => $customerDetail?->address ?? 'N/A',
+                'age' => $customerDetail?->age ?? 'N/A',
+                'contact' => $customerDetail?->contact ?? 'N/A',
+                'email' => $customerDetail?->email ?? 'N/A',
+                'linked_account' => $order->user_id ? ($customerDetail?->name ?? 'Linked customer') : 'Guest / walk-in',
+                'name' => $customerName,
+                'source' => $order->user_id ? 'Registered customer' : 'Guest / walk-in',
+                'username' => $customerDetail?->username ?? 'N/A',
+            ],
             'customer' => $customerName,
             'id' => $order->id,
             'item_lines' => $itemLines->all(),
