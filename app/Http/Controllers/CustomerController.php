@@ -1,0 +1,81 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Order;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+
+class CustomerController extends Controller
+{
+    /**
+     * Serve the Vue SPA for all customer routes
+     */
+    public function spa(): Response
+    {
+        $customer = $this->customerProfile();
+
+        return $this->withoutBrowserCache(response()->view('customer.app', compact('customer')));
+    }
+
+    /**
+     * Get customer profile data
+     */
+    private function customerProfile(array $overrides = []): array
+    {
+        $user = Auth::user();
+
+        if (!$user || $user->role !== 'customer') {
+            return array_merge([
+                'id' => 0,
+                'name' => 'Guest Customer',
+                'first_name' => 'Guest',
+                'email' => '',
+                'phone' => '',
+                'address' => '',
+                'total_orders' => 0,
+                'loyalty_points' => 0,
+                'member_since' => 'Guest session',
+                'avatar' => 'GC',
+                'is_guest' => true,
+            ], $overrides);
+        }
+
+        $user->loadMissing('detail');
+        $detail = $user->detail;
+        $name = $detail?->name ?: '';
+        $totalOrders = Order::query()
+            ->where('user_id', $user->user_id)
+            ->count();
+        
+        // Generate initials for avatar
+        $initials = collect(preg_split('/\s+/', trim($name)) ?: [])
+            ->filter()
+            ->take(2)
+            ->map(fn(string $part) => Str::upper(Str::substr($part, 0, 1)))
+            ->join('');
+
+        return array_merge([
+            'id' => $user->user_id,
+            'name' => $name,
+            'first_name' => Str::of($name)->before(' ')->value() ?: $name,
+            'email' => $detail?->email ?: '',
+            'phone' => $detail?->contact ?: '',
+            'address' => $detail?->address ?: '',
+            'total_orders' => $totalOrders,
+            'loyalty_points' => $totalOrders * 10,
+            'member_since' => $user->created_at?->format('F Y') ?: 'New member',
+            'avatar' => $initials ?: 'BC',
+            'is_guest' => false,
+        ], $overrides);
+    }
+
+    private function withoutBrowserCache(Response $response): Response
+    {
+        return $response
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', 'Fri, 01 Jan 1990 00:00:00 GMT');
+    }
+}
