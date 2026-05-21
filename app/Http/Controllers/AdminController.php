@@ -248,7 +248,7 @@ class AdminController extends Controller
             ->with('admin_section', 'inventory');
     }
 
-    public function storeInventory(Request $request): RedirectResponse
+    public function storeInventory(Request $request): RedirectResponse|JsonResponse
     {
         $data = $this->validateInventoryProduct($request);
 
@@ -263,10 +263,15 @@ class AdminController extends Controller
         $product->save();
         $this->notifyCustomersAboutNewProducts(collect([$product]));
 
-        return redirect()->route('admin.home')->with('status', 'Product added successfully.');
+        return $this->adminMutationResponse(
+            $request,
+            'Product added successfully.',
+            ['product' => $this->productCard($product->fresh())],
+            'inventory',
+        );
     }
 
-    public function updateInventory(Request $request, Product $product): RedirectResponse
+    public function updateInventory(Request $request, Product $product): RedirectResponse|JsonResponse
     {
         $data = $this->validateInventoryProduct($request);
 
@@ -279,17 +284,28 @@ class AdminController extends Controller
 
         $product->save();
 
-        return redirect()->route('admin.home')->with('status', 'Product updated successfully.');
+        return $this->adminMutationResponse(
+            $request,
+            'Product updated successfully.',
+            ['product' => $this->productCard($product->fresh())],
+            'inventory',
+        );
     }
 
-    public function destroyInventory(Product $product): RedirectResponse
+    public function destroyInventory(Request $request, Product $product): RedirectResponse|JsonResponse
     {
-        Product::destroy($product->id);
+        $productId = $product->id;
+        $product->delete();
 
-        return redirect()->route('admin.home')->with('status', 'Product removed successfully.');
+        return $this->adminMutationResponse(
+            $request,
+            'Product removed successfully.',
+            ['product_id' => $productId],
+            'inventory',
+        );
     }
 
-    public function storePromo(Request $request): RedirectResponse
+    public function storePromo(Request $request): RedirectResponse|JsonResponse
     {
         $data = $this->validatePromo($request);
         $promo = new Promo();
@@ -306,13 +322,15 @@ class AdminController extends Controller
 
         $promo->save();
 
-        return redirect()
-            ->route('admin.home')
-            ->with('status', 'Promo code created successfully.')
-            ->with('admin_section', 'promos');
+        return $this->adminMutationResponse(
+            $request,
+            'Promo code created successfully.',
+            ['promo' => $this->promoCard($promo->fresh())],
+            'promos',
+        );
     }
 
-    public function updatePromo(Request $request, Promo $promo): RedirectResponse
+    public function updatePromo(Request $request, Promo $promo): RedirectResponse|JsonResponse
     {
         $data = $this->validatePromo($request, $promo);
         $promo->fill($data);
@@ -328,20 +346,25 @@ class AdminController extends Controller
 
         $promo->save();
 
-        return redirect()
-            ->route('admin.home')
-            ->with('status', 'Promo code updated successfully.')
-            ->with('admin_section', 'promos');
+        return $this->adminMutationResponse(
+            $request,
+            'Promo code updated successfully.',
+            ['promo' => $this->promoCard($promo->fresh())],
+            'promos',
+        );
     }
 
-    public function destroyPromo(Promo $promo): RedirectResponse
+    public function destroyPromo(Request $request, Promo $promo): RedirectResponse|JsonResponse
     {
+        $promoId = $promo->id;
         $promo->delete();
 
-        return redirect()
-            ->route('admin.home')
-            ->with('status', 'Promo code removed successfully.')
-            ->with('admin_section', 'promos');
+        return $this->adminMutationResponse(
+            $request,
+            'Promo code removed successfully.',
+            ['promo_id' => $promoId],
+            'promos',
+        );
     }
 
     public function updateOrderStatus(Request $request, Order $order): JsonResponse
@@ -568,6 +591,22 @@ class AdminController extends Controller
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
             'is_active' => ['nullable', 'boolean'],
         ]);
+    }
+
+    private function adminMutationResponse(Request $request, string $message, array $data = [], string $section = 'dashboard'): JsonResponse|RedirectResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data' => $data,
+            ]);
+        }
+
+        return redirect()
+            ->route('admin.home')
+            ->with('status', $message)
+            ->with('admin_section', $section);
     }
 
     private function productCard(Product $product): array

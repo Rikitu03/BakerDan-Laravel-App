@@ -116,6 +116,47 @@
             border-color: rgba(201, 135, 108, 0.3);
         }
 
+        .dashboard-loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 80;
+            display: grid;
+            place-items: center;
+            background: rgba(35, 26, 20, 0.32);
+            backdrop-filter: blur(10px);
+        }
+
+        .dashboard-loading-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.5rem 1.75rem;
+            border-radius: 1.5rem;
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid rgba(201, 135, 108, 0.18);
+            box-shadow: 0 24px 60px -32px rgba(35, 26, 20, 0.4);
+        }
+
+        .dashboard-loading-spinner {
+            width: 2.75rem;
+            height: 2.75rem;
+            border-radius: 999px;
+            border: 3px solid rgba(201, 135, 108, 0.16);
+            border-top-color: var(--brand);
+            animation: dashboard-spin 900ms linear infinite;
+        }
+
+        @keyframes dashboard-spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .dashboard-is-loading {
+            overflow: hidden;
+        }
+
         .metric-card {
             position: relative;
             overflow: hidden;
@@ -800,6 +841,16 @@
 
     <div data-admin-dashboard data-default-section="{{ $defaultSection }}" data-open-modal="{{ $modalToOpen }}"
         class="page-shell min-h-screen lg:flex lg:h-screen lg:overflow-hidden">
+        <div data-dashboard-loading hidden class="dashboard-loading-overlay" aria-live="polite" aria-busy="true">
+            <div class="dashboard-loading-card">
+                <div class="dashboard-loading-spinner"></div>
+                <div class="text-center">
+                    <p class="font-display text-xl font-bold text-slate-900">Please wait</p>
+                    <p data-dashboard-loading-text class="mt-1 text-sm text-slate-500">Updating dashboard...</p>
+                </div>
+            </div>
+        </div>
+
         <aside data-sidebar
             class="sticky top-0 z-20 flex w-full flex-col gap-6 lg:h-screen lg:w-80 lg:shrink-0 lg:self-start border-b lg:border-b-0 lg:border-r border-white/5">
             <div class="flex items-center justify-between px-6 pt-6 lg:block lg:px-7">
