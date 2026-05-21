@@ -180,34 +180,6 @@
 </head>
 <body class="font-body antialiased">
     @php
-        $featured = [
-            'name' => 'Korean Garlic Cream Cheese Bun',
-            'description' => 'Soft enriched dough with a rich cream cheese filling and glossy golden top.',
-            'price' => 395.00,
-            'imagePath' => 'images/bakerdan/bread/Creme_Cheese_Garlic.png',
-        ];
-
-        $bestSellers = [
-            [
-                'title' => 'Wallnut Brownies ',
-                'description' => 'Our signature walnut brownies, rich and fudgy with a deep chocolate flavor, packed with crunchy walnuts and a perfectly moist, chewy texture.',
-                'price' => 320.00,
-                'imagePath' => 'images/bakerdan/pastries/Brownies.png',
-            ],
-            [
-                'title' => 'Creme Puffs',
-                'description' => 'A light and airy choux pastry filled with smooth, luscious cream and finished with a delicate golden crust.',
-                'price' => 310.00,
-                'imagePath' => 'images/bakerdan/pastries/Creme_Puffs.png',
-            ],
-            [
-                'title' => 'Korean Garlic Cream Cheese Bun',
-                'description' => 'Soft enriched dough with a rich cream cheese filling and glossy golden top.',
-                'price' => 395.00,
-                'imagePath' => 'images/bakerdan/bread/Creme_Cheese_Garlic.png',
-            ],
-        ];
-
         $miniPicks = [
             ['label' => 'Sourdough', 'tone' => 'from-[#e8d8ba] to-[#d7b28a]'],
             ['label' => 'Pastries', 'tone' => 'from-[#f0d5be] to-[#c9875c]'],
@@ -255,16 +227,16 @@
         ];
 
         $assistantPrompts = [
-            'Recommend pastries for office meetings',
-            'Suggest a bread bundle for a cafe',
-            'Help me choose items for a birthday order',
+            'Recommend a bulk pastry tray for office catering',
+            'Suggest a bread bundle for a cafe supply run',
+            'Plan a birthday order with cakes and custom items',
         ];
     @endphp
 
     <div class="page-shell min-h-screen">
         <header class="mx-auto max-w-7xl px-6 pb-6 pt-8 md:px-10">
             <div class="mesh-card rounded-full px-5 py-3">
-                <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center justify-between gap-4 md:flex-nowrap">
                     <a href="#top" class="flex items-center gap-3">
                         <img src="{{ asset('images/logo/BAKERDAN LOGO.jpg') }}" alt="BakerDan logo" class="h-10 w-10 rounded-full object-cover">
                         <span class="font-display text-lg font-extrabold tracking-[0.18em] md:text-xl">BAKERDAN</span>
@@ -275,7 +247,7 @@
                         <a href="#how-to-order" class="transition hover:opacity-70">How to Order</a>
                         <a href="#assistant" class="transition hover:opacity-70">AI Assistant</a>
                     </nav>
-                    <div class="flex items-center gap-3">
+                    <div class="hidden items-center gap-2 sm:gap-3 md:flex">
                         <!-- Cart Icon -->
                         <a href="{{ route('cart') }}" class="grid h-10 w-10 place-items-center rounded-full border transition hover:bg-white/60" style="border-color: var(--line);" aria-label="Cart">
                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -293,9 +265,79 @@
                         </a>
                         <a href="/customer" class="rounded-full px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5" style="background: var(--ink);">Order now</a>
                     </div>
+
+                    <button id="mobile-nav-open" type="button" class="grid h-11 w-11 place-items-center rounded-full border transition hover:bg-white/60 md:hidden" style="border-color: var(--line);" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-nav-drawer">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                            <path d="M4 7h16"></path>
+                            <path d="M4 12h16"></path>
+                            <path d="M4 17h16"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
         </header>
+
+        <div id="mobile-nav-overlay" class="fixed inset-0 z-40 hidden bg-black/35 backdrop-blur-[2px] md:hidden" aria-hidden="true"></div>
+
+        <aside id="mobile-nav-drawer" class="fixed inset-y-0 left-0 z-50 w-[84vw] max-w-sm -translate-x-full border-r px-5 py-6 transition-transform duration-300 ease-out md:hidden" style="border-color: var(--line); background: rgba(255, 255, 255, 0.96); box-shadow: 24px 0 60px -30px rgba(30, 24, 20, 0.28);">
+            <div class="flex items-center justify-between gap-4 border-b pb-4" style="border-color: var(--line);">
+                <a href="#top" class="flex items-center gap-3">
+                    <img src="{{ asset('images/logo/BAKERDAN LOGO.jpg') }}" alt="BakerDan logo" class="h-10 w-10 rounded-full object-cover">
+                    <span class="font-display text-lg font-extrabold tracking-[0.18em]">BAKERDAN</span>
+                </a>
+                <button id="mobile-nav-close" type="button" class="grid h-10 w-10 place-items-center rounded-full border transition hover:bg-black/5" style="border-color: var(--line);" aria-label="Close navigation">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6 6 18"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="mt-6 space-y-2">
+                <p class="text-xs font-semibold uppercase tracking-[0.2em]" style="color: var(--ink-soft);">Navigate</p>
+                <a href="#about" class="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-medium transition hover:bg-black/5" style="border-color: var(--line);">About <span style="color: var(--ink-soft);">01</span></a>
+                <a href="#menu" class="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-medium transition hover:bg-black/5" style="border-color: var(--line);">Menu <span style="color: var(--ink-soft);">02</span></a>
+                <a href="#how-to-order" class="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-medium transition hover:bg-black/5" style="border-color: var(--line);">How to Order <span style="color: var(--ink-soft);">03</span></a>
+                <a href="#assistant" class="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-medium transition hover:bg-black/5" style="border-color: var(--line);">AI Assistant <span style="color: var(--ink-soft);">04</span></a>
+                <a href="#gallery" class="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-medium transition hover:bg-black/5" style="border-color: var(--line);">Gallery <span style="color: var(--ink-soft);">05</span></a>
+                <a href="#reviews" class="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-medium transition hover:bg-black/5" style="border-color: var(--line);">Reviews <span style="color: var(--ink-soft);">06</span></a>
+            </div>
+
+            <div class="mt-6 rounded-[1.5rem] border p-4" style="border-color: var(--line); background: rgba(247, 243, 237, 0.8);">
+                <p class="text-xs font-semibold uppercase tracking-[0.2em]" style="color: var(--ink-soft);">Quick actions</p>
+                <div class="mt-4 grid gap-3">
+                    <a href="{{ route('cart') }}" class="flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition hover:bg-white" style="border-color: var(--line);">
+                        <span class="grid h-10 w-10 place-items-center rounded-full border" style="border-color: var(--line); background: rgba(255,255,255,0.8);">
+                            <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <circle cx="9" cy="20" r="1.25"></circle>
+                                <circle cx="18" cy="20" r="1.25"></circle>
+                                <path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h8.5a2 2 0 0 0 1.9-1.4L22 7H7"></path>
+                            </svg>
+                        </span>
+                        <span class="flex-1">Cart</span>
+                    </a>
+                    <a href="{{ route('login') }}" class="flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition hover:bg-white" style="border-color: var(--line);">
+                        <span class="grid h-10 w-10 place-items-center rounded-full border" style="border-color: var(--line); background: rgba(255,255,255,0.8);">
+                            <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <path d="M20 21a8 8 0 0 0-16 0"></path>
+                                <circle cx="12" cy="8" r="4"></circle>
+                            </svg>
+                        </span>
+                        <span class="flex-1">Account</span>
+                    </a>
+                    <a href="/customer" class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5" style="background: var(--ink);">
+                        <span class="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-white/10">
+                            <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <path d="M3 12h18"></path>
+                                <path d="M3 6h18"></path>
+                                <path d="M3 18h12"></path>
+                            </svg>
+                        </span>
+                        <span class="flex-1">Order now</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
 
         <main id="top" class="mx-auto max-w-7xl px-6 pb-20 md:px-10">
             <section class="grid items-center gap-10 pb-20 pt-6 lg:grid-cols-[1.05fr_0.95fr] lg:pt-10">
@@ -336,14 +378,14 @@
                     <div class="hero-grid relative">
                         <div class="mesh-card entrance entrance-delay-2 rounded-[2.25rem] p-4 sm:p-5">
                             <div class="image-card min-h-[24rem]">
-                                <img src="{{ asset('images/bakerdan/bread/Creme_Cheese_Garlic.png') }}" alt="Featured bread and pastries">
+                                <img src="{{ $featured['imagePath'] ? asset($featured['imagePath']) : asset('images/bakerdan/bread/Creme_Cheese_Garlic.png') }}" alt="{{ $featured['title'] }}">
                                 <div class="absolute left-4 top-4 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white" style="border-color: rgba(255,255,255,0.22); background: rgba(15, 20, 30, 0.38);">
-                                    House favorite
+                                    Top product sales
                                 </div>
                                 <div class="absolute inset-x-4 bottom-4 rounded-[1.25rem] border p-4 backdrop-blur" style="border-color: rgba(255,255,255,0.18); background: rgba(255, 250, 241, 0.92);">
                                     <p class="text-xs font-semibold uppercase tracking-[0.22em]" style="color: var(--brand-deep);">Featured bake</p>
-                                    <p class="font-display mt-1 text-2xl font-bold">Korean Garlic Cream Cheese Bun</p>
-                                    <p class="mt-1 text-sm leading-relaxed" style="color: var(--ink-soft);">Soft enriched dough with a rich cream cheese filling and glossy golden top.</p>
+                                    <p class="font-display mt-1 text-2xl font-bold">{{ $featured['title'] }}</p>
+                                    <p class="mt-1 text-sm leading-relaxed" style="color: var(--ink-soft);">{{ $featured['description'] }}</p>
                                 </div>
                             </div>
                         </div>
@@ -403,25 +445,13 @@
                 <div class="section-ring hidden lg:block"></div>
                 <div class="relative grid gap-8 lg:grid-cols-[1fr_1.02fr] lg:items-center">
                     <div class="max-w-xl">
-                        <p class="text-sm font-medium" style="color: var(--ink-soft);">Checkout today's choice</p>
-                        <h2 class="font-display mt-4 text-4xl font-extrabold sm:text-5xl">{{ $featured['name'] }}</h2>
+                        <p class="text-sm font-medium" style="color: var(--ink-soft);">Checkout today's top seller</p>
+                        <h2 class="font-display mt-4 text-4xl font-extrabold sm:text-5xl">{{ $featured['title'] }}</h2>
                         <p class="mt-4 text-xl leading-relaxed" style="color: var(--ink-soft);">{{ $featured['description'] }}</p>
 
                         <div class="mt-8 flex items-center gap-5">
                             <p class="font-display text-4xl font-bold">&#8369; {{ number_format($featured['price'], 2) }}</p>
                             <div class="flex gap-3">
-                                <button type="button" class="grid h-12 w-12 place-items-center rounded-full border transition hover:-translate-y-0.5" style="border-color: var(--line); background: rgba(255,255,255,0.65);" aria-label="Save item">
-                                    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                        <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z"></path>
-                                    </svg>
-                                </button>
-                                <button type="button" class="grid h-12 w-12 place-items-center rounded-full text-white transition hover:-translate-y-0.5" style="background: var(--ink);" aria-label="Add to cart">
-                                    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                        <circle cx="9" cy="20" r="1.25"></circle>
-                                        <circle cx="18" cy="20" r="1.25"></circle>
-                                        <path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h8.5a2 2 0 0 0 1.9-1.4L22 7H7"></path>
-                                    </svg>
-                                </button>
                             </div>
                         </div>
 
@@ -446,13 +476,13 @@
 
                             <div class="relative ml-auto h-[26rem] max-w-xl rounded-[2.25rem] border p-4 shadow-[0_28px_70px_-35px_rgba(38,24,15,0.45)]" style="border-color: rgba(38, 24, 15, 0.12); background: rgba(255,255,255,0.6);">
                                 <div class="h-full overflow-hidden rounded-[1.75rem]">
-                                    @if (file_exists(public_path($featured['imagePath'])))
-                                        <img src="{{ asset($featured['imagePath']) }}" alt="{{ $featured['name'] }}" class="h-full w-full object-cover">
+                                    @if ($featured['imagePath'] && file_exists(public_path($featured['imagePath'])))
+                                        <img src="{{ asset($featured['imagePath']) }}" alt="{{ $featured['title'] }}" class="h-full w-full object-cover">
                                     @else
                                         <div class="photo-fallback grid h-full place-items-center">
                                             <div class="rounded-[1.75rem] border px-5 py-4 text-center" style="border-color: rgba(255,255,255,0.18); background: rgba(38, 24, 15, 0.36); color: white;">
                                                 <p class="text-xs font-semibold uppercase tracking-[0.2em]">Featured bake</p>
-                                                <p class="font-display mt-2 text-3xl font-bold">{{ $featured['name'] }}</p>
+                                                <p class="font-display mt-2 text-3xl font-bold">{{ $featured['title'] }}</p>
                                             </div>
                                         </div>
                                     @endif
@@ -466,9 +496,8 @@
             <section id="menu" class="py-20">
                 <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
                     <div>
-                        <h2 class="font-display mt-2 text-4xl font-extrabold sm:text-5xl">Menu</h2>
+                        <h2 class="font-display mt-2 text-4xl font-extrabold sm:text-5xl">Top product sales</h2>
                     </div>
-                        <a href="/customer" class="rounded-full border px-5 py-2.5 text-sm font-semibold transition hover:bg-white/60" style="border-color: var(--line);">Request catalog</a>
                 </div>
 
                 <div class="grid gap-6 lg:grid-cols-3">
@@ -478,6 +507,7 @@
                             :description="$item['description']"
                             :price="$item['price']"
                             :image-path="$item['imagePath']"
+                            :sales-count="$item['salesCount']"
                         />
                     @endforeach
                 </div>
@@ -532,9 +562,8 @@
             <section id="assistant" class="pb-20">
                 <div class="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
                     <div class="mesh-card rounded-[2.25rem] p-8">
-                        <p class="text-sm font-medium" style="color: var(--ink-soft);">AI Assistant via LLM</p>
-                        <h2 class="font-display mt-3 text-4xl font-extrabold sm:text-5xl">Add a guided assistant entry point</h2>
-                        <p class="mt-4 text-lg leading-relaxed" style="color: var(--ink-soft);">This section introduces an AI assistant that can help users choose products, estimate bundles, and move them toward the right order path.</p>
+                        <p class="text-sm font-medium" style="color: var(--ink-soft);">Quick help for orders</p>
+                        <h2 class="font-display mt-3 text-4xl font-extrabold sm:text-5xl">Find the right bake for your order</h2>
                         <div class="mt-8 space-y-3">
                             @foreach ($assistantPrompts as $prompt)
                                 <div class="rounded-2xl border px-4 py-3 text-sm font-medium" style="border-color: var(--line); background: rgba(255,255,255,0.52);">{{ $prompt }}</div>
@@ -546,14 +575,14 @@
                         <div class="flex items-center justify-between border-b pb-4" style="border-color: var(--line);">
                             <div>
                                 <p class="text-sm font-medium" style="color: var(--ink-soft);">BakerDan Assistant</p>
-                                <p class="font-display text-2xl font-bold">Smart help panel</p>
+                                <p class="font-display text-2xl font-bold">Our Chatbot</p>
                             </div>
                             <div class="grid h-11 w-11 place-items-center rounded-full text-white" style="background: var(--ink);">AI</div>
                         </div>
                         <div class="mt-5 space-y-4">
-                            <div class="max-w-[85%] rounded-[1.5rem] px-4 py-3 text-sm" style="background: rgba(38,24,15,0.08); color: var(--ink);">Hi! I can suggest pastries for cafes, parties, and bulk business orders.</div>
-                            <div class="ml-auto max-w-[85%] rounded-[1.5rem] px-4 py-3 text-sm text-white" style="background: linear-gradient(135deg, var(--brand-deep), var(--brand));">Help me choose a package for 30 people.</div>
-                            <div class="max-w-[85%] rounded-[1.5rem] px-4 py-3 text-sm" style="background: rgba(38,24,15,0.08); color: var(--ink);">I recommend a mixed pastry tray, two loaf options, and a custom cake inquiry.</div>
+                            <div class="max-w-[85%] rounded-[1.5rem] px-4 py-3 text-sm" style="background: rgba(38,24,15,0.08); color: var(--ink);">Hello! I'm your BakerDan Assistant. How can I help you today?</div>
+                            <div class="ml-auto max-w-[85%] rounded-[1.5rem] px-4 py-3 text-sm text-white" style="background: linear-gradient(135deg, var(--brand-deep), var(--brand));">Hi! What is the best-selling product?</div>
+                            <div class="max-w-[85%] rounded-[1.5rem] px-4 py-3 text-sm" style="background: rgba(38,24,15,0.08); color: var(--ink);">Hi there! We have several best-selling products that our customers love.</div>
                         </div>
                     </div>
                 </div>
@@ -566,11 +595,12 @@
                 </div>
 
                 <div class="mt-10 grid gap-6 lg:grid-cols-3">
-                    @foreach ($testimonials as $testimonial)
+                    @foreach ($reviews as $review)
                         <x-testimonial-card
-                            :quote="$testimonial['quote']"
-                            :name="$testimonial['name']"
-                            :role="$testimonial['role']"
+                            :quote="$review['quote']"
+                            :name="$review['name']"
+                            :role="$review['role']"
+                            :rating="$review['rating']"
                         />
                     @endforeach
                 </div>
@@ -678,6 +708,47 @@
         const isGuest = config?.dataset.isGuest === '1';
         const loginUrl = config?.dataset.loginUrl || '/login';
         let authRedirectTimer = null;
+
+        const mobileNavDrawer = document.getElementById('mobile-nav-drawer');
+        const mobileNavOverlay = document.getElementById('mobile-nav-overlay');
+        const mobileNavOpen = document.getElementById('mobile-nav-open');
+        const mobileNavClose = document.getElementById('mobile-nav-close');
+
+        function openMobileNav() {
+            if (!mobileNavDrawer || !mobileNavOverlay) {
+                return;
+            }
+
+            mobileNavDrawer.classList.remove('-translate-x-full');
+            mobileNavOverlay.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+            mobileNavOpen?.setAttribute('aria-expanded', 'true');
+        }
+
+        function closeMobileNav() {
+            if (!mobileNavDrawer || !mobileNavOverlay) {
+                return;
+            }
+
+            mobileNavDrawer.classList.add('-translate-x-full');
+            mobileNavOverlay.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+            mobileNavOpen?.setAttribute('aria-expanded', 'false');
+        }
+
+        mobileNavOpen?.addEventListener('click', openMobileNav);
+        mobileNavClose?.addEventListener('click', closeMobileNav);
+        mobileNavOverlay?.addEventListener('click', closeMobileNav);
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeMobileNav();
+            }
+        });
+
+        mobileNavDrawer?.querySelectorAll('a[href^="#"]').forEach((link) => {
+            link.addEventListener('click', closeMobileNav);
+        });
 
         if (isGuest) {
             document.addEventListener('click', (event) => {
