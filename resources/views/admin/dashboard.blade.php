@@ -1174,24 +1174,45 @@
                     <article class="soft-panel panel-lift rounded-[2rem] p-6">
                         <div class="flex items-center justify-between gap-4">
                             <div>
-                                <p class="text-sm font-medium text-slate-500">Operations snapshot</p>
+                                <p class="text-sm font-medium text-slate-500">Operations</p>
                                 <h2 class="font-display mt-1 text-2xl font-bold">Bake flow overview</h2>
                             </div>
                             <span
                                 class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Live</span>
                         </div>
                         <div class="mt-6 grid gap-4 md:grid-cols-3">
-                            <div class="rounded-3xl bg-slate-50 p-4">
-                                <p class="text-sm text-slate-500">Inventory readiness</p>
-                                <p class="mt-2 font-display text-2xl font-bold">94%</p>
+                            <div class="flex flex-col justify-between rounded-3xl bg-white/80 p-5 ring-1 ring-slate-100 transition-all hover:-translate-y-1 hover:bg-white hover:shadow-lg hover:shadow-orange-900/5">
+                                <div class="flex items-center gap-3">
+                                    <div class="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#c9876c]/10 text-[#c9876c]">
+                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                        </svg>
+                                    </div>
+                                    <p class="text-sm font-semibold leading-tight text-slate-600">Inventory<br>readiness</p>
+                                </div>
+                                <p class="mt-4 font-display text-3xl font-bold text-slate-900">{{ count($products) > 0 ? round((collect($products)->where('is_active', true)->count() / count($products)) * 100) : 0 }}%</p>
                             </div>
-                            <div class="rounded-3xl bg-slate-50 p-4">
-                                <p class="text-sm text-slate-500">Orders moving</p>
-                                <p class="mt-2 font-display text-2xl font-bold">31</p>
+                            <div class="flex flex-col justify-between rounded-3xl bg-white/80 p-5 ring-1 ring-slate-100 transition-all hover:-translate-y-1 hover:bg-white hover:shadow-lg hover:shadow-orange-900/5">
+                                <div class="flex items-center gap-3">
+                                    <div class="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-amber-50 text-amber-600">
+                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                    </div>
+                                    <p class="text-sm font-semibold leading-tight text-slate-600">Orders<br>moving</p>
+                                </div>
+                                <p class="mt-4 font-display text-3xl font-bold text-slate-900">{{ collect($orders)->whereNotIn('status', ['delivered', 'cancelled'])->count() }}</p>
                             </div>
-                            <div class="rounded-3xl bg-slate-50 p-4">
-                                <p class="text-sm text-slate-500">Customers active</p>
-                                <p class="mt-2 font-display text-2xl font-bold">218</p>
+                            <div class="flex flex-col justify-between rounded-3xl bg-white/80 p-5 ring-1 ring-slate-100 transition-all hover:-translate-y-1 hover:bg-white hover:shadow-lg hover:shadow-orange-900/5">
+                                <div class="flex items-center gap-3">
+                                    <div class="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-600">
+                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                    </div>
+                                    <p class="text-sm font-semibold leading-tight text-slate-600">Customers<br>active</p>
+                                </div>
+                                <p class="mt-4 font-display text-3xl font-bold text-slate-900">{{ collect($customers)->where('status', 'active')->count() }}</p>
                             </div>
                         </div>
                     </article>
@@ -1201,17 +1222,37 @@
                         <h2 class="font-display mt-1 text-2xl font-bold">Admin shortcuts</h2>
                         <div class="mt-5 grid gap-3">
                             <button data-nav="inventory" type="button"
-                                class="rounded-2xl bg-slate-900 px-4 py-3 text-left text-sm font-semibold text-white">Manage
-                                product catalog</button>
+                                class="group flex items-center justify-between rounded-2xl bg-gradient-to-r from-[var(--brand-deep)] to-[var(--brand)] px-5 py-3.5 text-left text-sm font-semibold text-white shadow-md shadow-orange-900/10 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-900/20">
+                                <span class="flex items-center gap-3">
+                                    <svg class="h-5 w-5 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                                    Manage product catalog
+                                </span>
+                                <svg class="h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                            </button>
                             <button data-nav="orders" type="button"
-                                class="rounded-2xl bg-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-700">Review
-                                active orders</button>
+                                class="group flex items-center justify-between rounded-2xl bg-white px-5 py-3.5 text-left text-sm font-semibold text-slate-700 ring-1 ring-slate-100 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md hover:ring-[#c9876c]/30">
+                                <span class="flex items-center gap-3">
+                                    <svg class="h-5 w-5 text-slate-400 group-hover:text-[#c9876c]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                                    Review active orders
+                                </span>
+                                <svg class="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-1 group-hover:text-[#c9876c]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                            </button>
                             <button data-nav="customers" type="button"
-                                class="rounded-2xl bg-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-700">Review
-                                customer accounts</button>
+                                class="group flex items-center justify-between rounded-2xl bg-white px-5 py-3.5 text-left text-sm font-semibold text-slate-700 ring-1 ring-slate-100 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md hover:ring-[#c9876c]/30">
+                                <span class="flex items-center gap-3">
+                                    <svg class="h-5 w-5 text-slate-400 group-hover:text-[#c9876c]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                                    Review customer accounts
+                                </span>
+                                <svg class="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-1 group-hover:text-[#c9876c]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                            </button>
                             <button data-nav="messages" type="button"
-                                class="rounded-2xl bg-[#FFF4EB] px-4 py-3 text-left text-sm font-semibold text-[#8F4723]">Open
-                                admin inbox</button>
+                                class="group flex items-center justify-between rounded-2xl bg-amber-50 px-5 py-3.5 text-left text-sm font-semibold text-amber-800 ring-1 ring-amber-100/50 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-amber-100 hover:shadow-md hover:ring-amber-200">
+                                <span class="flex items-center gap-3">
+                                    <svg class="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                                    Open admin inbox
+                                </span>
+                                <svg class="h-4 w-4 text-amber-600 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                            </button>
                         </div>
                     </article>
                 </div>
