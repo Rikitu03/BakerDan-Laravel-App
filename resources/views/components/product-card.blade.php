@@ -3,7 +3,14 @@
     'description',
     'price',
     'imagePath' => null,
+    'salesCount' => null,
 ])
+
+@php
+    $salesLabel = is_null($salesCount)
+        ? 'Fresh bake'
+        : 'Sold ' . number_format((int) $salesCount) . ' pcs';
+@endphp
 
 <article class="group overflow-hidden rounded-[2rem] border transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_70px_-36px_rgba(38,24,15,0.48)]" style="border-color: rgba(38, 24, 15, 0.1); background: rgba(255, 252, 247, 0.72);">
     <div class="relative overflow-hidden">
@@ -25,31 +32,6 @@
         </div>
 
         <div class="absolute inset-x-4 top-4 flex items-center justify-between">
-            <span class="rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em]" style="border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.72); color: #8f4723;">Fresh bake</span>
-            <div class="flex gap-2">
-                @auth
-                    <button type="button" class="grid h-10 w-10 place-items-center rounded-full border transition hover:-translate-y-0.5" style="border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.72);" aria-label="Add to cart" data-add-to-cart>
-                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <circle cx="9" cy="20" r="1.25"></circle>
-                            <circle cx="18" cy="20" r="1.25"></circle>
-                            <path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h8.5a2 2 0 0 0 1.9-1.4L22 7H7"></path>
-                        </svg>
-                    </button>
-                @else
-                    <button type="button" class="grid h-10 w-10 place-items-center rounded-full border transition hover:-translate-y-0.5 cursor-help" style="border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.72); opacity: 0.6;" aria-label="Sign in to add to cart" title="Sign in to add to cart" data-requires-auth="true">
-                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <circle cx="9" cy="20" r="1.25"></circle>
-                            <circle cx="18" cy="20" r="1.25"></circle>
-                            <path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h8.5a2 2 0 0 0 1.9-1.4L22 7H7"></path>
-                        </svg>
-                    </button>
-                @endauth
-                <button type="button" class="grid h-10 w-10 place-items-center rounded-full text-white transition hover:-translate-y-0.5" style="background: rgba(38, 24, 15, 0.78);" aria-label="Add to favorites">
-                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                        <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z"></path>
-                    </svg>
-                </button>
-            </div>
         </div>
     </div>
 

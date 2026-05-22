@@ -16,8 +16,10 @@
             v-if="!layoutProps.hideSidebar"
             :categories="categories"
             :active-category="activeCategory"
+            :price-filter="priceFilter"
             :open="sidebarOpen"
             @category-select="handleCategorySelect"
+            @filter-apply="handlePriceFilterApply"
             @close="sidebarOpen = false"
           />
 
@@ -29,6 +31,7 @@
               :user="user"
               :categories="categories"
               :active-category="activeCategory"
+              :price-filter="priceFilter"
               @update-cart-count="updateCartCount"
             />
             <div v-else class="flex min-h-full items-center justify-center p-8">
@@ -227,6 +230,10 @@ const categories = ref([
 ]);
 
 const activeCategory = ref('All');
+const priceFilter = ref({
+  min: '',
+  max: '',
+});
 const showUserMenu = ref(false);
 const sidebarOpen = ref(false);
 const isSigningOut = ref(false);
@@ -252,6 +259,24 @@ const handleCategorySelect = (categoryName) => {
   } else {
     push('/customer');
   }
+};
+
+const normalizePriceInput = (value) => {
+  if (value === '' || value === null || value === undefined) {
+    return '';
+  }
+
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric >= 0 ? String(numeric) : '';
+};
+
+const handlePriceFilterApply = ({ min = '', max = '' } = {}) => {
+  priceFilter.value = {
+    min: normalizePriceInput(min),
+    max: normalizePriceInput(max),
+  };
+
+  sidebarOpen.value = false;
 };
 
 const updateCartCount = (count) => {

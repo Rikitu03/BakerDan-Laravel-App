@@ -116,6 +116,47 @@
             border-color: rgba(201, 135, 108, 0.3);
         }
 
+        .dashboard-loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 80;
+            display: grid;
+            place-items: center;
+            background: rgba(35, 26, 20, 0.32);
+            backdrop-filter: blur(10px);
+        }
+
+        .dashboard-loading-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.5rem 1.75rem;
+            border-radius: 1.5rem;
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid rgba(201, 135, 108, 0.18);
+            box-shadow: 0 24px 60px -32px rgba(35, 26, 20, 0.4);
+        }
+
+        .dashboard-loading-spinner {
+            width: 2.75rem;
+            height: 2.75rem;
+            border-radius: 999px;
+            border: 3px solid rgba(201, 135, 108, 0.16);
+            border-top-color: var(--brand);
+            animation: dashboard-spin 900ms linear infinite;
+        }
+
+        @keyframes dashboard-spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .dashboard-is-loading {
+            overflow: hidden;
+        }
+
         .metric-card {
             position: relative;
             overflow: hidden;
@@ -800,6 +841,16 @@
 
     <div data-admin-dashboard data-default-section="{{ $defaultSection }}" data-open-modal="{{ $modalToOpen }}"
         class="page-shell min-h-screen lg:flex lg:h-screen lg:overflow-hidden">
+        <div data-dashboard-loading hidden class="dashboard-loading-overlay" aria-live="polite" aria-busy="true">
+            <div class="dashboard-loading-card">
+                <div class="dashboard-loading-spinner"></div>
+                <div class="text-center">
+                    <p class="font-display text-xl font-bold text-slate-900">Please wait</p>
+                    <p data-dashboard-loading-text class="mt-1 text-sm text-slate-500">Updating dashboard...</p>
+                </div>
+            </div>
+        </div>
+
         <aside data-sidebar
             class="sticky top-0 z-20 flex w-full flex-col gap-6 lg:h-screen lg:w-80 lg:shrink-0 lg:self-start border-b lg:border-b-0 lg:border-r border-white/5">
             <div class="flex items-center justify-between px-6 pt-6 lg:block lg:px-7">
@@ -879,27 +930,17 @@
 
         <main class="relative z-10 flex-1 px-4 py-4 sm:px-6 lg:h-screen lg:overflow-y-auto lg:px-8 lg:py-6">
             <header
-                class="hero-panel panel-lift mb-6 flex flex-col gap-5 rounded-[2rem] px-5 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-                <div>
+                class="hero-panel panel-lift mb-6 rounded-[2rem] px-5 py-5 sm:px-6">
+                <div class="max-w-3xl">
                     <p class="text-xs font-semibold uppercase tracking-[0.28em] text-white/65">Admin operations</p>
-                    <h1 class="font-display section-title mt-2 text-3xl font-bold text-white sm:text-4xl">Bakerdan
-                        Command Center</h1>
-                    <p class="mt-3 max-w-2xl text-sm leading-6 text-white/76">Track orders, customer activity, inbox
-                        requests, and bakery alerts from one warmer and more focused workspace.</p>
-                </div>
-                <div class="flex flex-wrap items-center gap-3">
-                    <div data-current-section-label
-                        class="rounded-full bg-white/18 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/18">
-                        Dashboard</div>
-                    <div
-                        class="rounded-full bg-white/12 px-4 py-2 text-sm font-medium text-white/86 ring-1 ring-white/16">
-                        Active products: {{ count($products) }}</div>
-                    <div
-                        class="rounded-full bg-emerald-400/18 px-4 py-2 text-sm font-medium text-emerald-50 ring-1 ring-emerald-200/18">
-                        Open orders: {{ count($orders) }}</div>
-                    <div
-                        class="rounded-full bg-amber-300/18 px-4 py-2 text-sm font-medium text-amber-50 ring-1 ring-amber-100/20">
-                        Unread inbox: {{ collect($messages)->where('unread', true)->count() }}</div>
+                    <div class="mt-3 flex flex-wrap items-center gap-3">
+                        <h1 class="font-display section-title text-3xl font-bold text-white sm:text-4xl">Bakerdan Command Center</h1>
+                        <span data-current-section-label
+                            class="rounded-full bg-white/16 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/18">
+                            Dashboard
+                        </span>
+                    </div>
+                    <p class="mt-4 max-w-2xl text-sm leading-6 text-white/76">Track orders, customer activity, inbox requests, and bakery alerts from one warmer and more focused workspace.</p>
                 </div>
             </header>
 
@@ -1123,24 +1164,45 @@
                     <article class="soft-panel panel-lift rounded-[2rem] p-6">
                         <div class="flex items-center justify-between gap-4">
                             <div>
-                                <p class="text-sm font-medium text-slate-500">Operations snapshot</p>
+                                <p class="text-sm font-medium text-slate-500">Operations</p>
                                 <h2 class="font-display mt-1 text-2xl font-bold">Bake flow overview</h2>
                             </div>
                             <span
                                 class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Live</span>
                         </div>
                         <div class="mt-6 grid gap-4 md:grid-cols-3">
-                            <div class="rounded-3xl bg-slate-50 p-4">
-                                <p class="text-sm text-slate-500">Inventory readiness</p>
-                                <p class="mt-2 font-display text-2xl font-bold">94%</p>
+                            <div class="flex flex-col justify-between rounded-3xl bg-white/80 p-5 ring-1 ring-slate-100 transition-all hover:-translate-y-1 hover:bg-white hover:shadow-lg hover:shadow-orange-900/5">
+                                <div class="flex items-center gap-3">
+                                    <div class="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#c9876c]/10 text-[#c9876c]">
+                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                        </svg>
+                                    </div>
+                                    <p class="text-sm font-semibold leading-tight text-slate-600">Inventory<br>readiness</p>
+                                </div>
+                                <p class="mt-4 font-display text-3xl font-bold text-slate-900">{{ count($products) > 0 ? round((collect($products)->where('is_active', true)->count() / count($products)) * 100) : 0 }}%</p>
                             </div>
-                            <div class="rounded-3xl bg-slate-50 p-4">
-                                <p class="text-sm text-slate-500">Orders moving</p>
-                                <p class="mt-2 font-display text-2xl font-bold">31</p>
+                            <div class="flex flex-col justify-between rounded-3xl bg-white/80 p-5 ring-1 ring-slate-100 transition-all hover:-translate-y-1 hover:bg-white hover:shadow-lg hover:shadow-orange-900/5">
+                                <div class="flex items-center gap-3">
+                                    <div class="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-amber-50 text-amber-600">
+                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                    </div>
+                                    <p class="text-sm font-semibold leading-tight text-slate-600">Orders<br>moving</p>
+                                </div>
+                                <p class="mt-4 font-display text-3xl font-bold text-slate-900">{{ collect($orders)->whereNotIn('status', ['delivered', 'cancelled'])->count() }}</p>
                             </div>
-                            <div class="rounded-3xl bg-slate-50 p-4">
-                                <p class="text-sm text-slate-500">Customers active</p>
-                                <p class="mt-2 font-display text-2xl font-bold">218</p>
+                            <div class="flex flex-col justify-between rounded-3xl bg-white/80 p-5 ring-1 ring-slate-100 transition-all hover:-translate-y-1 hover:bg-white hover:shadow-lg hover:shadow-orange-900/5">
+                                <div class="flex items-center gap-3">
+                                    <div class="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-600">
+                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                    </div>
+                                    <p class="text-sm font-semibold leading-tight text-slate-600">Customers<br>active</p>
+                                </div>
+                                <p class="mt-4 font-display text-3xl font-bold text-slate-900">{{ collect($customers)->where('status', 'active')->count() }}</p>
                             </div>
                         </div>
                     </article>
@@ -1150,17 +1212,37 @@
                         <h2 class="font-display mt-1 text-2xl font-bold">Admin shortcuts</h2>
                         <div class="mt-5 grid gap-3">
                             <button data-nav="inventory" type="button"
-                                class="rounded-2xl bg-slate-900 px-4 py-3 text-left text-sm font-semibold text-white">Manage
-                                product catalog</button>
+                                class="group flex items-center justify-between rounded-2xl bg-gradient-to-r from-[var(--brand-deep)] to-[var(--brand)] px-5 py-3.5 text-left text-sm font-semibold text-white shadow-md shadow-orange-900/10 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-900/20">
+                                <span class="flex items-center gap-3">
+                                    <svg class="h-5 w-5 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                                    Manage product catalog
+                                </span>
+                                <svg class="h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                            </button>
                             <button data-nav="orders" type="button"
-                                class="rounded-2xl bg-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-700">Review
-                                active orders</button>
+                                class="group flex items-center justify-between rounded-2xl bg-white px-5 py-3.5 text-left text-sm font-semibold text-slate-700 ring-1 ring-slate-100 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md hover:ring-[#c9876c]/30">
+                                <span class="flex items-center gap-3">
+                                    <svg class="h-5 w-5 text-slate-400 group-hover:text-[#c9876c]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                                    Review active orders
+                                </span>
+                                <svg class="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-1 group-hover:text-[#c9876c]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                            </button>
                             <button data-nav="customers" type="button"
-                                class="rounded-2xl bg-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-700">Review
-                                customer accounts</button>
+                                class="group flex items-center justify-between rounded-2xl bg-white px-5 py-3.5 text-left text-sm font-semibold text-slate-700 ring-1 ring-slate-100 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md hover:ring-[#c9876c]/30">
+                                <span class="flex items-center gap-3">
+                                    <svg class="h-5 w-5 text-slate-400 group-hover:text-[#c9876c]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                                    Review customer accounts
+                                </span>
+                                <svg class="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-1 group-hover:text-[#c9876c]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                            </button>
                             <button data-nav="messages" type="button"
-                                class="rounded-2xl bg-[#FFF4EB] px-4 py-3 text-left text-sm font-semibold text-[#8F4723]">Open
-                                admin inbox</button>
+                                class="group flex items-center justify-between rounded-2xl bg-amber-50 px-5 py-3.5 text-left text-sm font-semibold text-amber-800 ring-1 ring-amber-100/50 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-amber-100 hover:shadow-md hover:ring-amber-200">
+                                <span class="flex items-center gap-3">
+                                    <svg class="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                                    Open admin inbox
+                                </span>
+                                <svg class="h-4 w-4 text-amber-600 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                            </button>
                         </div>
                     </article>
                 </div>
@@ -1701,112 +1783,128 @@
                     </div>
                 </article>
 
-                <div class="grid gap-4 xl:grid-cols-2">
-                    @foreach ($orders as $order)
-                        <article data-order-card data-page-item="orders" data-order-id="{{ $order['id'] }}"
-                            data-order-status="{{ $order['status'] }}" data-payment-status="{{ $order['payment_status'] }}"
-                            data-next-status="{{ $order['next_status'] ?? '' }}"
-                            data-order-customer="{{ $order['customer'] }}"
-                            data-order-custom="{{ !empty($order['contains_custom']) ? '1' : '0' }}"
-                            class="soft-panel panel-lift rounded-[1.75rem] p-5">
-                            <div class="flex flex-wrap items-start justify-between gap-4">
-                                <div>
-                                    <div class="flex flex-wrap items-center gap-3">
-                                        <h3 class="font-display text-2xl font-bold text-slate-900">Order #{{ $order['id'] }}
-                                        </h3>
-                                        <span data-payment-status
-                                            class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{{ $order['payment_status_label'] }}</span>
-                                        @if (!empty($order['contains_custom']))
-                                            <span
-                                                class="rounded-full bg-[#FFF4EB] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#C9876C]">Custom
-                                                order</span>
-                                        @endif
-                                    </div>
-                                    <p class="mt-1 text-sm text-slate-500">Customer: {{ $order['customer'] }}</p>
-                                    <p class="mt-1 text-xs text-slate-500">
-                                        @if (!empty($order['placed_at']))
-                                            Placed {{ $order['placed_at'] }}
-                                        @endif
-                                        @if (!empty($order['payment_method_label']))
-                                            | Payment {{ $order['payment_method_label'] }}
-                                        @endif
-                                        @if (!empty($order['payment_reference']))
-                                            | Ref {{ $order['payment_reference'] }}
-                                        @endif
-                                    </p>
-                                </div>
-                                <div data-order-status-label
-                                    class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
-                                    {{ $order['status_label'] }}
-                                </div>
-                            </div>
-
-                            <div class="mt-4 space-y-3 text-sm text-slate-600" data-order-body>
-                                @foreach ($order['item_lines'] as $line)
-                                    <div class="rounded-3xl bg-slate-50 p-4">
-                                        <p class="font-semibold text-slate-900">{{ $line['summary'] }}</p>
-                                        @if (!empty($line['detail']))
-                                            <p class="mt-1 text-xs text-slate-500">{{ $line['detail'] }}</p>
-                                        @endif
-                                    </div>
-                                @endforeach
-
-                                @if (!empty($order['contains_custom']))
-                                    <div class="rounded-3xl border border-[#F0DCCC] bg-[#FFF8F1] p-4">
-                                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#C9876C]">
-                                            Customization Brief</p>
-                                        @foreach ($order['custom_items'] as $customItem)
-                                            <div class="mt-3 flex gap-4">
-                                                <img src="{{ $customItem['image_url'] }}" alt="{{ $customItem['name'] }}"
-                                                    class="h-20 w-20 rounded-[1.25rem] object-cover ring-1 ring-[#EACFBC]">
-                                                <div class="min-w-0 flex-1">
-                                                    <p class="font-semibold text-slate-900">{{ $customItem['name'] }}</p>
-                                                    <p class="mt-1 text-xs text-slate-500">
-                                                        Qty {{ $customItem['quantity'] }}
-                                                        @if (!empty($customItem['size']))
-                                                            | Size {{ $customItem['size'] }}
-                                                        @endif
-                                                        @if (!empty($customItem['flavor']))
-                                                            | Flavor {{ $customItem['flavor'] }}
-                                                        @endif
-                                                    </p>
-                                                    @if (!empty($customItem['design_description']))
-                                                        <p class="mt-2 text-sm leading-6 text-slate-700">
-                                                            {{ $customItem['design_description'] }}
-                                                        </p>
-                                                    @endif
-                                                    @if (!empty($customItem['dedication_message']))
-                                                        <p class="mt-2 text-xs font-medium text-[#8E5632]">Dedication:
-                                                            {{ $customItem['dedication_message'] }}
-                                                        </p>
+                <div class="overflow-x-auto rounded-[1.75rem] border border-slate-200 bg-white shadow-sm">
+                    <table class="min-w-[1300px] w-full text-left text-sm">
+                        <thead class="border-b border-slate-200 bg-slate-50 text-slate-500">
+                            <tr>
+                                <th class="px-4 py-4 font-medium">Order</th>
+                                <th class="px-4 py-4 font-medium">Customer details</th>
+                                <th class="px-4 py-4 font-medium">Order items</th>
+                                <th class="px-4 py-4 font-medium">Status</th>
+                                <th class="px-4 py-4 font-medium">Payment</th>
+                                <th class="px-4 py-4 font-medium">Amount</th>
+                                <th class="px-4 py-4 font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @foreach ($orders as $order)
+                                <tr data-order-card data-page-item="orders" data-order-id="{{ $order['id'] }}"
+                                    data-order-status="{{ $order['status'] }}" data-payment-status="{{ $order['payment_status'] }}"
+                                    data-next-status="{{ $order['next_status'] ?? '' }}"
+                                    data-order-customer="{{ $order['customer'] }}"
+                                    data-order-custom="{{ !empty($order['contains_custom']) ? '1' : '0' }}"
+                                    class="align-top text-slate-700 hover:bg-slate-50/70">
+                                    <td class="px-4 py-5">
+                                        <div class="min-w-0">
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <h3 class="font-display text-xl font-bold text-slate-900">Order #{{ $order['id'] }}</h3>
+                                                @if (!empty($order['contains_custom']))
+                                                    <span class="rounded-full bg-[#FFF4EB] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#C9876C]">Custom</span>
+                                                @endif
+                                            </div>
+                                            <p class="mt-2 text-sm text-slate-600">{{ $order['placed_at'] ?? 'No timestamp available' }}</p>
+                                            <p class="mt-1 text-xs text-slate-500">Payment method: {{ $order['payment_method_label'] ?? 'N/A' }}</p>
+                                            @if (!empty($order['payment_reference']))
+                                                <p class="mt-1 text-xs text-slate-500">Ref: {{ $order['payment_reference'] }}</p>
+                                            @endif
+                                            @if (!empty($order['customer_details']['source']))
+                                                <p class="mt-2 inline-flex rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">{{ $order['customer_details']['source'] }}</p>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-5">
+                                        <div class="grid gap-1.5 text-xs leading-5 text-slate-600">
+                                            <p><span class="font-semibold text-slate-900">Name:</span> {{ $order['customer_details']['name'] ?? $order['customer'] }}</p>
+                                            <p><span class="font-semibold text-slate-900">Linked account:</span> {{ $order['customer_details']['linked_account'] ?? 'N/A' }}</p>
+                                            <p><span class="font-semibold text-slate-900">Username:</span> {{ $order['customer_details']['username'] ?? 'N/A' }}</p>
+                                            <p><span class="font-semibold text-slate-900">Age:</span> {{ $order['customer_details']['age'] ?? 'N/A' }}</p>
+                                            <p><span class="font-semibold text-slate-900">Email:</span> {{ $order['customer_details']['email'] ?? 'N/A' }}</p>
+                                            <p><span class="font-semibold text-slate-900">Contact:</span> {{ $order['customer_details']['contact'] ?? 'N/A' }}</p>
+                                            <p><span class="font-semibold text-slate-900">Address:</span> {{ $order['customer_details']['address'] ?? 'N/A' }}</p>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-5">
+                                        <div class="space-y-3 text-sm text-slate-600">
+                                            @foreach ($order['item_lines'] as $line)
+                                                <div class="rounded-2xl bg-slate-50 p-4">
+                                                    <p class="font-semibold text-slate-900">{{ $line['summary'] }}</p>
+                                                    @if (!empty($line['detail']))
+                                                        <p class="mt-1 text-xs text-slate-500">{{ $line['detail'] }}</p>
                                                     @endif
                                                 </div>
-                                            </div>
-                                        @endforeach
-                                        <p class="mt-3 text-xs text-[#8E5632]">{{ $order['workflow_note'] }}</p>
-                                    </div>
-                                @endif
+                                            @endforeach
 
-                                <div class="rounded-3xl bg-white p-4 ring-1 ring-slate-100">
-                                    <div class="flex flex-wrap items-center justify-between gap-2">
-                                        <p class="font-semibold text-slate-900">{{ $order['amount'] }}</p>
-                                        <p class="text-xs text-slate-500">Payment {{ $order['payment_method_label'] }}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="mt-5 flex flex-wrap gap-2">
-                                <button data-order-action="advance" data-next-status="{{ $order['next_status'] ?? '' }}" @if (empty($order['next_status'])) hidden @endif type="button"
-                                    class="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white">
-                                    {{ $order['next_status_label'] ?? 'Advance Workflow' }}
-                                </button>
-                                <button data-order-action="mark-paid" @if ($order['payment_status'] === 'paid') hidden @endif
-                                    type="button"
-                                    class="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">Mark
-                                    as Paid</button>
-                            </div>
-                        </article>
-                    @endforeach
+                                            @if (!empty($order['contains_custom']))
+                                                <div class="rounded-2xl border border-[#F0DCCC] bg-[#FFF8F1] p-4">
+                                                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#C9876C]">Customization Brief</p>
+                                                    @foreach ($order['custom_items'] as $customItem)
+                                                        <div class="mt-3 flex gap-4">
+                                                            <img src="{{ $customItem['image_url'] }}" alt="{{ $customItem['name'] }}" class="h-16 w-16 rounded-[1rem] object-cover ring-1 ring-[#EACFBC]">
+                                                            <div class="min-w-0 flex-1">
+                                                                <p class="font-semibold text-slate-900">{{ $customItem['name'] }}</p>
+                                                                <p class="mt-1 text-xs text-slate-500">
+                                                                    Qty {{ $customItem['quantity'] }}
+                                                                    @if (!empty($customItem['size']))
+                                                                        | Size {{ $customItem['size'] }}
+                                                                    @endif
+                                                                    @if (!empty($customItem['flavor']))
+                                                                        | Flavor {{ $customItem['flavor'] }}
+                                                                    @endif
+                                                                </p>
+                                                                @if (!empty($customItem['design_description']))
+                                                                    <p class="mt-2 text-sm leading-6 text-slate-700">{{ $customItem['design_description'] }}</p>
+                                                                @endif
+                                                                @if (!empty($customItem['dedication_message']))
+                                                                    <p class="mt-2 text-xs font-medium text-[#8E5632]">Dedication: {{ $customItem['dedication_message'] }}</p>
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                    @endforeach
+                                                    <p class="mt-3 text-xs text-[#8E5632]">{{ $order['workflow_note'] }}</p>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-5">
+                                        <div data-order-status-label class="inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">{{ $order['status_label'] }}</div>
+                                    </td>
+                                    <td class="px-4 py-5">
+                                        <div class="space-y-2">
+                                            <span data-payment-status class="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{{ $order['payment_status_label'] }}</span>
+                                            <p class="text-xs text-slate-500">{{ $order['payment_method_label'] ?? 'Payment pending' }}</p>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-5">
+                                        <div class="space-y-1">
+                                            <p class="font-semibold text-slate-900">{{ $order['amount'] }}</p>
+                                            @if (!empty($order['discount_amount_label']))
+                                                <p class="text-xs text-emerald-700">{{ $order['discount_amount_label'] }}</p>
+                                            @endif
+                                            @if (!empty($order['promo_code']))
+                                                <p class="text-xs text-slate-500">Promo: {{ $order['promo_code'] }}</p>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-5">
+                                        <div class="flex flex-wrap gap-2">
+                                            <button data-order-action="advance" data-next-status="{{ $order['next_status'] ?? '' }}" @if (empty($order['next_status'])) hidden @endif type="button" class="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white">{{ $order['next_status_label'] ?? 'Advance Workflow' }}</button>
+                                            <button data-order-action="mark-paid" @if ($order['payment_status'] === 'paid') hidden @endif type="button" class="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">Mark as Paid</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
 
                 <div class="flex flex-wrap items-center justify-between gap-3" data-pagination-controls="orders">
@@ -2066,10 +2164,10 @@
                     </aside>
 
                     <!-- Main: Chat Interface -->
-                    <section data-admin-message-panel class="flex flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+                    <section data-admin-message-panel class="flex flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,#fffdfa_0%,#fff8f2_100%)] shadow-sm">
                         <!-- Chat Header -->
-                        <div class="shrink-0 border-b border-slate-100 bg-white px-6 py-4">
-                            <div class="flex items-center justify-between">
+                        <div class="shrink-0 border-b border-slate-100 bg-[linear-gradient(120deg,#ffffff_0%,#fff5ec_100%)] px-6 py-4">
+                            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                 <div class="flex items-center gap-4">
                                     <div data-admin-message-avatar class="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--brand)] text-sm font-bold text-white">
                                         --
@@ -2079,32 +2177,49 @@
                                         <p data-admin-message-subtitle class="text-xs text-slate-500">Pick a thread from the list to start chatting.</p>
                                     </div>
                                 </div>
-                                <div class="hidden sm:block">
+                                <div class="flex flex-wrap gap-2">
                                     <span data-admin-message-label class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Inbound</span>
+                                    <span class="rounded-full bg-[rgba(201,135,108,0.12)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--brand-deep)]">Live support</span>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Chat Feed -->
-                        <div data-admin-message-feed class="flex-1 overflow-y-auto bg-slate-50/50 p-6">
+                        <div data-admin-message-feed class="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,#fff9f4_0%,#f7efe7_62%,#f3e7db_100%)] p-6">
                             <!-- Populated by JS -->
                         </div>
 
                         <!-- Chat Input -->
-                        <div class="shrink-0 border-t border-slate-100 bg-white p-4">
-                            <div class="flex items-end gap-3">
-                                <div class="relative flex-1">
-                                    <textarea data-admin-message-draft rows="1" 
-                                        placeholder="Type your message here..."
-                                        class="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 py-3 px-4 pr-12 text-sm text-slate-700 outline-none transition focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
-                                        style="min-height: 46px; max-height: 120px;"></textarea>
+                        <div class="shrink-0 border-t border-slate-100 bg-[linear-gradient(180deg,#fff8f2_0%,#ffffff_100%)] p-4">
+                            <div class="rounded-[1.75rem] border border-slate-200 bg-white/95 p-3 shadow-[0_18px_42px_-36px_rgba(57,36,22,0.55)]">
+                                <div class="flex items-start gap-3">
+                                    <div class="hidden h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[rgba(201,135,108,0.12)] text-[var(--brand-deep)] md:flex">
+                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 8h10M7 12h6m-7 8 3.6-3H19a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v9a2 2 0 002 2h1v3z" />
+                                        </svg>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="relative">
+                                            <textarea data-admin-message-draft rows="1" 
+                                                placeholder="Reply to this customer..."
+                                                autocomplete="off"
+                                                autocorrect="off"
+                                                spellcheck="false"
+                                                class="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 py-4 px-4 text-sm text-slate-700 outline-none transition focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
+                                                style="min-height: 56px; max-height: 140px;"></textarea>
+                                        </div>
+                                        <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                            <p class="text-xs font-medium text-slate-500">Press Enter to send. Use Shift + Enter for a new line.</p>
+                                            <button type="button" data-admin-message-send
+                                                class="inline-flex h-[46px] items-center justify-center gap-2 self-start rounded-full bg-[var(--brand)] px-5 text-sm font-semibold text-white shadow-md transition hover:bg-[var(--brand-deep)] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none sm:self-auto">
+                                                <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14M12 5l7 7-7 7" />
+                                                </svg>
+                                                Send reply
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <button type="button" data-admin-message-send
-                                    class="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-2xl bg-[var(--brand)] text-white shadow-md transition hover:bg-[var(--brand-deep)] active:scale-90 disabled:opacity-50 disabled:pointer-events-none">
-                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14M12 5l7 7-7 7" />
-                                    </svg>
-                                </button>
                             </div>
                         </div>
                     </section>

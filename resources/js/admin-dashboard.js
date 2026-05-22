@@ -41,6 +41,8 @@ if (dashboard) {
     const typeBars = dashboard.querySelector('[data-type-bars]');
     const exportTarget = dashboard.querySelector('[data-export-target]');
     const exportFeedback = dashboard.querySelector('[data-export-feedback]');
+    const loadingOverlay = dashboard.querySelector('[data-dashboard-loading]');
+    const loadingText = dashboard.querySelector('[data-dashboard-loading-text]');
     const currentSectionLabel = dashboard.querySelector('[data-current-section-label]');
     const personTabs = Array.from(dashboard.querySelectorAll('[data-person-tab]'));
     const personPanels = Array.from(dashboard.querySelectorAll('[data-person-panel]'));
@@ -101,6 +103,7 @@ if (dashboard) {
     let adminConversationPollTimer = null;
     let adminConversationsRequest = null;
     let adminMessagesRequest = null;
+    let loadingCount = 0;
     const adminUserId = Number(reportData?.user?.user_id || reportData?.user?.id || 0);
     const ADMIN_ACTIVE_MESSAGE_POLL_MS = 1000;
     const ADMIN_CONVERSATION_POLL_MS = 1500;
@@ -976,6 +979,317 @@ if (dashboard) {
 
     const getDatasetLabel = (target) => exportTarget?.selectedOptions?.[0]?.textContent?.trim() || target;
 
+    const setLoadingState = (isLoading, text = 'Updating dashboard...') => {
+        if (!loadingOverlay) {
+            return;
+        }
+
+        if (loadingText) {
+            loadingText.textContent = text;
+        }
+
+        loadingOverlay.hidden = !isLoading;
+        dashboard.classList.toggle('dashboard-is-loading', isLoading);
+        dashboard.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+    };
+
+    const beginLoading = (text) => {
+        loadingCount += 1;
+        setLoadingState(true, text);
+    };
+
+    const endLoading = () => {
+        loadingCount = Math.max(0, loadingCount - 1);
+        if (loadingCount === 0) {
+            setLoadingState(false);
+        }
+    };
+
+    const getInventoryRowSelector = (productId) => `[data-product-row][data-product-id="${productId}"]`;
+    const getPromoRowSelector = (promoId) => `[data-promo-row][data-promo-id="${promoId}"]`;
+    const getOrderRowSelector = (orderId) => `[data-order-card][data-order-id="${orderId}"]`;
+    const getPersonRowSelector = (personId) => `[data-person-card][data-person-id="${personId}"]`;
+
+    const replaceOrInsertRow = (selector, rowHtml, containerSelector) => {
+        const row = dashboard.querySelector(selector);
+        if (row) {
+            row.outerHTML = rowHtml;
+            return;
+        }
+
+        const container = dashboard.querySelector(containerSelector);
+        if (container) {
+            container.insertAdjacentHTML('afterbegin', rowHtml);
+        }
+    };
+
+    const renderInventoryRow = (product) => {
+        const imageHtml = product.image_url
+            ? `<img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.name)}" class="h-14 w-14 rounded-2xl object-cover ring-1 ring-slate-200">`
+            : '<div class="grid h-14 w-14 place-items-center rounded-2xl bg-slate-100 text-xs font-semibold text-slate-500">IMG</div>';
+
+        return `
+            <tr data-product-row data-page-item="inventory" data-product-id="${escapeHtml(product.id)}"
+                data-product-name="${escapeHtml(product.name)}"
+                data-product-description="${escapeHtml(product.description || '')}"
+                data-product-price="${escapeHtml(product.price)}"
+                data-product-category="${escapeHtml(product.category)}"
+                data-product-image-url="${escapeHtml(product.image_url || '')}"
+                data-product-is-active="${product.is_active ? '1' : '0'}"
+                class="align-top">
+                <td class="px-5 py-4 font-semibold text-slate-900">${escapeHtml(product.name)}</td>
+                <td class="px-5 py-4 text-slate-600">${escapeHtml(product.description || '')}</td>
+                <td class="px-5 py-4 font-semibold text-slate-900">${escapeHtml(product.formatted_price || product.price)}</td>
+                <td class="px-5 py-4"><span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">${escapeHtml(product.category)}</span></td>
+                <td class="px-5 py-4">${imageHtml}</td>
+                <td class="px-5 py-4">
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" data-edit-product class="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white">Edit</button>
+                        <button type="button" data-remove-product class="rounded-full bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">Remove</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    };
+
+    const renderPromoRow = (promo) => {
+        const statusTone = promo.is_active
+            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+            : 'bg-rose-50 text-rose-700 border border-rose-100';
+        const applicableProducts = JSON.stringify(promo.applicable_products || []);
+        const productCount = Array.isArray(promo.applicable_products) ? promo.applicable_products.length : 0;
+        const productLabel = productCount > 0
+            ? `<span class="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700 text-[10px]">${productCount} specific</span>`
+            : '<span class="rounded bg-emerald-50 px-1.5 py-0.5 font-medium text-emerald-700 text-[10px]">All Catalog</span>';
+
+        return `
+            <tr data-promo-row data-page-item="promos" data-promo-id="${escapeHtml(promo.id)}"
+                data-promo-code="${escapeHtml(promo.code)}"
+                data-promo-description="${escapeHtml(promo.description || '')}"
+                data-promo-discount-type="${escapeHtml(promo.discount_type)}"
+                data-promo-discount-value="${escapeHtml(promo.discount_value)}"
+                data-promo-min-purchase="${escapeHtml(promo.min_purchase || '')}"
+                data-promo-max-discount="${escapeHtml(promo.max_discount || '')}"
+                data-promo-usage-limit="${escapeHtml(promo.usage_limit || '')}"
+                data-promo-limit-per-user="${escapeHtml(promo.limit_per_user || '')}"
+                data-promo-starts-at="${escapeHtml(promo.starts_at || '')}"
+                data-promo-expires-at="${escapeHtml(promo.expires_at || '')}"
+                data-promo-applicable-products="${escapeHtml(applicableProducts)}"
+                data-promo-is-active="${promo.is_active ? '1' : '0'}" class="align-top">
+                <td class="px-5 py-4 font-semibold text-slate-900">
+                    <div class="font-bold text-slate-900 uppercase tracking-wide bg-orange-50 text-orange-850 rounded-lg px-2.5 py-1 inline-block border border-orange-100 mb-1">${escapeHtml(promo.code)}</div>
+                    <div class="text-xs text-slate-500 max-w-[200px] line-clamp-2 mt-1">${escapeHtml(promo.description || 'No description.')}</div>
+                </td>
+                <td class="px-5 py-4">
+                    <span class="font-semibold text-slate-900">${escapeHtml(promo.formatted_discount)}</span>
+                    <div class="text-xs text-slate-500 capitalize">${escapeHtml(promo.discount_type)} discount</div>
+                </td>
+                <td class="px-5 py-4 space-y-1">
+                    <div class="text-xs"><span class="text-slate-500">Min Purchase:</span> <span class="font-semibold">${escapeHtml(promo.formatted_min_purchase)}</span></div>
+                    <div class="text-xs"><span class="text-slate-500">Max Discount:</span> <span class="font-semibold">${escapeHtml(promo.formatted_max_discount)}</span></div>
+                    <div class="text-xs"><span class="text-slate-500">Products:</span> ${productLabel}</div>
+                </td>
+                <td class="px-5 py-4 space-y-1">
+                    <div class="text-xs"><span class="text-slate-500">Starts:</span> <span class="font-semibold text-slate-700">${escapeHtml(promo.formatted_starts_at)}</span></div>
+                    <div class="text-xs"><span class="text-slate-500">Expires:</span> <span class="font-semibold text-slate-700">${escapeHtml(promo.formatted_expires_at)}</span></div>
+                </td>
+                <td class="px-5 py-4">
+                    <div class="font-semibold text-slate-900">${escapeHtml(promo.usage_count)} used</div>
+                    ${promo.usage_limit ? `<div class="text-[11px] text-slate-400">Limit: ${escapeHtml(promo.usage_limit)} total</div>` : ''}
+                </td>
+                <td class="px-5 py-4">
+                    <span class="rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wider ${statusTone}">${promo.is_active ? 'Active' : 'Inactive'}</span>
+                </td>
+                <td class="px-5 py-4">
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" data-edit-promo class="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white">Edit</button>
+                        <button type="button" data-remove-promo class="rounded-full bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">Remove</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    };
+
+    const renderOrderRow = (order) => {
+        const itemLines = (order.item_lines || []).map((line) => `
+            <div class="rounded-2xl bg-slate-50 p-4">
+                <p class="font-semibold text-slate-900">${escapeHtml(line.summary)}</p>
+                ${line.detail ? `<p class="mt-1 text-xs text-slate-500">${escapeHtml(line.detail)}</p>` : ''}
+            </div>
+        `).join('');
+
+        const customItems = order.contains_custom && Array.isArray(order.custom_items)
+            ? `
+                <div class="rounded-2xl border border-[#F0DCCC] bg-[#FFF8F1] p-4">
+                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#C9876C]">Customization Brief</p>
+                    ${order.custom_items.map((customItem) => `
+                        <div class="mt-3 flex gap-4">
+                            <img src="${escapeHtml(customItem.image_url)}" alt="${escapeHtml(customItem.name)}" class="h-16 w-16 rounded-[1rem] object-cover ring-1 ring-[#EACFBC]">
+                            <div class="min-w-0 flex-1">
+                                <p class="font-semibold text-slate-900">${escapeHtml(customItem.name)}</p>
+                                <p class="mt-1 text-xs text-slate-500">Qty ${escapeHtml(customItem.quantity)}${customItem.size ? ` | Size ${escapeHtml(customItem.size)}` : ''}${customItem.flavor ? ` | Flavor ${escapeHtml(customItem.flavor)}` : ''}</p>
+                                ${customItem.design_description ? `<p class="mt-2 text-sm leading-6 text-slate-700">${escapeHtml(customItem.design_description)}</p>` : ''}
+                                ${customItem.dedication_message ? `<p class="mt-2 text-xs font-medium text-[#8E5632]">Dedication: ${escapeHtml(customItem.dedication_message)}</p>` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                    <p class="mt-3 text-xs text-[#8E5632]">${escapeHtml(order.workflow_note || '')}</p>
+                </div>
+            `
+            : '';
+
+        return `
+            <tr data-order-card data-page-item="orders" data-order-id="${escapeHtml(order.id)}"
+                data-order-status="${escapeHtml(order.status)}" data-payment-status="${escapeHtml(order.payment_status)}"
+                data-next-status="${escapeHtml(order.next_status || '')}"
+                data-order-customer="${escapeHtml(order.customer)}"
+                data-order-custom="${order.contains_custom ? '1' : '0'}"
+                class="align-top text-slate-700 hover:bg-slate-50/70">
+                <td class="px-4 py-5">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="font-display text-xl font-bold text-slate-900">Order #${escapeHtml(order.id)}</h3>
+                            ${order.contains_custom ? '<span class="rounded-full bg-[#FFF4EB] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#C9876C]">Custom</span>' : ''}
+                        </div>
+                        <p class="mt-2 text-sm text-slate-600">${escapeHtml(order.placed_at || 'No timestamp available')}</p>
+                        <p class="mt-1 text-xs text-slate-500">Payment method: ${escapeHtml(order.payment_method_label || 'N/A')}</p>
+                        ${order.payment_reference ? `<p class="mt-1 text-xs text-slate-500">Ref: ${escapeHtml(order.payment_reference)}</p>` : ''}
+                        ${order.customer_details?.source ? `<p class="mt-2 inline-flex rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">${escapeHtml(order.customer_details.source)}</p>` : ''}
+                    </div>
+                </td>
+                <td class="px-4 py-5">
+                    <div class="grid gap-1.5 text-xs leading-5 text-slate-600">
+                        <p><span class="font-semibold text-slate-900">Name:</span> ${escapeHtml(order.customer_details?.name || order.customer)}</p>
+                        <p><span class="font-semibold text-slate-900">Linked account:</span> ${escapeHtml(order.customer_details?.linked_account || 'N/A')}</p>
+                        <p><span class="font-semibold text-slate-900">Username:</span> ${escapeHtml(order.customer_details?.username || 'N/A')}</p>
+                        <p><span class="font-semibold text-slate-900">Age:</span> ${escapeHtml(order.customer_details?.age || 'N/A')}</p>
+                        <p><span class="font-semibold text-slate-900">Email:</span> ${escapeHtml(order.customer_details?.email || 'N/A')}</p>
+                        <p><span class="font-semibold text-slate-900">Contact:</span> ${escapeHtml(order.customer_details?.contact || 'N/A')}</p>
+                        <p><span class="font-semibold text-slate-900">Address:</span> ${escapeHtml(order.customer_details?.address || 'N/A')}</p>
+                    </div>
+                </td>
+                <td class="px-4 py-5">
+                    <div class="space-y-3 text-sm text-slate-600">
+                        ${itemLines}
+                        ${customItems}
+                    </div>
+                </td>
+                <td class="px-4 py-5">
+                    <div data-order-status-label class="inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">${escapeHtml(order.status_label)}</div>
+                </td>
+                <td class="px-4 py-5">
+                    <div class="space-y-2">
+                        <span data-payment-status class="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">${escapeHtml(order.payment_status_label)}</span>
+                        <p class="text-xs text-slate-500">${escapeHtml(order.payment_method_label || 'Payment pending')}</p>
+                    </div>
+                </td>
+                <td class="px-4 py-5">
+                    <div class="space-y-1">
+                        <p class="font-semibold text-slate-900">${escapeHtml(order.amount)}</p>
+                        ${order.discount_amount_label ? `<p class="text-xs text-emerald-700">${escapeHtml(order.discount_amount_label)}</p>` : ''}
+                        ${order.promo_code ? `<p class="text-xs text-slate-500">Promo: ${escapeHtml(order.promo_code)}</p>` : ''}
+                    </div>
+                </td>
+                <td class="px-4 py-5">
+                    <div class="flex flex-wrap gap-2">
+                        <button data-order-action="advance" data-next-status="${escapeHtml(order.next_status || '')}" ${order.next_status ? '' : 'hidden'} type="button" class="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white">${escapeHtml(order.next_status_label || 'Advance Workflow')}</button>
+                        <button data-order-action="mark-paid" ${order.payment_status === 'paid' ? 'hidden' : ''} type="button" class="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">Mark as Paid</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    };
+
+    const getPersonToggleClasses = (status, variant = 'list') => {
+        if (variant === 'panel') {
+            return status === 'active'
+                ? 'w-full text-center rounded-full bg-amber-50 text-amber-700 hover:bg-amber-100 px-4 py-2.5 text-xs font-semibold active:scale-95 transition-all'
+                : 'w-full text-center rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2.5 text-xs font-semibold active:scale-95 transition-all';
+        }
+
+        return status === 'active'
+            ? 'rounded-full bg-amber-50 text-amber-700 px-3 py-2 text-xs font-semibold'
+            : 'rounded-full bg-emerald-50 text-emerald-700 px-3 py-2 text-xs font-semibold';
+    };
+
+    const applyPersonStatus = (personId, status) => {
+        const label = status === 'active' ? 'Suspend' : 'Unsuspend';
+        const panelLabel = status === 'active' ? 'Suspend Account' : 'Unsuspend Account';
+        const statusText = status === 'active' ? 'Active' : 'Inactive';
+
+        dashboard.querySelectorAll(`[data-person-card][data-person-id="${personId}"]`).forEach((row) => {
+            row.dataset.personStatus = status;
+            const statusNode = row.querySelector('[data-person-status]');
+            if (statusNode) {
+                statusNode.textContent = statusText;
+            }
+
+            row.querySelectorAll('[data-toggle-person]').forEach((button) => {
+                button.textContent = label;
+                button.dataset.personStatus = status;
+                button.className = getPersonToggleClasses(status, 'list');
+            });
+        });
+
+        customerPanel?.querySelectorAll(`[data-toggle-person][data-person-id="${personId}"]`).forEach((button) => {
+            button.textContent = panelLabel;
+            button.dataset.personStatus = status;
+            button.className = getPersonToggleClasses(status, 'panel');
+        });
+
+        customerPanel?.querySelectorAll('[data-person-status]').forEach((statusNode) => {
+            statusNode.textContent = statusText;
+        });
+    };
+
+    const applyMutationResult = (payload) => {
+        const data = payload?.data || {};
+
+        if (data.product) {
+            if (data.product.is_active) {
+                replaceOrInsertRow(getInventoryRowSelector(data.product.id), renderInventoryRow(data.product), '[data-section="inventory"] tbody');
+            } else {
+                dashboard.querySelector(getInventoryRowSelector(data.product.id))?.remove();
+            }
+            renderPagination('inventory');
+            return;
+        }
+
+        if (data.product_id) {
+            dashboard.querySelector(getInventoryRowSelector(data.product_id))?.remove();
+            renderPagination('inventory');
+            return;
+        }
+
+        if (data.promo) {
+            replaceOrInsertRow(getPromoRowSelector(data.promo.id), renderPromoRow(data.promo), '[data-section="promos"] tbody');
+            renderPagination('promos');
+            return;
+        }
+
+        if (data.promo_id) {
+            dashboard.querySelector(getPromoRowSelector(data.promo_id))?.remove();
+            renderPagination('promos');
+            return;
+        }
+
+        if (data.order) {
+            replaceOrInsertRow(getOrderRowSelector(data.order.id), renderOrderRow(data.order), '[data-section="orders"] tbody');
+            renderPagination('orders');
+            return;
+        }
+
+        const toggledUserId = data.user?.user_id ?? data.user_id;
+        const toggledUserStatus = data.user?.status ?? data.status;
+
+        if (toggledUserId && toggledUserStatus) {
+            applyPersonStatus(toggledUserId, toggledUserStatus);
+            const activePeopleKey = getActivePeopleKey();
+            renderPagination(activePeopleKey);
+            updateNavCounts();
+        }
+    };
+
     const buildPdfTable = (rows) => {
         if (!Array.isArray(rows) || !rows.length) {
             return '<p class="pdf-empty">No data available for this section.</p>';
@@ -1466,21 +1780,27 @@ if (dashboard) {
             <button
                 type="button"
                 data-admin-message-thread="${conversation.id}"
-                class="group relative flex w-full items-start gap-3 rounded-2xl p-3 text-left transition-all hover:bg-slate-50 active:scale-[0.98] ${conversation.id === activeAdminMessageId ? 'bg-slate-50 ring-1 ring-slate-100' : ''}"
+                class="group relative flex w-full items-start gap-3 overflow-hidden rounded-[1.35rem] border p-3 text-left transition-all active:scale-[0.98] ${conversation.id === activeAdminMessageId ? 'border-[rgba(201,135,108,0.22)] bg-white shadow-[0_18px_36px_-30px_rgba(71,45,29,0.38)] ring-1 ring-[rgba(201,135,108,0.12)]' : 'border-transparent bg-white/60 hover:border-slate-200 hover:bg-white'}"
                 data-active="${conversation.id === activeAdminMessageId ? 'true' : 'false'}"
             >
-                <div class="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500 shadow-sm transition-transform group-hover:scale-105">
+                ${conversation.id === activeAdminMessageId ? '<div class="absolute left-0 top-3 bottom-3 w-1 rounded-r-full bg-[var(--brand)]"></div>' : ''}
+                <div class="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[rgba(201,135,108,0.12)] text-xs font-bold text-[var(--brand-deep)] shadow-sm transition-transform group-hover:scale-105">
                     ${escapeHtml(conversation.avatar)}
                     ${conversation.unread ? '<span class="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-rose-500"></span>' : ''}
                 </div>
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center justify-between gap-2">
                         <p class="truncate text-sm font-bold text-slate-900">${escapeHtml(conversation.name)}</p>
-                        <span class="shrink-0 text-[10px] font-medium text-slate-400">${escapeHtml(conversation.time)}</span>
+                        <span class="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">${escapeHtml(conversation.time)}</span>
                     </div>
+                    <p class="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--brand-deep)]">${escapeHtml(conversation.label || 'Direct Message')}</p>
                     <p class="mt-1 truncate text-xs font-medium text-slate-600">${escapeHtml(conversation.preview)}</p>
                 </div>
-                ${conversation.id === activeAdminMessageId ? '<div class="absolute left-0 top-3 bottom-3 w-1 rounded-r-full bg-[var(--brand)]"></div>' : ''}
+                <div class="flex shrink-0 flex-col items-end gap-2">
+                    ${conversation.unread
+                        ? '<span class="rounded-full bg-rose-500 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white">New</span>'
+                        : '<span class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Read</span>'}
+                </div>
             </button>
         `).join('');
     };
@@ -1500,7 +1820,7 @@ if (dashboard) {
             adminMessageFeed.innerHTML = `
                 <div class="flex h-full items-center justify-center text-center">
                     <div class="max-w-xs">
-                        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-300">
+                        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[rgba(201,135,108,0.12)] text-[var(--brand)]">
                              <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                             </svg>
@@ -1524,12 +1844,15 @@ if (dashboard) {
         
         adminMessageFeed.innerHTML = `
             <div class="flex flex-col gap-4">
+                <div class="self-center rounded-full border border-white/80 bg-white/85 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 shadow-sm">
+                    Active conversation
+                </div>
                 ${conversation.messages.map((message) => `
                     <div class="flex ${message.sender === 'me' ? 'justify-end' : 'justify-start'}">
                         <div class="flex flex-col ${message.sender === 'me' ? 'items-end' : 'items-start'} max-w-[85%] md:max-w-[70%]">
-                            <div class="rounded-2xl px-4 py-3 shadow-sm ${message.sender === 'me'
-                                ? 'bg-[var(--brand)] text-white rounded-br-none'
-                                : 'bg-white text-slate-700 border border-slate-100 rounded-bl-none'}">
+                            <div class="rounded-[1.35rem] px-4 py-3 shadow-[0_18px_36px_-32px_rgba(57,36,22,0.48)] ${message.sender === 'me'
+                                ? 'bg-[var(--brand)] text-white rounded-br-[0.45rem]'
+                                : 'bg-white text-slate-700 border border-slate-100 rounded-bl-[0.45rem]'}">
                                 <p class="text-sm leading-relaxed">${escapeHtml(message.text)}</p>
                             </div>
                             <span class="mt-1.5 px-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">${escapeHtml(message.time)}</span>
@@ -1890,9 +2213,26 @@ if (dashboard) {
         renderAdminMessageList();
     });
 
-    adminMessageDraft?.addEventListener('input', () => {
+    const resizeAdminMessageDraft = () => {
+        if (!adminMessageDraft) {
+            return;
+        }
+
         adminMessageDraft.style.height = 'auto';
         adminMessageDraft.style.height = `${adminMessageDraft.scrollHeight}px`;
+    };
+
+    const setAdminMessageDraftValue = (value = '') => {
+        if (!adminMessageDraft) {
+            return;
+        }
+
+        adminMessageDraft.value = value;
+        resizeAdminMessageDraft();
+    };
+
+    adminMessageDraft?.addEventListener('input', () => {
+        resizeAdminMessageDraft();
     });
 
     adminMessageDraft?.addEventListener('keydown', (event) => {
@@ -1925,17 +2265,29 @@ if (dashboard) {
         });
         
         const messageContent = draft;
-        adminMessageDraft.value = '';
-        adminMessageDraft.style.height = 'auto';
+        setAdminMessageDraftValue('');
         renderAdminMessageFeed({ forceScroll: true });
 
+        let response;
         try {
-            const response = await axios.post('/api/messages', {
+            response = await axios.post('/api/messages', {
                 conversation_id: currentConvId,
                 content: messageContent,
             });
+        } catch (error) {
+            console.error('Failed to send message:', error);
+            conversation.messages = conversation.messages.filter(m => m.id !== tempId);
+            setAdminMessageDraftValue(messageContent);
+            renderAdminMessageFeed();
+            isAdminSendingMessage = false;
+            adminMessageSend.disabled = false;
+            return;
+        }
+
+        try {
             const savedMessage = normalizeAdminMessage(response.data);
-            const msgIndex = conversation.messages.findIndex(m => m.id === tempId);
+            const msgIndex = conversation.messages.findIndex((message) => message.id === tempId);
+
             if (msgIndex !== -1) {
                 conversation.messages[msgIndex] = savedMessage;
             } else {
@@ -1948,11 +2300,9 @@ if (dashboard) {
             sortAdminConversations();
             renderAdminMessages();
         } catch (error) {
-            console.error('Failed to send message:', error);
-            conversation.messages = conversation.messages.filter(m => m.id !== tempId);
-            adminMessageDraft.value = messageContent;
-            renderAdminMessageFeed();
+            console.error('Failed to update admin message UI after send:', error);
         } finally {
+            setAdminMessageDraftValue('');
             isAdminSendingMessage = false;
             adminMessageSend.disabled = false;
         }
@@ -2183,6 +2533,7 @@ if (dashboard) {
 
             const submitWorkflowUpdate = async (url, payload) => {
                 orderAction.disabled = true;
+                beginLoading('Updating order...');
 
                 try {
                     const response = await fetch(url, {
@@ -2196,10 +2547,12 @@ if (dashboard) {
                         throw new Error(responsePayload?.message || 'Unable to update the order right now.');
                     }
 
-                    window.location.reload();
+                    applyMutationResult(responsePayload);
                 } catch (error) {
                     window.alert(error.message || 'Unable to update the order right now.');
                     orderAction.disabled = false;
+                } finally {
+                    endLoading();
                 }
             };
 
@@ -2289,12 +2642,14 @@ if (dashboard) {
         }
     });
 
-    inventoryForm?.addEventListener('submit', (event) => {
+    inventoryForm?.addEventListener('submit', async (event) => {
         event.preventDefault();
 
         const mode = inventoryForm.dataset.mode || 'add';
         const productId = inventoryId ? inventoryId.value : '';
         const baseUrl = inventoryForm.dataset.updateUrlBase;
+        const formData = new FormData(inventoryForm);
+        beginLoading(mode === 'edit' ? 'Updating product...' : 'Creating product...');
 
         if (mode === 'edit' && productId) {
             inventoryForm.action = `${baseUrl}/${productId}`;
@@ -2302,44 +2657,96 @@ if (dashboard) {
                 inventoryMethod.disabled = false;
                 inventoryMethod.value = 'PUT';
             }
+            formData.set('_method', 'PUT');
         } else {
             inventoryForm.action = inventoryForm.dataset.storeUrl || inventoryForm.action;
             if (inventoryMethod) {
                 inventoryMethod.disabled = true;
                 inventoryMethod.value = '';
             }
+            formData.delete('_method');
         }
 
-        inventoryForm.submit();
-    });
+        inventoryFeedback && (inventoryFeedback.textContent = 'Saving...');
 
-    modalConfirm?.addEventListener('click', () => {
-        if (!modalAction) return;
-
-        if (modalAction.productId) {
-            fetch(`/admin/inventory/${modalAction.productId}`, {
-                method: 'DELETE',
+        try {
+            const response = await fetch(inventoryForm.action, {
+                method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
                     'Accept': 'application/json',
                 },
-            }).then(() => {
-                window.location.reload();
+                body: formData,
             });
+
+            const responsePayload = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(responsePayload?.message || 'Unable to save the product right now.');
+            }
+
+            applyMutationResult(responsePayload);
+            closeInventoryDrawer();
+        } catch (error) {
+            if (inventoryFeedback) {
+                inventoryFeedback.textContent = error.message || 'Unable to save the product right now.';
+            }
+        } finally {
+            endLoading();
+        }
+    });
+
+    modalConfirm?.addEventListener('click', async () => {
+        if (!modalAction) return;
+
+        if (modalAction.productId) {
+            beginLoading('Removing product...');
+            try {
+                const response = await fetch(`/admin/inventory/${modalAction.productId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                });
+                const body = await response.json().catch(() => null);
+
+                if (!response.ok) {
+                    throw new Error(body?.message || 'Unable to remove the product right now.');
+                }
+
+                applyMutationResult(body);
+            } catch (error) {
+                window.alert(error.message || 'Unable to remove the product right now.');
+            } finally {
+                endLoading();
+            }
             closeModal();
             return;
         }
 
         if (modalAction.promoId) {
-            fetch(`/admin/promos/${modalAction.promoId}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json',
-                },
-            }).then(() => {
-                window.location.reload();
-            });
+            beginLoading('Removing promo...');
+            try {
+                const response = await fetch(`/admin/promos/${modalAction.promoId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                });
+                const body = await response.json().catch(() => null);
+
+                if (!response.ok) {
+                    throw new Error(body?.message || 'Unable to remove the promo right now.');
+                }
+
+                applyMutationResult(body);
+            } catch (error) {
+                window.alert(error.message || 'Unable to remove the promo right now.');
+            } finally {
+                endLoading();
+            }
             closeModal();
             return;
         }
@@ -2353,19 +2760,29 @@ if (dashboard) {
         }
 
         if (modalAction.personId) {
-            if (window.axios) {
-                window.axios.patch(`/admin/users/${modalAction.personId}/status`)
-                    .then(response => {
-                        if (response.data.success) {
-                            window.location.reload();
-                        }
-                    })
-                    .catch(err => {
-                        console.error('Error toggling user status:', err);
-                        if (err.response && err.response.data && err.response.data.message) {
-                            alert(err.response.data.message);
-                        }
-                    });
+            beginLoading('Updating account...');
+            try {
+                const response = await fetch(`/admin/users/${modalAction.personId}/status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({}),
+                });
+                const body = await response.json().catch(() => null);
+
+                if (!response.ok || !body?.success) {
+                    throw new Error(body?.message || 'Unable to update the account right now.');
+                }
+
+                applyMutationResult(body);
+            } catch (error) {
+                console.error('Error toggling user status:', error);
+                window.alert(error.message || 'Unable to update the account right now.');
+            } finally {
+                endLoading();
             }
             closeModal();
             return;
@@ -2601,12 +3018,14 @@ if (dashboard) {
         }
     };
 
-    promoForm?.addEventListener('submit', (event) => {
+    promoForm?.addEventListener('submit', async (event) => {
         event.preventDefault();
 
         const mode = promoForm.dataset.mode || 'add';
         const promoId = promoIdInput ? promoIdInput.value : '';
         const baseUrl = promoForm.dataset.updateUrlBase;
+        const formData = new FormData(promoForm);
+        beginLoading(mode === 'edit' ? 'Updating promo...' : 'Creating promo...');
 
         if (mode === 'edit' && promoId) {
             promoForm.action = `${baseUrl}/${promoId}`;
@@ -2614,15 +3033,45 @@ if (dashboard) {
                 promoMethodInput.disabled = false;
                 promoMethodInput.value = 'PUT';
             }
+            formData.set('_method', 'PUT');
         } else {
             promoForm.action = promoForm.dataset.storeUrl || promoForm.action;
             if (promoMethodInput) {
                 promoMethodInput.disabled = true;
                 promoMethodInput.value = '';
             }
+            formData.delete('_method');
         }
 
-        promoForm.submit();
+        if (promoSubtitle) {
+            promoSubtitle.textContent = 'Saving...';
+        }
+
+        try {
+            const response = await fetch(promoForm.action, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                },
+                body: formData,
+            });
+
+            const responsePayload = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(responsePayload?.message || 'Unable to save the promo right now.');
+            }
+
+            applyMutationResult(responsePayload);
+            closePromoDrawer();
+        } catch (error) {
+            if (promoSubtitle) {
+                promoSubtitle.textContent = error.message || 'Unable to save the promo right now.';
+            }
+        } finally {
+            endLoading();
+        }
     });
 
     // Removed direct listener for removing promo - handled in delegation

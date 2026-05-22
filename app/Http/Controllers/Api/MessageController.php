@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -153,7 +154,16 @@ class MessageController extends Controller
             });
 
             if ($this->shouldBroadcastMessages()) {
-                event(new \App\Events\MessageSent($message));
+                try {
+                    event(new \App\Events\MessageSent($message));
+                } catch (\Throwable $broadcastException) {
+                    Log::warning('Message broadcast failed after message was saved.', [
+                        'message_id' => $message->id,
+                        'conversation_id' => $message->conversation_id,
+                        'sender_id' => $message->sender_id,
+                        'error' => $broadcastException->getMessage(),
+                    ]);
+                }
             }
 
             return response()->json($this->serializeMessage($message));

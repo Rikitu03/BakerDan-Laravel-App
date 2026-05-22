@@ -166,7 +166,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { navigate } from '../../router';
 
 const props = defineProps({
@@ -182,11 +182,18 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  priceFilter: {
+    type: Object,
+    default: () => ({
+      min: '',
+      max: '',
+    }),
+  },
 });
 
 const emit = defineEmits(['category-select', 'filter-apply', 'close']);
-const minPrice = ref('');
-const maxPrice = ref('');
+const minPrice = ref(props.priceFilter?.min ?? '');
+const maxPrice = ref(props.priceFilter?.max ?? '');
 
 const mobileLinks = [
   { label: 'Notifications', path: '/customer/notifications', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' },
@@ -225,4 +232,12 @@ const applyFilter = () => {
     max: maxPrice.value,
   });
 };
+
+watch(
+  () => [props.priceFilter?.min ?? '', props.priceFilter?.max ?? ''],
+  ([nextMin, nextMax]) => {
+    minPrice.value = nextMin;
+    maxPrice.value = nextMax;
+  },
+);
 </script>

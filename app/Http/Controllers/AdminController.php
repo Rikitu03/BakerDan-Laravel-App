@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\OrderShippedNotificationMail;
+use App\Models\CartItem;
 use App\Models\CustomerNotification;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -17,6 +18,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -247,7 +249,7 @@ class AdminController extends Controller
             ->with('admin_section', 'inventory');
     }
 
-    public function storeInventory(Request $request): RedirectResponse
+    public function storeInventory(Request $request): RedirectResponse|JsonResponse
     {
         $data = $this->validateInventoryProduct($request);
 
@@ -262,10 +264,15 @@ class AdminController extends Controller
         $product->save();
         $this->notifyCustomersAboutNewProducts(collect([$product]));
 
-        return redirect()->route('admin.home')->with('status', 'Product added successfully.');
+        return $this->adminMutationResponse(
+            $request,
+            'Product added successfully.',
+            ['product' => $this->productCard($product->fresh())],
+            'inventory',
+        );
     }
 
-    public function updateInventory(Request $request, Product $product): RedirectResponse
+    public function updateInventory(Request $request, Product $product): RedirectResponse|JsonResponse
     {
         $data = $this->validateInventoryProduct($request);
 
@@ -278,17 +285,46 @@ class AdminController extends Controller
 
         $product->save();
 
-        return redirect()->route('admin.home')->with('status', 'Product updated successfully.');
+        return $this->adminMutationResponse(
+            $request,
+            'Product updated successfully.',
+            ['product' => $this->productCard($product->fresh())],
+            'inventory',
+        );
     }
 
-    public function destroyInventory(Product $product): RedirectResponse
+    public function destroyInventory(Request $request, Product $product): RedirectResponse|JsonResponse
     {
-        Product::destroy($product->id);
+        $hasOrderHistory = OrderItem::query()
+            ->where('product_id', $product->id)
+            ->exists();
+        $hasCartReferences = CartItem::query()
+            ->where('product_id', $product->id)
+            ->exists();
 
-        return redirect()->route('admin.home')->with('status', 'Product removed successfully.');
+        if ($hasOrderHistory || $hasCartReferences) {
+            $product->update(['is_active' => false]);
+
+            return $this->adminMutationResponse(
+                $request,
+                'Product is linked to existing orders or carts, so it was archived instead of deleted.',
+                ['product' => $this->productCard($product->fresh())],
+                'inventory',
+            );
+        }
+
+        $productId = $product->id;
+        $product->delete();
+
+        return $this->adminMutationResponse(
+            $request,
+            'Product removed successfully.',
+            ['product_id' => $productId],
+            'inventory',
+        );
     }
 
-    public function storePromo(Request $request): RedirectResponse
+    public function storePromo(Request $request): RedirectResponse|JsonResponse
     {
         $data = $this->validatePromo($request);
         $promo = new Promo();
@@ -305,13 +341,15 @@ class AdminController extends Controller
 
         $promo->save();
 
-        return redirect()
-            ->route('admin.home')
-            ->with('status', 'Promo code created successfully.')
-            ->with('admin_section', 'promos');
+        return $this->adminMutationResponse(
+            $request,
+            'Promo code created successfully.',
+            ['promo' => $this->promoCard($promo->fresh())],
+            'promos',
+        );
     }
 
-    public function updatePromo(Request $request, Promo $promo): RedirectResponse
+    public function updatePromo(Request $request, Promo $promo): RedirectResponse|JsonResponse
     {
         $data = $this->validatePromo($request, $promo);
         $promo->fill($data);
@@ -327,20 +365,25 @@ class AdminController extends Controller
 
         $promo->save();
 
-        return redirect()
-            ->route('admin.home')
-            ->with('status', 'Promo code updated successfully.')
-            ->with('admin_section', 'promos');
+        return $this->adminMutationResponse(
+            $request,
+            'Promo code updated successfully.',
+            ['promo' => $this->promoCard($promo->fresh())],
+            'promos',
+        );
     }
 
-    public function destroyPromo(Promo $promo): RedirectResponse
+    public function destroyPromo(Request $request, Promo $promo): RedirectResponse|JsonResponse
     {
+        $promoId = $promo->id;
         $promo->delete();
 
-        return redirect()
-            ->route('admin.home')
-            ->with('status', 'Promo code removed successfully.')
-            ->with('admin_section', 'promos');
+        return $this->adminMutationResponse(
+            $request,
+            'Promo code removed successfully.',
+            ['promo_id' => $promoId],
+            'promos',
+        );
     }
 
     public function updateOrderStatus(Request $request, Order $order): JsonResponse
@@ -418,7 +461,7 @@ class AdminController extends Controller
             'is_active' => ! $user->is_active,
         ]);
 
-        session()->flash('admin_section', 'customers');
+        Session::flash('admin_section', 'customers');
 
         return response()->json([
             'success' => true,
@@ -433,7 +476,11 @@ class AdminController extends Controller
 
     private function dashboardData(): array
     {
-        $products = Product::query()->latest('id')->get();
+        $allProducts = Product::query()->latest('id')->get();
+        $products = Product::query()
+            ->where('is_active', true)
+            ->latest('id')
+            ->get();
         $promos = Promo::query()->latest('id')->get();
         $orders = Order::with(['user.detail', 'items.product', 'promo'])->latest('id')->get();
         $customers = User::with('detail')->where('role', 'customer')->latest('user_id')->get();
@@ -457,7 +504,7 @@ class AdminController extends Controller
         $monthlyCompletions = $this->monthlyCompletionSeries($orders);
         $yearlyCompletions = $this->yearlyCompletionSeries($orders);
         // reporting aggregates
-        $productSales = $this->productSalesAggregates($orders, $products);
+        $productSales = $this->productSalesAggregates($orders, $allProducts);
         $usersWeekly = $this->weeklyUserSeries($customers);
         $usersMonthly = $this->monthlyUserSeries($customers);
         $usersYearly = $this->yearlyUserSeries($customers);
@@ -467,14 +514,14 @@ class AdminController extends Controller
         $revenueWeekly = $this->weeklyRevenueSeries($orders);
         $revenueMonthly = $this->monthlyRevenueSeries($orders);
         $revenueYearly = $this->yearlyRevenueSeries($orders);
-        $productTypeBreakdown = $this->productTypeBreakdown($products);
+        $productTypeBreakdown = $this->productTypeBreakdown($allProducts);
 
         // comprehensive summary
         $totalRevenue = (float) $orders->where('payment_status', 'paid')->sum('total_amount');
         $topProducts = collect($productSales)->sortByDesc('quantity_sold')->take(10)->values()->all();
         $summary = [
             'generated_at' => now()->toIso8601String(),
-            'total_products' => $products->count(),
+            'total_products' => $allProducts->count(),
             'total_orders' => $orders->count(),
             'total_customers' => $customers->count(),
             'total_admins' => $admins->count(),
@@ -569,6 +616,22 @@ class AdminController extends Controller
         ]);
     }
 
+    private function adminMutationResponse(Request $request, string $message, array $data = [], string $section = 'dashboard'): JsonResponse|RedirectResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data' => $data,
+            ]);
+        }
+
+        return redirect()
+            ->route('admin.home')
+            ->with('status', $message)
+            ->with('admin_section', $section);
+    }
+
     private function productCard(Product $product): array
     {
         return [
@@ -640,6 +703,7 @@ class AdminController extends Controller
 
     private function orderCard(Order $order): array
     {
+        $customerDetail = $order->user?->detail;
         $customerName = data_get($order->payment_metadata, 'walk_in_customer_name')
             ?: ($order->user?->detail?->name ?? 'Unknown customer');
         $containsCustom = $order->items->contains(fn (OrderItem $item) => $item->item_type === 'custom');
@@ -676,6 +740,16 @@ class AdminController extends Controller
             'amount' => 'PHP ' . number_format((float) $order->total_amount, 2),
             'contains_custom' => $containsCustom,
             'custom_items' => $customItems->all(),
+            'customer_details' => [
+                'address' => $customerDetail?->address ?? 'N/A',
+                'age' => $customerDetail?->age ?? 'N/A',
+                'contact' => $customerDetail?->contact ?? 'N/A',
+                'email' => $customerDetail?->email ?? 'N/A',
+                'linked_account' => $order->user_id ? ($customerDetail?->name ?? 'Linked customer') : 'Guest / walk-in',
+                'name' => $customerName,
+                'source' => $order->user_id ? 'Registered customer' : 'Guest / walk-in',
+                'username' => $customerDetail?->username ?? 'N/A',
+            ],
             'customer' => $customerName,
             'id' => $order->id,
             'item_lines' => $itemLines->all(),
