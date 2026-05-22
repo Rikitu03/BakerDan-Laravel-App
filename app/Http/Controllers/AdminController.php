@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\OrderShippedNotificationMail;
+use App\Models\CartItem;
 use App\Models\CustomerNotification;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -294,6 +295,24 @@ class AdminController extends Controller
 
     public function destroyInventory(Request $request, Product $product): RedirectResponse|JsonResponse
     {
+        $hasOrderHistory = OrderItem::query()
+            ->where('product_id', $product->id)
+            ->exists();
+        $hasCartReferences = CartItem::query()
+            ->where('product_id', $product->id)
+            ->exists();
+
+        if ($hasOrderHistory || $hasCartReferences) {
+            $product->update(['is_active' => false]);
+
+            return $this->adminMutationResponse(
+                $request,
+                'Product is linked to existing orders or carts, so it was archived instead of deleted.',
+                ['product' => $this->productCard($product->fresh())],
+                'inventory',
+            );
+        }
+
         $productId = $product->id;
         $product->delete();
 
@@ -457,7 +476,11 @@ class AdminController extends Controller
 
     private function dashboardData(): array
     {
-        $products = Product::query()->latest('id')->get();
+        $allProducts = Product::query()->latest('id')->get();
+        $products = Product::query()
+            ->where('is_active', true)
+            ->latest('id')
+            ->get();
         $promos = Promo::query()->latest('id')->get();
         $orders = Order::with(['user.detail', 'items.product', 'promo'])->latest('id')->get();
         $customers = User::with('detail')->where('role', 'customer')->latest('user_id')->get();
@@ -481,7 +504,7 @@ class AdminController extends Controller
         $monthlyCompletions = $this->monthlyCompletionSeries($orders);
         $yearlyCompletions = $this->yearlyCompletionSeries($orders);
         // reporting aggregates
-        $productSales = $this->productSalesAggregates($orders, $products);
+        $productSales = $this->productSalesAggregates($orders, $allProducts);
         $usersWeekly = $this->weeklyUserSeries($customers);
         $usersMonthly = $this->monthlyUserSeries($customers);
         $usersYearly = $this->yearlyUserSeries($customers);
@@ -491,14 +514,14 @@ class AdminController extends Controller
         $revenueWeekly = $this->weeklyRevenueSeries($orders);
         $revenueMonthly = $this->monthlyRevenueSeries($orders);
         $revenueYearly = $this->yearlyRevenueSeries($orders);
-        $productTypeBreakdown = $this->productTypeBreakdown($products);
+        $productTypeBreakdown = $this->productTypeBreakdown($allProducts);
 
         // comprehensive summary
         $totalRevenue = (float) $orders->where('payment_status', 'paid')->sum('total_amount');
         $topProducts = collect($productSales)->sortByDesc('quantity_sold')->take(10)->values()->all();
         $summary = [
             'generated_at' => now()->toIso8601String(),
-            'total_products' => $products->count(),
+            'total_products' => $allProducts->count(),
             'total_orders' => $orders->count(),
             'total_customers' => $customers->count(),
             'total_admins' => $admins->count(),

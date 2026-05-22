@@ -8,6 +8,7 @@ use App\Models\Message;
 use App\Models\User;
 use App\Models\UserDetail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
@@ -67,6 +68,31 @@ class MessagingWorkflowTest extends TestCase
             ->assertOk();
 
         Event::assertNotDispatched(MessageSent::class);
+    }
+
+    public function test_message_send_still_succeeds_when_broadcasting_throws_after_save(): void
+    {
+        config(['broadcasting.default' => 'reverb']);
+
+        $customer = $this->createUserWithDetail('customer', 'Customer Broadcast', 'customer_broadcast', 'customer.broadcast@example.test');
+
+        Broadcast::partialMock()
+            ->shouldReceive('queue')
+            ->andThrow(new \RuntimeException('Broadcast unavailable'));
+
+        $response = $this
+            ->actingAs($customer)
+            ->postJson('/api/messages', ['content' => 'Broadcast should not break send']);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('content', 'Broadcast should not break send')
+            ->assertJsonPath('sender_id', $customer->user_id);
+
+        $this->assertDatabaseHas('messages', [
+            'content' => 'Broadcast should not break send',
+            'sender_id' => $customer->user_id,
+        ]);
     }
 
     public function test_messages_endpoint_supports_incremental_fetches(): void

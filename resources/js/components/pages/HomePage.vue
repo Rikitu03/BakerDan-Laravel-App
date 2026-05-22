@@ -249,6 +249,13 @@ const props = defineProps({
     type: String,
     default: 'All',
   },
+  priceFilter: {
+    type: Object,
+    default: () => ({
+      min: '',
+      max: '',
+    }),
+  },
 });
 
 const attachmentInput = ref(null);
@@ -495,6 +502,17 @@ const productRequestParams = () => {
     params.search = search;
   }
 
+  const minPrice = String(props.priceFilter?.min ?? '').trim();
+  const maxPrice = String(props.priceFilter?.max ?? '').trim();
+
+  if (minPrice !== '') {
+    params.min_price = minPrice;
+  }
+
+  if (maxPrice !== '') {
+    params.max_price = maxPrice;
+  }
+
   return params;
 };
 
@@ -677,7 +695,7 @@ watch(
 );
 
 watch(
-  [() => props.activeCategory, sortBy, debouncedSearchQuery],
+  [() => props.activeCategory, sortBy, debouncedSearchQuery, () => props.priceFilter?.min, () => props.priceFilter?.max],
   resetAndLoadProducts,
 );
 
@@ -706,6 +724,9 @@ const emptyStateTitle = computed(() => {
 const emptyStateMessage = computed(() => {
   if (catalogError.value) return catalogError.value;
   if (debouncedSearchQuery.value.trim()) return 'Try another keyword, flavor, or option name.';
+  if (String(props.priceFilter?.min ?? '').trim() !== '' || String(props.priceFilter?.max ?? '').trim() !== '') {
+    return 'Try widening the selected price range.';
+  }
   if (props.activeCategory !== 'All') return 'This category has no active products right now.';
 
   return 'The catalog is waiting for products from the database.';

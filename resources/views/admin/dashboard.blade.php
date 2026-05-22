@@ -930,27 +930,17 @@
 
         <main class="relative z-10 flex-1 px-4 py-4 sm:px-6 lg:h-screen lg:overflow-y-auto lg:px-8 lg:py-6">
             <header
-                class="hero-panel panel-lift mb-6 flex flex-col gap-5 rounded-[2rem] px-5 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-                <div>
+                class="hero-panel panel-lift mb-6 rounded-[2rem] px-5 py-5 sm:px-6">
+                <div class="max-w-3xl">
                     <p class="text-xs font-semibold uppercase tracking-[0.28em] text-white/65">Admin operations</p>
-                    <h1 class="font-display section-title mt-2 text-3xl font-bold text-white sm:text-4xl">Bakerdan
-                        Command Center</h1>
-                    <p class="mt-3 max-w-2xl text-sm leading-6 text-white/76">Track orders, customer activity, inbox
-                        requests, and bakery alerts from one warmer and more focused workspace.</p>
-                </div>
-                <div class="flex flex-wrap items-center gap-3">
-                    <div data-current-section-label
-                        class="rounded-full bg-white/18 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/18">
-                        Dashboard</div>
-                    <div
-                        class="rounded-full bg-white/12 px-4 py-2 text-sm font-medium text-white/86 ring-1 ring-white/16">
-                        Active products: {{ count($products) }}</div>
-                    <div
-                        class="rounded-full bg-emerald-400/18 px-4 py-2 text-sm font-medium text-emerald-50 ring-1 ring-emerald-200/18">
-                        Open orders: {{ count($orders) }}</div>
-                    <div
-                        class="rounded-full bg-amber-300/18 px-4 py-2 text-sm font-medium text-amber-50 ring-1 ring-amber-100/20">
-                        Unread inbox: {{ collect($messages)->where('unread', true)->count() }}</div>
+                    <div class="mt-3 flex flex-wrap items-center gap-3">
+                        <h1 class="font-display section-title text-3xl font-bold text-white sm:text-4xl">Bakerdan Command Center</h1>
+                        <span data-current-section-label
+                            class="rounded-full bg-white/16 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/18">
+                            Dashboard
+                        </span>
+                    </div>
+                    <p class="mt-4 max-w-2xl text-sm leading-6 text-white/76">Track orders, customer activity, inbox requests, and bakery alerts from one warmer and more focused workspace.</p>
                 </div>
             </header>
 
@@ -2174,10 +2164,10 @@
                     </aside>
 
                     <!-- Main: Chat Interface -->
-                    <section data-admin-message-panel class="flex flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+                    <section data-admin-message-panel class="flex flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,#fffdfa_0%,#fff8f2_100%)] shadow-sm">
                         <!-- Chat Header -->
-                        <div class="shrink-0 border-b border-slate-100 bg-white px-6 py-4">
-                            <div class="flex items-center justify-between">
+                        <div class="shrink-0 border-b border-slate-100 bg-[linear-gradient(120deg,#ffffff_0%,#fff5ec_100%)] px-6 py-4">
+                            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                 <div class="flex items-center gap-4">
                                     <div data-admin-message-avatar class="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--brand)] text-sm font-bold text-white">
                                         --
@@ -2187,32 +2177,49 @@
                                         <p data-admin-message-subtitle class="text-xs text-slate-500">Pick a thread from the list to start chatting.</p>
                                     </div>
                                 </div>
-                                <div class="hidden sm:block">
+                                <div class="flex flex-wrap gap-2">
                                     <span data-admin-message-label class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Inbound</span>
+                                    <span class="rounded-full bg-[rgba(201,135,108,0.12)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--brand-deep)]">Live support</span>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Chat Feed -->
-                        <div data-admin-message-feed class="flex-1 overflow-y-auto bg-slate-50/50 p-6">
+                        <div data-admin-message-feed class="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,#fff9f4_0%,#f7efe7_62%,#f3e7db_100%)] p-6">
                             <!-- Populated by JS -->
                         </div>
 
                         <!-- Chat Input -->
-                        <div class="shrink-0 border-t border-slate-100 bg-white p-4">
-                            <div class="flex items-end gap-3">
-                                <div class="relative flex-1">
-                                    <textarea data-admin-message-draft rows="1" 
-                                        placeholder="Type your message here..."
-                                        class="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 py-3 px-4 pr-12 text-sm text-slate-700 outline-none transition focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
-                                        style="min-height: 46px; max-height: 120px;"></textarea>
+                        <div class="shrink-0 border-t border-slate-100 bg-[linear-gradient(180deg,#fff8f2_0%,#ffffff_100%)] p-4">
+                            <div class="rounded-[1.75rem] border border-slate-200 bg-white/95 p-3 shadow-[0_18px_42px_-36px_rgba(57,36,22,0.55)]">
+                                <div class="flex items-start gap-3">
+                                    <div class="hidden h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[rgba(201,135,108,0.12)] text-[var(--brand-deep)] md:flex">
+                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 8h10M7 12h6m-7 8 3.6-3H19a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v9a2 2 0 002 2h1v3z" />
+                                        </svg>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="relative">
+                                            <textarea data-admin-message-draft rows="1" 
+                                                placeholder="Reply to this customer..."
+                                                autocomplete="off"
+                                                autocorrect="off"
+                                                spellcheck="false"
+                                                class="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 py-4 px-4 text-sm text-slate-700 outline-none transition focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
+                                                style="min-height: 56px; max-height: 140px;"></textarea>
+                                        </div>
+                                        <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                            <p class="text-xs font-medium text-slate-500">Press Enter to send. Use Shift + Enter for a new line.</p>
+                                            <button type="button" data-admin-message-send
+                                                class="inline-flex h-[46px] items-center justify-center gap-2 self-start rounded-full bg-[var(--brand)] px-5 text-sm font-semibold text-white shadow-md transition hover:bg-[var(--brand-deep)] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none sm:self-auto">
+                                                <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14M12 5l7 7-7 7" />
+                                                </svg>
+                                                Send reply
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <button type="button" data-admin-message-send
-                                    class="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-2xl bg-[var(--brand)] text-white shadow-md transition hover:bg-[var(--brand-deep)] active:scale-90 disabled:opacity-50 disabled:pointer-events-none">
-                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14M12 5l7 7-7 7" />
-                                    </svg>
-                                </button>
                             </div>
                         </div>
                     </section>

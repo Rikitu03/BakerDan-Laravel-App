@@ -1246,7 +1246,11 @@ if (dashboard) {
         const data = payload?.data || {};
 
         if (data.product) {
-            replaceOrInsertRow(getInventoryRowSelector(data.product.id), renderInventoryRow(data.product), '[data-section="inventory"] tbody');
+            if (data.product.is_active) {
+                replaceOrInsertRow(getInventoryRowSelector(data.product.id), renderInventoryRow(data.product), '[data-section="inventory"] tbody');
+            } else {
+                dashboard.querySelector(getInventoryRowSelector(data.product.id))?.remove();
+            }
             renderPagination('inventory');
             return;
         }
@@ -1275,8 +1279,11 @@ if (dashboard) {
             return;
         }
 
-        if (data.user) {
-            applyPersonStatus(data.user.user_id, data.user.status);
+        const toggledUserId = data.user?.user_id ?? data.user_id;
+        const toggledUserStatus = data.user?.status ?? data.status;
+
+        if (toggledUserId && toggledUserStatus) {
+            applyPersonStatus(toggledUserId, toggledUserStatus);
             const activePeopleKey = getActivePeopleKey();
             renderPagination(activePeopleKey);
             updateNavCounts();
@@ -1773,21 +1780,27 @@ if (dashboard) {
             <button
                 type="button"
                 data-admin-message-thread="${conversation.id}"
-                class="group relative flex w-full items-start gap-3 rounded-2xl p-3 text-left transition-all hover:bg-slate-50 active:scale-[0.98] ${conversation.id === activeAdminMessageId ? 'bg-slate-50 ring-1 ring-slate-100' : ''}"
+                class="group relative flex w-full items-start gap-3 overflow-hidden rounded-[1.35rem] border p-3 text-left transition-all active:scale-[0.98] ${conversation.id === activeAdminMessageId ? 'border-[rgba(201,135,108,0.22)] bg-white shadow-[0_18px_36px_-30px_rgba(71,45,29,0.38)] ring-1 ring-[rgba(201,135,108,0.12)]' : 'border-transparent bg-white/60 hover:border-slate-200 hover:bg-white'}"
                 data-active="${conversation.id === activeAdminMessageId ? 'true' : 'false'}"
             >
-                <div class="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500 shadow-sm transition-transform group-hover:scale-105">
+                ${conversation.id === activeAdminMessageId ? '<div class="absolute left-0 top-3 bottom-3 w-1 rounded-r-full bg-[var(--brand)]"></div>' : ''}
+                <div class="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[rgba(201,135,108,0.12)] text-xs font-bold text-[var(--brand-deep)] shadow-sm transition-transform group-hover:scale-105">
                     ${escapeHtml(conversation.avatar)}
                     ${conversation.unread ? '<span class="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-rose-500"></span>' : ''}
                 </div>
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center justify-between gap-2">
                         <p class="truncate text-sm font-bold text-slate-900">${escapeHtml(conversation.name)}</p>
-                        <span class="shrink-0 text-[10px] font-medium text-slate-400">${escapeHtml(conversation.time)}</span>
+                        <span class="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">${escapeHtml(conversation.time)}</span>
                     </div>
+                    <p class="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--brand-deep)]">${escapeHtml(conversation.label || 'Direct Message')}</p>
                     <p class="mt-1 truncate text-xs font-medium text-slate-600">${escapeHtml(conversation.preview)}</p>
                 </div>
-                ${conversation.id === activeAdminMessageId ? '<div class="absolute left-0 top-3 bottom-3 w-1 rounded-r-full bg-[var(--brand)]"></div>' : ''}
+                <div class="flex shrink-0 flex-col items-end gap-2">
+                    ${conversation.unread
+                        ? '<span class="rounded-full bg-rose-500 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white">New</span>'
+                        : '<span class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Read</span>'}
+                </div>
             </button>
         `).join('');
     };
@@ -1807,7 +1820,7 @@ if (dashboard) {
             adminMessageFeed.innerHTML = `
                 <div class="flex h-full items-center justify-center text-center">
                     <div class="max-w-xs">
-                        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-300">
+                        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[rgba(201,135,108,0.12)] text-[var(--brand)]">
                              <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                             </svg>
@@ -1831,12 +1844,15 @@ if (dashboard) {
         
         adminMessageFeed.innerHTML = `
             <div class="flex flex-col gap-4">
+                <div class="self-center rounded-full border border-white/80 bg-white/85 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 shadow-sm">
+                    Active conversation
+                </div>
                 ${conversation.messages.map((message) => `
                     <div class="flex ${message.sender === 'me' ? 'justify-end' : 'justify-start'}">
                         <div class="flex flex-col ${message.sender === 'me' ? 'items-end' : 'items-start'} max-w-[85%] md:max-w-[70%]">
-                            <div class="rounded-2xl px-4 py-3 shadow-sm ${message.sender === 'me'
-                                ? 'bg-[var(--brand)] text-white rounded-br-none'
-                                : 'bg-white text-slate-700 border border-slate-100 rounded-bl-none'}">
+                            <div class="rounded-[1.35rem] px-4 py-3 shadow-[0_18px_36px_-32px_rgba(57,36,22,0.48)] ${message.sender === 'me'
+                                ? 'bg-[var(--brand)] text-white rounded-br-[0.45rem]'
+                                : 'bg-white text-slate-700 border border-slate-100 rounded-bl-[0.45rem]'}">
                                 <p class="text-sm leading-relaxed">${escapeHtml(message.text)}</p>
                             </div>
                             <span class="mt-1.5 px-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">${escapeHtml(message.time)}</span>
@@ -2197,9 +2213,26 @@ if (dashboard) {
         renderAdminMessageList();
     });
 
-    adminMessageDraft?.addEventListener('input', () => {
+    const resizeAdminMessageDraft = () => {
+        if (!adminMessageDraft) {
+            return;
+        }
+
         adminMessageDraft.style.height = 'auto';
         adminMessageDraft.style.height = `${adminMessageDraft.scrollHeight}px`;
+    };
+
+    const setAdminMessageDraftValue = (value = '') => {
+        if (!adminMessageDraft) {
+            return;
+        }
+
+        adminMessageDraft.value = value;
+        resizeAdminMessageDraft();
+    };
+
+    adminMessageDraft?.addEventListener('input', () => {
+        resizeAdminMessageDraft();
     });
 
     adminMessageDraft?.addEventListener('keydown', (event) => {
@@ -2232,17 +2265,29 @@ if (dashboard) {
         });
         
         const messageContent = draft;
-        adminMessageDraft.value = '';
-        adminMessageDraft.style.height = 'auto';
+        setAdminMessageDraftValue('');
         renderAdminMessageFeed({ forceScroll: true });
 
+        let response;
         try {
-            const response = await axios.post('/api/messages', {
+            response = await axios.post('/api/messages', {
                 conversation_id: currentConvId,
                 content: messageContent,
             });
+        } catch (error) {
+            console.error('Failed to send message:', error);
+            conversation.messages = conversation.messages.filter(m => m.id !== tempId);
+            setAdminMessageDraftValue(messageContent);
+            renderAdminMessageFeed();
+            isAdminSendingMessage = false;
+            adminMessageSend.disabled = false;
+            return;
+        }
+
+        try {
             const savedMessage = normalizeAdminMessage(response.data);
-            const msgIndex = conversation.messages.findIndex(m => m.id === tempId);
+            const msgIndex = conversation.messages.findIndex((message) => message.id === tempId);
+
             if (msgIndex !== -1) {
                 conversation.messages[msgIndex] = savedMessage;
             } else {
@@ -2255,11 +2300,9 @@ if (dashboard) {
             sortAdminConversations();
             renderAdminMessages();
         } catch (error) {
-            console.error('Failed to send message:', error);
-            conversation.messages = conversation.messages.filter(m => m.id !== tempId);
-            adminMessageDraft.value = messageContent;
-            renderAdminMessageFeed();
+            console.error('Failed to update admin message UI after send:', error);
         } finally {
+            setAdminMessageDraftValue('');
             isAdminSendingMessage = false;
             adminMessageSend.disabled = false;
         }

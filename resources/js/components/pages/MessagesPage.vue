@@ -1,13 +1,13 @@
 <template>
-  <div class="min-h-full bg-[#F6EFE8] px-5 py-8 md:px-8 xl:px-10">
+  <div class="min-h-full bg-[linear-gradient(180deg,#F9F2EB_0%,#F4E8DC_42%,#F7F0E9_100%)] px-5 py-8 md:px-8 xl:px-10">
     <div class="mx-auto max-w-7xl">
-      <section class="rounded-[34px] border border-[#E8D7CA] bg-white p-4 shadow-[0_26px_60px_-38px_rgba(122,82,54,0.42)] md:p-5">
+      <section class="overflow-hidden rounded-[34px] border border-[#E8D7CA] bg-[linear-gradient(140deg,#FFFDFB_0%,#FFF6EE_46%,#FCF7F2_100%)] p-4 shadow-[0_26px_60px_-38px_rgba(122,82,54,0.42)] md:p-5">
         <div class="grid gap-4 xl:h-[76vh] xl:grid-cols-[340px_minmax(0,1fr)]">
-          <aside class="overflow-hidden rounded-[28px] border border-[#EEE2D7] bg-[#FBF7F3] xl:flex xl:min-h-0 xl:flex-col">
+          <aside class="overflow-hidden rounded-[28px] border border-[#EEE2D7] bg-[linear-gradient(180deg,#FBF7F3_0%,#F7EFE7_100%)] xl:flex xl:min-h-0 xl:flex-col">
             <div class="border-b border-[#EADDD2] px-5 py-5">
               <div class="flex items-center justify-between gap-3">
                 <div>
-                  <p class="text-xs font-semibold uppercase tracking-[0.28em] text-[#C19370]">Messages</p>
+                  <p class="text-xs font-semibold uppercase tracking-[0.28em] text-[#C19370]">Support Desk</p>
                   <h1 class="mt-2 text-3xl font-black text-[#4E3527]" style="font-family: 'Urbanist', sans-serif;">
                     Inbox
                   </h1>
@@ -16,6 +16,17 @@
                 <span class="rounded-full bg-[#FDEBDC] px-3 py-1 text-xs font-semibold text-[#B96D3F]">
                   {{ unreadCount }} unread
                 </span>
+              </div>
+
+              <div class="mt-5 grid grid-cols-2 gap-3">
+                <div class="rounded-[22px] border border-[#E7D8CB] bg-white/90 px-4 py-3 shadow-[0_10px_24px_-22px_rgba(101,67,43,0.7)]">
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#B79A85]">Threads</p>
+                  <p class="mt-2 text-2xl font-black text-[#4E3527]">{{ totalConversationCount }}</p>
+                </div>
+                <div class="rounded-[22px] border border-[#E7D8CB] bg-white/70 px-4 py-3 shadow-[0_10px_24px_-22px_rgba(101,67,43,0.6)]">
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#B79A85]">Status</p>
+                  <p class="mt-2 text-sm font-bold text-[#6B5547]">{{ activeStatusLabel }}</p>
+                </div>
               </div>
 
               <label class="relative mt-5 block">
@@ -39,12 +50,17 @@
                 :key="conversation.id"
                 type="button"
                 @click="selectConversation(conversation.id)"
-                class="mb-2 flex w-full items-start gap-3 rounded-[22px] px-3 py-3 text-left transition-all"
+                class="group relative mb-2 flex w-full items-start gap-3 overflow-hidden rounded-[24px] border px-3 py-3 text-left transition-all"
                 :class="conversation.id === activeConversationId
-                  ? 'bg-white shadow-[0_18px_36px_-30px_rgba(122,82,54,0.48)] ring-1 ring-[#EADACD]'
-                  : 'hover:bg-white/80'"
+                  ? 'border-[#E1D0C0] bg-white shadow-[0_18px_36px_-30px_rgba(122,82,54,0.48)] ring-1 ring-[#EADACD]'
+                  : 'border-transparent bg-white/55 hover:border-[#E8D7CA] hover:bg-white/85'"
               >
-                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#C9876C] to-[#B8765B] text-sm font-bold text-white shadow-sm">
+                <div
+                  v-if="conversation.id === activeConversationId"
+                  class="absolute inset-y-3 left-0 w-1 rounded-r-full bg-[#C9876C]"
+                ></div>
+
+                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#C9876C] to-[#B8765B] text-sm font-bold text-white shadow-sm transition-transform group-hover:scale-105">
                   {{ conversation.avatar }}
                 </div>
 
@@ -66,10 +82,20 @@
                   </p>
                 </div>
 
-                <span
-                  v-if="conversation.unread"
-                  class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-[#D96D45]"
-                ></span>
+                <div class="flex shrink-0 flex-col items-end gap-2">
+                  <span
+                    v-if="conversation.unread"
+                    class="rounded-full bg-[#D96D45] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white"
+                  >
+                    New
+                  </span>
+                  <span
+                    v-else
+                    class="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#C1AB9C]"
+                  >
+                    Read
+                  </span>
+                </div>
               </button>
 
               <div
@@ -83,9 +109,9 @@
 
           <section
             v-if="activeConversation"
-            class="flex min-h-[60vh] flex-col overflow-hidden rounded-[30px] border border-[#E9DDD3] bg-[#FFFCF9] xl:h-full xl:min-h-0"
+            class="flex min-h-[60vh] flex-col overflow-hidden rounded-[30px] border border-[#E9DDD3] bg-[linear-gradient(180deg,#FFFCF9_0%,#FFF7EF_100%)] xl:h-full xl:min-h-0"
           >
-            <div class="shrink-0 border-b border-[#EEE1D7] bg-white px-6 py-5">
+            <div class="shrink-0 border-b border-[#EEE1D7] bg-[linear-gradient(120deg,#FFFFFF_0%,#FFF6EE_100%)] px-6 py-5">
               <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div class="flex items-center gap-4">
                   <div class="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#D59A72] to-[#C27A51] text-base font-bold text-white shadow-md">
@@ -107,7 +133,7 @@
                     {{ activeConversation.label }}
                   </span>
                   <span class="rounded-full bg-[#F3EEE8] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#7E736B]">
-                    Online reply demo
+                    {{ activeConversation.messages.length }} messages
                   </span>
                 </div>
               </div>
@@ -119,8 +145,8 @@
             >
               <div class="mx-auto flex min-h-full max-w-4xl flex-col justify-end gap-4">
                 <template v-if="activeConversation.messages.length > 0">
-                  <div class="self-center rounded-full bg-white/85 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#B7A08F] shadow-sm">
-                    Today
+                  <div class="self-center rounded-full border border-white/80 bg-white/85 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#B7A08F] shadow-sm">
+                    Conversation active
                   </div>
 
                   <div
@@ -166,38 +192,47 @@
               </div>
             </div>
 
-            <div class="shrink-0 border-t border-[#EEE1D7] bg-white px-4 py-4 md:px-6">
-              <div class="flex flex-col gap-3 md:flex-row md:items-end">
-                <label class="block flex-1">
-                  <span class="sr-only">Type a message</span>
-                  <textarea
-                    v-model="draftMessage"
-                    rows="3"
-                    @keydown.enter.prevent="sendMessage"
-                    placeholder="Write a message to the bakery team"
-                    class="w-full rounded-[24px] border border-[#E1D5CA] bg-[#FCFAF8] px-5 py-4 text-sm text-[#4F4944] outline-none transition focus:border-transparent focus:ring-2 focus:ring-[#C9876C]"
-                  ></textarea>
-                </label>
-
-                <div class="flex items-center gap-3">
-                  <button
-                    type="button"
-                    class="flex h-12 w-12 items-center justify-center rounded-full border border-[#E2D6CC] bg-white text-[#786D66] transition hover:border-[#D3B6A0] hover:text-[#B36F46]"
-                    aria-label="Attach file"
-                  >
-                    <svg class="h-4.5 w-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16.5 6.5l-7.78 7.78a3 3 0 104.24 4.24l8.49-8.48a5 5 0 10-7.07-7.07L5.2 12.15" />
+            <div class="shrink-0 border-t border-[#EEE1D7] bg-[linear-gradient(180deg,#FFF8F2_0%,#FFFFFF_100%)] px-4 py-4 md:px-6">
+              <div class="rounded-[28px] border border-[#E7D8CB] bg-white/95 p-3 shadow-[0_18px_42px_-36px_rgba(122,82,54,0.55)]">
+                <div class="flex items-start gap-3">
+                  <div class="hidden h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#F6E7DA] text-[#B8744E] md:flex">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 8h10M7 12h6m-7 8 3.6-3H19a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v9a2 2 0 002 2h1v3z" />
                     </svg>
-                  </button>
+                  </div>
 
-                  <button
-                    type="button"
-                    @click="sendMessage"
-                    :disabled="isSendingMessage"
-                    class="rounded-full bg-[#4A4541] px-6 py-3 font-semibold text-white shadow-md transition hover:bg-[#383431] disabled:cursor-wait disabled:opacity-70"
-                  >
-                    {{ isSendingMessage ? 'Sending...' : 'Send' }}
-                  </button>
+                  <div class="min-w-0 flex-1">
+                    <label class="block">
+                      <span class="sr-only">Type a message</span>
+                      <textarea
+                        ref="draftTextarea"
+                        v-model="draftMessage"
+                        rows="1"
+                        @keydown="handleDraftKeydown"
+                        placeholder="Write a message to the bakery team"
+                        class="min-h-[56px] w-full resize-none rounded-[22px] border border-[#E1D5CA] bg-[#FCFAF8] px-5 py-4 text-sm text-[#4F4944] outline-none transition focus:border-transparent focus:ring-2 focus:ring-[#C9876C]"
+                        style="max-height: 160px;"
+                      ></textarea>
+                    </label>
+
+                    <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <p class="text-xs font-medium text-[#9B8473]">
+                        Press Enter to send. Use Shift + Enter for a new line.
+                      </p>
+
+                      <button
+                        type="button"
+                        @click="sendMessage"
+                        :disabled="isSendingMessage"
+                        class="inline-flex items-center justify-center gap-2 rounded-full bg-[#4A4541] px-6 py-3 font-semibold text-white shadow-md transition hover:bg-[#383431] disabled:cursor-wait disabled:opacity-70"
+                      >
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                        {{ isSendingMessage ? 'Sending...' : 'Send message' }}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -235,6 +270,7 @@ const props = defineProps({
 
 const searchQuery = ref('');
 const draftMessage = ref('');
+const draftTextarea = ref(null);
 const messageScroller = ref(null);
 const conversations = ref([]);
 const activeConversationId = ref(null);
@@ -458,7 +494,30 @@ const activeConversation = computed(() => {
   return conversations.value.find((conversation) => conversation.id === activeConversationId.value) || null;
 });
 
+const totalConversationCount = computed(() => conversations.value.length || 1);
 const unreadCount = computed(() => conversations.value.filter((conversation) => conversation.unread).length);
+const activeStatusLabel = computed(() => {
+  if (isSendingMessage.value) {
+    return 'Sending';
+  }
+
+  if (activeConversationId.value === 'new') {
+    return 'Ready to start';
+  }
+
+  return activeConversation.value?.unread ? 'Unread updates' : 'Connected';
+});
+
+const resizeDraftTextarea = () => {
+  nextTick(() => {
+    if (!draftTextarea.value) {
+      return;
+    }
+
+    draftTextarea.value.style.height = 'auto';
+    draftTextarea.value.style.height = `${draftTextarea.value.scrollHeight}px`;
+  });
+};
 
 const scrollMessagesToBottom = () => {
   nextTick(() => {
@@ -472,12 +531,23 @@ const selectConversation = (conversationId) => {
   activeConversationId.value = conversationId;
 };
 
+const handleDraftKeydown = (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendMessage();
+  }
+};
+
 watch(activeConversationId, (newId) => {
   if (newId && newId !== 'new') {
     fetchMessages(newId);
     markAsRead(newId);
   }
 }, { immediate: true });
+
+watch(draftMessage, () => {
+  resizeDraftTextarea();
+});
 
 const markAsRead = async (conversationId) => {
   if (conversationId === 'new') return;
@@ -509,6 +579,7 @@ const sendMessage = async () => {
   
   const messageContent = text;
   draftMessage.value = '';
+  resizeDraftTextarea();
   scrollMessagesToBottom();
 
   try {
@@ -545,6 +616,7 @@ const sendMessage = async () => {
     // Remove optimistic message on error
     activeConversation.value.messages = activeConversation.value.messages.filter(m => m.id !== tempId);
     draftMessage.value = messageContent; // Restore draft
+    resizeDraftTextarea();
   } finally {
     isSendingMessage.value = false;
   }
@@ -616,6 +688,7 @@ const handleVisibilityChange = () => {
 onMounted(() => {
   fetchConversations();
   startPolling();
+  resizeDraftTextarea();
   document.addEventListener('visibilitychange', handleVisibilityChange);
 
   if (window.Echo) {
