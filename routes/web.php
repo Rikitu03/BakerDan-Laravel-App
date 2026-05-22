@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Models\Product;
+use App\Models\Review;
 use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\ForgotPasswordController;
@@ -25,7 +27,135 @@ use App\Http\Controllers\PayMongoWebhookController;
 */
 
 Route::get('/', function () {
-    return view('welcome');
+    $topProducts = Product::query()
+        ->select([
+            'inventory_products.id',
+            'inventory_products.product_name',
+            'inventory_products.description',
+            'inventory_products.price',
+            'inventory_products.image_url',
+        ])
+        ->selectRaw('COALESCE(SUM(order_items.quantity), 0) as quantity_sold')
+        ->selectRaw('COALESCE(SUM(order_items.quantity * order_items.price), 0) as revenue')
+        ->join('order_items', 'order_items.product_id', '=', 'inventory_products.id')
+        ->join('orders', 'orders.id', '=', 'order_items.order_id')
+        ->where('inventory_products.is_active', true)
+        ->where('orders.status', 'delivered')
+        ->where('orders.payment_status', 'paid')
+        ->groupBy(
+            'inventory_products.id',
+            'inventory_products.product_name',
+            'inventory_products.description',
+            'inventory_products.price',
+            'inventory_products.image_url'
+        )
+        ->orderByDesc('quantity_sold')
+        ->orderBy('inventory_products.product_name')
+        ->take(4)
+        ->get();
+
+    if ($topProducts->count() < 4) {
+        $existingIds = $topProducts->pluck('id')->all();
+
+        $fallbackProducts = Product::query()
+            ->where('is_active', true)
+            ->whereNotIn('id', $existingIds)
+            ->orderBy('product_name')
+            ->take(4 - $topProducts->count())
+            ->get()
+            ->map(function (Product $product) {
+                $product->setAttribute('quantity_sold', 0);
+                $product->setAttribute('revenue', 0);
+
+                return $product;
+            });
+
+        $topProducts = $topProducts->concat($fallbackProducts)->values();
+    }
+
+    $formatProduct = function (Product $product): array {
+        return [
+            'title' => $product->product_name,
+            'description' => $product->description,
+            'price' => (float) $product->price,
+            'imagePath' => $product->image_url ? ltrim((string) $product->image_url, '/') : null,
+            'salesCount' => (int) ($product->quantity_sold ?? 0),
+            'revenue' => (float) ($product->revenue ?? 0),
+        ];
+    };
+
+    $featured = $topProducts->first() ? $formatProduct($topProducts->first()) : [
+        'title' => 'Korean Garlic Cream Cheese Bun',
+        'description' => 'Soft enriched dough with a rich cream cheese filling and glossy golden top.',
+        'price' => 395.00,
+        'imagePath' => 'images/bakerdan/bread/Creme_Cheese_Garlic.png',
+        'salesCount' => 0,
+        'revenue' => 0,
+    ];
+
+    $bestSellers = $topProducts
+        ->skip(1)
+        ->take(3)
+        ->map($formatProduct)
+        ->values()
+        ->all();
+
+    $reviewPool = Review::query()
+        ->with(['user.detail', 'product'])
+        ->whereNotNull('comment')
+        ->where('comment', '!=', '')
+        ->orderByDesc('created_at')
+        ->take(8)
+        ->get();
+
+    $reviews = $reviewPool
+        ->shuffle()
+        ->take(3)
+        ->map(function (Review $review): array {
+            $customerName = $review->user?->detail?->name
+                ?? $review->user?->detail?->username
+                ?? 'Verified customer';
+
+            return [
+                'quote' => $review->comment,
+                'name' => $customerName,
+                'role' => $review->product?->product_name ? $review->product->product_name : 'Customer review',
+                'rating' => max(1, min(5, (int) $review->rating)),
+            ];
+        })
+        ->values()
+        ->all();
+
+    if (count($reviews) < 3) {
+        $reviews = array_merge($reviews, [
+            [
+                'quote' => 'Fresh bread, consistent quality, and easy ordering for bulk requests.',
+                'name' => 'BakerDan Customer',
+                'role' => 'Customer review',
+                'rating' => 5,
+            ],
+            [
+                'quote' => 'Great presentation and generous portions for events and office orders.',
+                'name' => 'BakerDan Customer',
+                'role' => 'Customer review',
+                'rating' => 5,
+            ],
+            [
+                'quote' => 'Very reliable for repeat orders and always delivered fresh.',
+                'name' => 'BakerDan Customer',
+                'role' => 'Customer review',
+                'rating' => 5,
+            ],
+        ]);
+
+        $reviews = array_slice($reviews, 0, 3);
+    }
+
+    return view('welcome', [
+        'featured' => $featured,
+        'bestSellers' => $bestSellers,
+        'reviews' => $reviews,
+    ]);
 });
 
 Route::post('/webhooks/paymongo', [PayMongoWebhookController::class, 'handle']);
