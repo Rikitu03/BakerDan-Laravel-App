@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class AdminInventoryWorkflowTest extends TestCase
@@ -69,6 +70,74 @@ class AdminInventoryWorkflowTest extends TestCase
         $this->assertDatabaseHas('inventory_products', [
             'id' => $product->id,
             'is_active' => false,
+        ]);
+    }
+
+    public function test_admin_can_create_a_product_from_inventory_form(): void
+    {
+        $admin = User::query()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($admin)->postJson('/admin/inventory', [
+            'product_name' => 'Chocolate Ensaymada',
+            'description' => 'Soft bread with chocolate filling',
+            'price' => '145.50',
+            'category' => 'Bread',
+            'is_active' => '1',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'message' => 'Product added successfully.',
+            ])
+            ->assertJsonPath('data.product.name', 'Chocolate Ensaymada')
+            ->assertJsonPath('data.product.category', 'Bread')
+            ->assertJsonPath('data.product.is_active', true);
+
+        $this->assertDatabaseHas('inventory_products', [
+            'product_name' => 'Chocolate Ensaymada',
+            'category' => 'Bread',
+            'is_active' => true,
+        ]);
+    }
+
+    public function test_product_save_still_succeeds_when_customer_notifications_fail(): void
+    {
+        $admin = User::query()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        User::query()->create([
+            'role' => 'customer',
+            'is_active' => true,
+        ]);
+
+        Schema::drop('customer_notifications');
+
+        $response = $this->actingAs($admin)->postJson('/admin/inventory', [
+            'product_name' => 'Resilient Product',
+            'description' => 'Still saves when notifications are unavailable',
+            'price' => '210',
+            'category' => 'Pastries',
+            'is_active' => '1',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'message' => 'Product added successfully.',
+            ])
+            ->assertJsonPath('data.product.name', 'Resilient Product');
+
+        $this->assertDatabaseHas('inventory_products', [
+            'product_name' => 'Resilient Product',
+            'category' => 'Pastries',
         ]);
     }
 }
