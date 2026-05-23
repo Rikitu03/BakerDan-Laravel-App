@@ -129,6 +129,24 @@ function initChat() {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
+    function formatAssistantMessage(text) {
+      const bulletCount = (text.match(/\s\*\s+/g) || []).length;
+
+      if (bulletCount < 2) {
+        return text;
+      }
+
+      const parts = text.split(/\s*\*\s*/).map((part) => part.trim()).filter(Boolean);
+
+      if (parts.length < 2) {
+        return text;
+      }
+
+      const intro = parts.shift();
+
+      return [intro, ...parts.map((part) => `- ${part}`)].join('\n');
+    }
+
     function addMessage(text, role) {
         const wrapper = document.createElement('div');
         wrapper.className = 'flex ' + (role === 'user' ? 'justify-end' : 'justify-start');
@@ -140,10 +158,10 @@ function initChat() {
         if (role === 'user') {
             bubble.className += 'bg-[#8b5a2b] text-white rounded-tr-none';
         } else {
-            bubble.className += 'bg-[#f0e6d2] text-[#5c3a21] rounded-tl-none';
+          bubble.className += 'bg-[#f0e6d2] text-[#5c3a21] rounded-tl-none whitespace-pre-line';
         }
         
-        bubble.textContent = text;
+        bubble.textContent = role === 'user' ? text : formatAssistantMessage(text);
         wrapper.appendChild(bubble);
         messagesContainer.appendChild(wrapper);
         scrollToBottom();

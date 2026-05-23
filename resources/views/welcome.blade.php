@@ -582,7 +582,18 @@
                         <div class="mt-5 space-y-4">
                             <div class="max-w-[85%] rounded-[1.5rem] px-4 py-3 text-sm" style="background: rgba(38,24,15,0.08); color: var(--ink);">Hello! I'm your BakerDan Assistant. How can I help you today?</div>
                             <div class="ml-auto max-w-[85%] rounded-[1.5rem] px-4 py-3 text-sm text-white" style="background: linear-gradient(135deg, var(--brand-deep), var(--brand));">Hi! What is the best-selling product?</div>
-                            <div class="max-w-[85%] rounded-[1.5rem] px-4 py-3 text-sm" style="background: rgba(38,24,15,0.08); color: var(--ink);">Hi there! We have several best-selling products that our customers love.</div>
+                            <div class="max-w-[85%] rounded-[1.5rem] px-4 py-3 text-sm leading-relaxed" style="background: rgba(38,24,15,0.08); color: var(--ink);">
+                                <p class="font-semibold">Our customer favorites include:</p>
+                                <ul class="mt-2 space-y-1 pl-4">
+                                    <li>- Brazo Cups</li>
+                                    <li>- Creampuffs</li>
+                                    <li>- Empanada</li>
+                                    <li>- Korean Garlic Creamcheese Bun (KBUN)</li>
+                                    <li>- Mango Flower Tart</li>
+                                    <li>- Assorted Fruit Tart</li>
+                                    <li>- Walnut Brownies</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
