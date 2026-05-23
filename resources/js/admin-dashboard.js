@@ -25,6 +25,10 @@ if (dashboard) {
     const inventoryIsActive = inventoryForm?.querySelector('[data-inventory-is-active]');
     const inventoryMethod = inventoryForm?.querySelector('[data-inventory-method]');
     const inventoryId = inventoryForm?.querySelector('[data-inventory-id]');
+    const inventoryImageInput = inventoryForm?.querySelector('[data-inventory-image]');
+    const inventoryImagePreviewContainer = inventoryForm?.querySelector('[data-inventory-image-preview-container]');
+    const inventoryImagePreview = inventoryForm?.querySelector('[data-inventory-image-preview]');
+    const removeInventoryImageBtn = inventoryForm?.querySelector('[data-remove-inventory-image]');
     const customerPanel = dashboard.querySelector('[data-customer-panel]');
     const customerPanelTitle = dashboard.querySelector('[data-customer-panel-title]');
     const customerPanelMeta = dashboard.querySelector('[data-customer-panel-meta]');
@@ -2153,6 +2157,12 @@ if (dashboard) {
                 inventoryMethod.disabled = false;
                 inventoryMethod.value = 'PUT';
             }
+            if (product.image_url && inventoryImagePreview && inventoryImagePreviewContainer) {
+                inventoryImagePreview.src = product.image_url;
+                inventoryImagePreviewContainer.hidden = false;
+            } else if (inventoryImagePreviewContainer) {
+                inventoryImagePreviewContainer.hidden = true;
+            }
         } else {
             if (inventoryForm) inventoryForm.reset();
             if (inventoryId) inventoryId.value = '';
@@ -2166,8 +2176,38 @@ if (dashboard) {
                 inventoryMethod.disabled = true;
                 inventoryMethod.value = '';
             }
+            if (inventoryImagePreviewContainer) {
+                inventoryImagePreviewContainer.hidden = true;
+            }
+            if (inventoryImagePreview) {
+                inventoryImagePreview.src = '';
+            }
         }
     };
+
+    inventoryImageInput?.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file && inventoryImagePreview && inventoryImagePreviewContainer) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                inventoryImagePreview.src = e.target.result;
+                inventoryImagePreviewContainer.hidden = false;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    removeInventoryImageBtn?.addEventListener('click', () => {
+        if (inventoryImageInput) {
+            inventoryImageInput.value = '';
+        }
+        if (inventoryImagePreviewContainer) {
+            inventoryImagePreviewContainer.hidden = true;
+        }
+        if (inventoryImagePreview) {
+            inventoryImagePreview.src = '';
+        }
+    });
 
     dashboard.querySelectorAll('[data-page-size]').forEach((select) => {
         select.addEventListener('change', (event) => {
@@ -2422,6 +2462,7 @@ if (dashboard) {
                     price: row.dataset.productPrice,
                     category: row.dataset.productCategory,
                     is_active: row.dataset.productIsActive === '1',
+                    image_url: row.dataset.productImageUrl,
                 });
             }
             return;

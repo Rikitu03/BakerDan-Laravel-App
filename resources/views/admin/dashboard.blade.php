@@ -2742,10 +2742,18 @@
                             </div>
 
                             <!-- Image Upload -->
-                            <div class="flex items-center justify-between gap-4 py-1.5 border-b border-slate-100/80">
-                                <span class="text-xs font-bold text-slate-700">Product Image</span>
-                                <input name="image" type="file" accept="image/*"
-                                    class="w-64 rounded-xl border border-slate-200 bg-white px-3 py-1 text-[10px] outline-none focus:border-[#c9876c] text-slate-700">
+                            <div class="flex flex-col gap-3 py-1.5 border-b border-slate-100/80">
+                                <div class="flex items-center justify-between gap-4">
+                                    <span class="text-xs font-bold text-slate-700">Product Image</span>
+                                    <input data-inventory-image name="image" type="file" accept="image/*"
+                                        class="w-64 rounded-xl border border-slate-200 bg-white px-3 py-1 text-[10px] outline-none focus:border-[#c9876c] text-slate-700">
+                                </div>
+                                <div data-inventory-image-preview-container hidden class="flex justify-end">
+                                    <div class="relative">
+                                        <img data-inventory-image-preview src="" alt="Preview" class="h-20 w-20 rounded-xl object-cover ring-1 ring-slate-200">
+                                        <button type="button" data-remove-inventory-image class="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow-sm">✕</button>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Status -->

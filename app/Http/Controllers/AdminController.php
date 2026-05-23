@@ -226,6 +226,7 @@ class AdminController extends Controller
                 'price' => $mappedData['price'],
                 'category' => $mappedData['category'],
                 'image_url' => $mappedData['image_url'] !== '' ? $mappedData['image_url'] : null,
+                'image_source' => 'bulk',
                 'is_active' => filter_var($mappedData['is_active'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? (string) $mappedData['is_active'] !== '0',
             ]);
 
@@ -259,6 +260,7 @@ class AdminController extends Controller
 
         if ($request->hasFile('image')) {
             $product->image_url = $request->file('image')->store('inventory-products', 'public');
+            $product->image_source = 'uploaded';
         }
 
         $product->save();
@@ -281,6 +283,7 @@ class AdminController extends Controller
 
         if ($request->hasFile('image')) {
             $product->image_url = $request->file('image')->store('inventory-products', 'public');
+            $product->image_source = 'uploaded';
         }
 
         $product->save();
@@ -1316,7 +1319,11 @@ class AdminController extends Controller
             ];
         })->all();
 
-        CustomerNotification::query()->insert($rows);
+        try {
+            CustomerNotification::query()->insert($rows);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
     }
 
     private function resolveImageUrl(?string $imagePath): ?string
