@@ -40,6 +40,9 @@ class AdminController extends Controller
     {
         $data = $request->validateWithBag('walkinOrder', [
             'customer_name' => ['nullable', 'string', 'max:255'],
+            'customer_email' => ['required', 'email', 'max:255'],
+            'customer_contact' => ['required', 'string', 'max:50'],
+            'customer_address' => ['required', 'string', 'max:1000'],
             'linked_customer_user_id' => ['nullable', 'integer', 'exists:users,user_id'],
             'payment_status' => ['required', 'string', Rule::in(['unpaid', 'paid'])],
             'notes' => ['nullable', 'string', 'max:1000'],
@@ -70,9 +73,12 @@ class AdminController extends Controller
         }
 
         $customerName = trim((string) ($data['customer_name'] ?? '')) ?: 'Walk-in Customer';
+        $customerEmail = trim((string) $data['customer_email']);
+        $customerContact = trim((string) $data['customer_contact']);
+        $customerAddress = trim((string) $data['customer_address']);
         $notes = trim((string) ($data['notes'] ?? ''));
 
-        $order = DB::transaction(function () use ($data, $products, $request, $customerName, $notes, $linkedCustomer): Order {
+        $order = DB::transaction(function () use ($data, $products, $request, $customerName, $customerEmail, $customerContact, $customerAddress, $notes, $linkedCustomer): Order {
             $totalAmount = collect($data['items'])->sum(function (array $item) use ($products): float {
                 $product = $products->get((int) $item['product_id']);
 
@@ -87,10 +93,13 @@ class AdminController extends Controller
                 'payment_method' => 'walk-in',
                 'payment_provider' => 'onsite',
                 'payment_paid_at' => $data['payment_status'] === 'paid' ? now() : null,
-                'shipping_address' => 'Walk-in customer: ' . $customerName,
+                'shipping_address' => $customerAddress,
                 'payment_metadata' => array_filter([
                     'walk_in' => true,
                     'walk_in_customer_name' => $customerName,
+                    'walk_in_customer_email' => $customerEmail,
+                    'walk_in_customer_contact' => $customerContact,
+                    'walk_in_customer_address' => $customerAddress,
                     'walk_in_linked_customer_id' => $linkedCustomer?->user_id,
                     'walk_in_notes' => $notes !== '' ? $notes : null,
                     'created_by_admin_user_id' => $request->user()->user_id,
@@ -121,6 +130,9 @@ class AdminController extends Controller
             [
                 'order_id' => $order->id,
                 'customer_name' => $customerName,
+                'customer_email' => $customerEmail,
+                'customer_contact' => $customerContact,
+                'customer_address' => $customerAddress,
                 'payment_status' => $order->payment_status,
                 'source' => 'walk_in'
             ]
@@ -707,8 +719,12 @@ class AdminController extends Controller
     private function orderCard(Order $order): array
     {
         $customerDetail = $order->user?->detail;
-        $customerName = data_get($order->payment_metadata, 'walk_in_customer_name')
-            ?: ($order->user?->detail?->name ?? 'Unknown customer');
+        $walkInCustomerName = data_get($order->payment_metadata, 'walk_in_customer_name');
+        $walkInCustomerEmail = data_get($order->payment_metadata, 'walk_in_customer_email');
+        $walkInCustomerContact = data_get($order->payment_metadata, 'walk_in_customer_contact');
+        $walkInCustomerAddress = data_get($order->payment_metadata, 'walk_in_customer_address');
+        $customerName = $walkInCustomerName
+            ?: ($customerDetail?->name ?? 'Unknown customer');
         $containsCustom = $order->items->contains(fn (OrderItem $item) => $item->item_type === 'custom');
         $nextWorkflowStep = $this->nextWorkflowStep($order, $containsCustom);
         $itemLines = $order->items->map(function (OrderItem $item): array {
@@ -744,10 +760,10 @@ class AdminController extends Controller
             'contains_custom' => $containsCustom,
             'custom_items' => $customItems->all(),
             'customer_details' => [
-                'address' => $customerDetail?->address ?? 'N/A',
+                'address' => $customerDetail?->address ?? $walkInCustomerAddress ?? 'N/A',
                 'age' => $customerDetail?->age ?? 'N/A',
-                'contact' => $customerDetail?->contact ?? 'N/A',
-                'email' => $customerDetail?->email ?? 'N/A',
+                'contact' => $customerDetail?->contact ?? $walkInCustomerContact ?? 'N/A',
+                'email' => $customerDetail?->email ?? $walkInCustomerEmail ?? 'N/A',
                 'linked_account' => $order->user_id ? ($customerDetail?->name ?? 'Linked customer') : 'Guest / walk-in',
                 'name' => $customerName,
                 'source' => $order->user_id ? 'Registered customer' : 'Guest / walk-in',
@@ -769,6 +785,7 @@ class AdminController extends Controller
             'promo_code' => $order->promo?->code,
             'status' => $order->status,
             'status_label' => $this->orderStatusLabel($order->status, $containsCustom),
+            'can_cancel' => in_array($order->status, ['pending', 'processing'], true),
             'workflow_note' => $containsCustom
                 ? ($order->payment_status === 'paid'
                     ? 'Review the custom brief before moving this order into production.'

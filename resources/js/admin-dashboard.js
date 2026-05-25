@@ -1146,6 +1146,7 @@ if (dashboard) {
             <tr data-order-card data-page-item="orders" data-order-id="${escapeHtml(order.id)}"
                 data-order-status="${escapeHtml(order.status)}" data-payment-status="${escapeHtml(order.payment_status)}"
                 data-next-status="${escapeHtml(order.next_status || '')}"
+                data-can-cancel="${order.can_cancel ? '1' : '0'}"
                 data-order-customer="${escapeHtml(order.customer)}"
                 data-order-custom="${order.contains_custom ? '1' : '0'}"
                 class="align-top text-slate-700 hover:bg-slate-50/70">
@@ -1162,15 +1163,20 @@ if (dashboard) {
                     </div>
                 </td>
                 <td class="px-4 py-5">
-                    <div class="grid gap-1.5 text-xs leading-5 text-slate-600">
-                        <p><span class="font-semibold text-slate-900">Name:</span> ${escapeHtml(order.customer_details?.name || order.customer)}</p>
-                        <p><span class="font-semibold text-slate-900">Linked account:</span> ${escapeHtml(order.customer_details?.linked_account || 'N/A')}</p>
-                        <p><span class="font-semibold text-slate-900">Username:</span> ${escapeHtml(order.customer_details?.username || 'N/A')}</p>
-                        <p><span class="font-semibold text-slate-900">Age:</span> ${escapeHtml(order.customer_details?.age || 'N/A')}</p>
-                        <p><span class="font-semibold text-slate-900">Email:</span> ${escapeHtml(order.customer_details?.email || 'N/A')}</p>
-                        <p><span class="font-semibold text-slate-900">Contact:</span> ${escapeHtml(order.customer_details?.contact || 'N/A')}</p>
-                        <p><span class="font-semibold text-slate-900">Address:</span> ${escapeHtml(order.customer_details?.address || 'N/A')}</p>
-                    </div>
+                    <details class="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <summary class="flex cursor-pointer list-none items-center justify-between gap-4">
+                            <div>
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Customer info</p>
+                                <p class="mt-1 text-sm font-semibold text-slate-900">Click to view contact details</p>
+                            </div>
+                            <span class="rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600 ring-1 ring-slate-200 transition group-open:bg-slate-900 group-open:text-white">View</span>
+                        </summary>
+                        <div class="mt-4 grid gap-1.5 text-xs leading-5 text-slate-600">
+                            <p><span class="font-semibold text-slate-900">Email:</span> ${escapeHtml(order.customer_details?.email || 'N/A')}</p>
+                            <p><span class="font-semibold text-slate-900">Contact:</span> ${escapeHtml(order.customer_details?.contact || 'N/A')}</p>
+                            <p><span class="font-semibold text-slate-900">Address:</span> ${escapeHtml(order.customer_details?.address || 'N/A')}</p>
+                        </div>
+                    </details>
                 </td>
                 <td class="px-4 py-5">
                     <div class="space-y-3 text-sm text-slate-600">
@@ -1197,6 +1203,7 @@ if (dashboard) {
                 <td class="px-4 py-5">
                     <div class="flex flex-wrap gap-2">
                         <button data-order-action="advance" data-next-status="${escapeHtml(order.next_status || '')}" ${order.next_status ? '' : 'hidden'} type="button" class="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white">${escapeHtml(order.next_status_label || 'Advance Workflow')}</button>
+                        <button data-order-action="cancel" ${order.can_cancel ? '' : 'hidden'} type="button" class="rounded-full bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">Cancel Order</button>
                         <button data-order-action="mark-paid" ${order.payment_status === 'paid' ? 'hidden' : ''} type="button" class="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">Mark as Paid</button>
                     </div>
                 </td>
@@ -2610,6 +2617,15 @@ if (dashboard) {
                 }
 
                 submitWorkflowUpdate(`/admin/orders/${orderId}/status`, { status: nextStatus });
+                return;
+            }
+
+            if (action === 'cancel' && orderId) {
+                if (!window.confirm('Cancel this order?')) {
+                    return;
+                }
+
+                submitWorkflowUpdate(`/admin/orders/${orderId}/status`, { status: 'cancelled' });
                 return;
             }
 

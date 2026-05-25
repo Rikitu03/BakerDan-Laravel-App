@@ -1006,6 +1006,30 @@
 
                             <div class="grid gap-4 sm:grid-cols-2">
                                 <label class="grid gap-2 text-sm font-medium text-slate-700">
+                                    Email
+                                    <input type="email" name="customer_email" value="{{ old('customer_email') }}"
+                                        required
+                                        class="w-full rounded-2xl border border-slate-200 px-4 py-3 focus:outline-none focus:border-[#c9876c] focus:ring-2 focus:ring-[#c9876c]/20 transition-all"
+                                        placeholder="customer@example.com">
+                                </label>
+                                <label class="grid gap-2 text-sm font-medium text-slate-700">
+                                    Contact number
+                                    <input type="text" name="customer_contact" value="{{ old('customer_contact') }}"
+                                        required
+                                        class="w-full rounded-2xl border border-slate-200 px-4 py-3 focus:outline-none focus:border-[#c9876c] focus:ring-2 focus:ring-[#c9876c]/20 transition-all"
+                                        placeholder="09XXXXXXXXX">
+                                </label>
+                            </div>
+
+                            <label class="grid gap-2 text-sm font-medium text-slate-700">
+                                Address
+                                <textarea name="customer_address" rows="3" required
+                                    class="w-full rounded-2xl border border-slate-200 px-4 py-3 focus:outline-none focus:border-[#c9876c] focus:ring-2 focus:ring-[#c9876c]/20 transition-all"
+                                    placeholder="Complete delivery or pickup address">{{ old('customer_address') }}</textarea>
+                            </label>
+
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <label class="grid gap-2 text-sm font-medium text-slate-700">
                                     Payment status
                                     <select name="payment_status"
                                         class="w-full rounded-2xl border border-slate-200 px-4 py-3 focus:outline-none focus:border-[#c9876c] focus:ring-2 focus:ring-[#c9876c]/20 transition-all">
@@ -1823,15 +1847,20 @@
                                         </div>
                                     </td>
                                     <td class="px-4 py-5">
-                                        <div class="grid gap-1.5 text-xs leading-5 text-slate-600">
-                                            <p><span class="font-semibold text-slate-900">Name:</span> {{ $order['customer_details']['name'] ?? $order['customer'] }}</p>
-                                            <p><span class="font-semibold text-slate-900">Linked account:</span> {{ $order['customer_details']['linked_account'] ?? 'N/A' }}</p>
-                                            <p><span class="font-semibold text-slate-900">Username:</span> {{ $order['customer_details']['username'] ?? 'N/A' }}</p>
-                                            <p><span class="font-semibold text-slate-900">Age:</span> {{ $order['customer_details']['age'] ?? 'N/A' }}</p>
-                                            <p><span class="font-semibold text-slate-900">Email:</span> {{ $order['customer_details']['email'] ?? 'N/A' }}</p>
-                                            <p><span class="font-semibold text-slate-900">Contact:</span> {{ $order['customer_details']['contact'] ?? 'N/A' }}</p>
-                                            <p><span class="font-semibold text-slate-900">Address:</span> {{ $order['customer_details']['address'] ?? 'N/A' }}</p>
-                                        </div>
+                                        <details class="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                            <summary class="flex cursor-pointer list-none items-center justify-between gap-4">
+                                                <div>
+                                                    <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Customer info</p>
+                                                    <p class="mt-1 text-sm font-semibold text-slate-900">Click to view contact details</p>
+                                                </div>
+                                                <span class="rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600 ring-1 ring-slate-200 transition group-open:bg-slate-900 group-open:text-white">View</span>
+                                            </summary>
+                                            <div class="mt-4 grid gap-1.5 text-xs leading-5 text-slate-600">
+                                                <p><span class="font-semibold text-slate-900">Email:</span> {{ $order['customer_details']['email'] ?? 'N/A' }}</p>
+                                                <p><span class="font-semibold text-slate-900">Contact:</span> {{ $order['customer_details']['contact'] ?? 'N/A' }}</p>
+                                                <p><span class="font-semibold text-slate-900">Address:</span> {{ $order['customer_details']['address'] ?? 'N/A' }}</p>
+                                            </div>
+                                        </details>
                                     </td>
                                     <td class="px-4 py-5">
                                         <div class="space-y-3 text-sm text-slate-600">
@@ -1898,6 +1927,7 @@
                                     <td class="px-4 py-5">
                                         <div class="flex flex-wrap gap-2">
                                             <button data-order-action="advance" data-next-status="{{ $order['next_status'] ?? '' }}" @if (empty($order['next_status'])) hidden @endif type="button" class="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white">{{ $order['next_status_label'] ?? 'Advance Workflow' }}</button>
+                                            <button data-order-action="cancel" @if (empty($order['can_cancel'])) hidden @endif type="button" class="rounded-full bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">Cancel Order</button>
                                             <button data-order-action="mark-paid" @if ($order['payment_status'] === 'paid') hidden @endif type="button" class="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">Mark as Paid</button>
                                         </div>
                                     </td>
