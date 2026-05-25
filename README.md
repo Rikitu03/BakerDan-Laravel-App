@@ -4,19 +4,19 @@
 
 | GitHub Account | Member | Role |
 |---|---|---|
-| `charlezb`, `betoniocharlesjefferson-dotcom` | Charles Jefferson A. Betonio | Frontend Developer, UI/UX Designer, Quality Assurance (QA) Tester |
-| `EclairEiklareEicleir` | Harry B. Lawang | Leader, Full-Stack Developer, Backend & System Architect |
-| `to0tskie` | Alrazel R. Llave | Frontend Developer, UI Implementation Lead, Secondary Full-Stack Developer |
+| `jc14-ai` | Jestaly A. Castillo | Frontend Developer, UI/UX Designer, Quality Assurance (QA) Tester |
+| `Rikitu03` | Jason Jay M. Recto | Leader, Full stack developer for the customer module |
+| `kim647565` | Marvin S. Lopez | Frontend Developer, UI Implementation Lead, Secondary Full-Stack Developer |
 
 ---
 
-# 🧾 Peer Evaluation — Harry B. Lawang (Self Evaluation)
+# 🧾 Peer Evaluation — Jason Jay M. Recto (Self Evaluation)
 
 | Member | Rating | Justification |
 |---|---|---|
-| Alrazel R. Llave | 100/100 | After the initial Laravel project structure was set up, he immediately contributed across frontend and system-wide development, helping establish the foundation of the application such as major user and admin views. He also provided backend support tasks, assisted in UI structuring, participated in feature integration, and contributed to overall system refinement throughout development. |
-| Charles Jefferson A. Betonio | 100/100 | He contributed significantly as QA and Tester, actively testing system features, identifying bugs, and ensuring overall application stability. In addition to testing responsibilities, he also assisted in frontend UI/UX improvements and implemented admin content systems such as the FAQ and About modules. He was consistently involved in validating features and communicating issues, improvements, and requirements throughout development via coordination and feedback. |
-| Harry B. Lawang | 100/100 | I led system architecture, backend development, database design, and overall application structure. Contributing to majority of progress in the system |
+| Jestaly A. Castillo | 100/100 | Jestaly contributed significantly to the heavy lifting, managing and developing the AI chatbot and messaging feature of the website. He also refined the database design to align with the website’s needs. Furthermore, he oversees the entire team’s progress, merging updates and ensuring all changes are properly configured and integrated each week. |
+| Marvin S. Lopez | 100/100 | Marvin contributed heavily to the end-to-end development of the admin module, prototyping and building the website’s fundamental core service. Furthermore, he developed the landing page and oversees team communication with the client (Bakerdan). |
+| Jason Jay M. Recto | 100/100 | I initiated the project by setting up the Laravel application and designing the foundational database schema, which I then handed off to a teammate for final refinement. I worked closely with the team to ensure the customer module integrated seamlessly with the rest of the application. Furthermore, I led the end-to-end development of the customer module itself—covering frontend UI, backend logic, payment integration, and email infrastructure. |
 
 ---
 
@@ -44,43 +44,18 @@
 
 | Member | Contribution Area | Description |
 |---|---|---|
-| Alrazel R. Llave | Frontend Development / System Integration / Feature Implementation | Acted as the primary frontend implementation developer responsible for UI structuring and major interface development across the system. Implemented system-wide features including search functionality and PayMongo payment integration, while also assisting in backend-controller connections and frontend-to-backend alignment. |
-| Charles Jefferson A. Betonio | Frontend Development / UI-UX Design / QA Testing / Admin Content Systems | Developed frontend UI improvements and implemented admin-managed content systems including FAQ and About Section modules. Contributed to authentication UI improvements, navigation refinement, and overall interface consistency. Actively performed QA testing by identifying bugs, validating features, and ensuring system stability through continuous feedback and coordination. |
-| Harry B. Lawang | Backend Development / System Architecture / Core Engine / System Debugging | Developed core backend systems including authentication, cart, checkout, orders, custom orders, notifications, and admin dashboard systems. Designed the database architecture, models, migrations, middleware, and service layer logic. Also handled system-wide debugging and resolved critical issues during development, including fixing broken payment-related functionality when encountered. |
+| Jestaly A. Castillo | Frontend Development / System Integration / Feature Implementation | Acted as the primary frontend implementation developer responsible for UI structuring and major interface development across the system. Implemented system-wide features including search functionality and PayMongo payment integration, while also assisting in backend-controller connections and frontend-to-backend alignment. |
+| Marvin S. Lopez | Frontend Development / UI-UX Design / QA Testing / Admin Content Systems | Developed frontend UI improvements and implemented admin-managed content systems including FAQ and About Section modules. Contributed to authentication UI improvements, navigation refinement, and overall interface consistency. Actively performed QA testing by identifying bugs, validating features, and ensuring system stability through continuous feedback and coordination. |
+| Jason Jay M. Recto | Full-Stack Development / Module Ownership / System Bootstrapping / Payment & Email Integration/Configuration 
+Initiated the project by setting up the Laravel application and designing the foundational database schema. Led the end-to-end development of the customer module—covering frontend UI, backend architecture, payment gateway integration, and configure SMTP email. Drafted the initial database design, then collaborated with a teammate for final normalization and refinement. Served as the primary developer for all customer-related features, delivering a fully integrated vertical slice from the ground up. |
 
----
-
-# 🧠🎨🧱 Major Contributions
-## Harry B. Lawang
-| Area | Contributions |
-|---|---|
-| Backend Systems | Authentication system (role-based access control), cart system (CRUD, validation, session/user handling), checkout system (order creation flow), order management system (standard and custom orders), notification system, and admin dashboard system. |
-| Architecture & Services | Designed Laravel MVC architecture, implemented middleware role protection, structured routing separation (admin vs storefront), designed database schema and relationships, and developed service layer logic for pricing and payment handling. |
-| Models & Database | Developed and managed core models including Cart, CartItem, CustomOrderRequest, CustomOrderMessage, Notification, Review, Chatbot, and Settings. Implemented full migrations and seeders system. |
-
-## Charles Jefferson A. Betonio
-| Area | Contributions |
-|---|---|
-| Admin Content Systems | Developed admin FAQ CRUD system (create, read, update, delete, display), implemented admin About Section management system, and supported static page content management. |
-| UI/UX Improvements | Improved authentication modal (login/register UX), refined navbar and footer layout, enhanced checkout UI, improved form validation feedback, and maintained overall UI consistency across the system. |
-| Models & Database | Managed Frequently Asked Questions (FAQ) and About content-related data structures. |
-
-## Alrazel R. Llave 
-| Area | Contributions |
-|---|---|
-| System & Frontend Support | Assisted in frontend Blade structuring and layout organization, supported UI implementation across multiple modules, performed debugging and UI adjustments during development, and contributed to overall system-wide frontend stability. |
-| Feature Implementation | Implemented search system and integrated PayMongo payment system, while also supporting backend-controller connections and frontend-to-backend alignment. |
-| Development Assistance | Participated in feature-level testing and validation, assisted in refining admin and storefront UI behavior, and contributed to structural improvements during iterative development. |
-| Models & Database | Worked with core models including User, Product, Category, ProductVariant, YarnColor, Order, and OrderItem. |
-
----
 
 # 🧾 Overall Project Summary
 
 The system is a full-stack Laravel-based e-commerce platform featuring custom orders, authentication, cart and checkout flows, payment integration, and a complete admin management system.
 
-- **Harry B. Lawang** led backend architecture, system design, database modeling, service layer implementation, and core application logic across all major system modules including authentication, orders, cart, checkout, and overall system integration. He also handled system debugging and resolved critical issues during development, including payment-related fixes.
-- **Charles Jefferson A. Betonio** focused on frontend UI/UX design improvements, implemented and maintained admin content systems (FAQ and About modules), and served as the Quality Assurance (QA) Tester responsible for testing features, identifying bugs, and validating system stability through continuous feedback and coordination.
-- **Alrazel R. Llave** contributed as the primary frontend implementation developer responsible for UI structuring and major interface development across the system. He also contributed system-wide integration work, including search functionality and PayMongo payment system implementation, while assisting in backend-controller connections and frontend-to-backend alignment.
+- **Jestaly A. Castillo** led backend architecture, system design, database modeling, service layer implementation, and core application logic across all major system modules including authentication, orders, cart, checkout, and overall system integration. He also handled system debugging and resolved critical issues during development, including payment-related fixes.
+- **Marvin S. Lopez** focused on frontend UI/UX design improvements, implemented and maintained admin content systems (FAQ and About modules), and served as the Quality Assurance (QA) Tester responsible for testing features, identifying bugs, and validating system stability through continuous feedback and coordination.
+- **Jason Jay M. Recto** initiated the Laravel project, designed the foundational database schema, and led the full-stack development of the customer module—covering frontend UI, backend logic, payment gateway integration, and SMTP email infrastructure. He served as the primary developer for all customer-related features, handed off the initial database design for team refinement, and ensured seamless integration of the module with the broader application.
 
 The project reflects a collaborative full-stack development effort with clearly distributed responsibilities across frontend, backend, and system integration layers.
