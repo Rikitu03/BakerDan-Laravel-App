@@ -4,7 +4,7 @@
 
 | GitHub Account | Member | Role |
 |---|---|---|
-| `jc14-ai` | Jestaly A. Castillo | Frontend Developer, UI/UX Designer, Quality Assurance (QA) Tester |
+| `jc14-ai` | Jestaly A. Castillo | Project Lead, Technical Lead, System Architect |
 | `Rikitu03` | Jason Jay M. Recto | Leader, Full stack developer for the customer module |
 | `kim647565` | Marvin S. Lopez | Frontend Developer, UI Implementation Lead, Secondary Full-Stack Developer |
 
