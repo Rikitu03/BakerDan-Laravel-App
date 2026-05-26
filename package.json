@@ -4,10 +4,9 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "vercel-build": "npx composer install --no-dev --no-interaction && npm run build"
+    "vercel-build": "composer install --no-dev --no-interaction && npm run build"
   },
   "devDependencies": {
-    "@composer/composer": "^2.7.0",
     "@laravel/echo-vue": "^2.3.4",
     "@tailwindcss/postcss": "^4.2.4",
     "@tailwindcss/vite": "^4.2.4",
