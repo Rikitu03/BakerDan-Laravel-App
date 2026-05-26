@@ -9,6 +9,7 @@ use App\Services\CustomOrderImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class CustomOrderController extends Controller
@@ -159,6 +160,14 @@ class CustomOrderController extends Controller
 
         if (str_starts_with($imagePath, 'http://') || str_starts_with($imagePath, 'https://') || str_starts_with($imagePath, '/')) {
             return $imagePath;
+        }
+
+        if (Storage::disk('public')->exists($imagePath)) {
+            return asset('storage/' . ltrim($imagePath, '/'));
+        }
+
+        if (Storage::disk('s3')->exists($imagePath)) {
+            return Storage::disk('s3')->url($imagePath);
         }
 
         return asset('storage/' . ltrim($imagePath, '/'));
