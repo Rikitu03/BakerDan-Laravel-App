@@ -5,22 +5,17 @@ namespace App\Services;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class CustomOrderImageService
 {
     public function storeReferenceImage(UploadedFile $file): string
     {
-        $directory = public_path('images/custom-orders');
-
-        if (! File::isDirectory($directory)) {
-            File::ensureDirectoryExists($directory);
-        }
-
         $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension() ?: 'jpg');
         $filename = now()->format('YmdHis') . '-' . Str::uuid()->toString() . '.' . $extension;
 
-        $file->move($directory, $filename);
+        $path = $file->storeAs('custom-orders', $filename, 's3');
 
-        return '/images/custom-orders/' . $filename;
+        return Storage::disk('s3')->url($path);
     }
 }
