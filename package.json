@@ -21,7 +21,7 @@
     "vite": "^7.0.7"
   },
   "dependencies": {
-    "exceljs": "^4.4.0",
+    "exceljs": "^3.4.0",
     "vue": "^3.5.33"
   }
 }
