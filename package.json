@@ -4,7 +4,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "vercel-build": "composer install --no-dev --no-interaction && npm run build"
+    "vercel-build": "php -r \"copy('https://getcomposer.org/installer','composer-setup.php');\" && php composer-setup.php --install-dir=. --filename=composer && php composer install --no-dev --no-interaction && npm run build"
   },
   "devDependencies": {
     "@laravel/echo-vue": "^2.3.4",
