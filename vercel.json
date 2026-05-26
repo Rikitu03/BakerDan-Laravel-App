@@ -1,17 +1,14 @@
 {
-  "buildCommand": "npm run vercel-build",
-  "framework": null,
   "functions": {
     "api/index.php": {
-      "runtime": "vercel-php@0.7.1",
-      "maxDuration": 10
+      "runtime": "vercel-php@0.9.0",
+      "maxDuration": 15
     }
   },
-  "rewrites": [
-    { "source": "/storage/(.*)", "destination": "/storage/$1" },
-    { "source": "/(.*)", "destination": "/api/index.php" }
+  "routes": [
+    { "src": "/build/(.*)", "dest": "/public/build/$1" },
+    { "src": "/(.*)", "dest": "/api/index.php" }
   ],
   "cleanUrls": true,
-  "trailingSlash": false,
-  "outputDirectory": "public"
+  "trailingSlash": false
 }
