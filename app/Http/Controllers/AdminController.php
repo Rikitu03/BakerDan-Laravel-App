@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\Storage;
 
 class AdminController extends Controller
 {
@@ -271,7 +272,8 @@ class AdminController extends Controller
         $product->is_active = $request->boolean('is_active', true);
 
         if ($request->hasFile('image')) {
-            $product->image_url = $request->file('image')->store('inventory-products', 'public');
+            $path = $request->file('image')->store('images', 's3');
+            $product->image_url = Storage::disk('s3')->url($path);
             $product->image_source = 'uploaded';
         }
 
@@ -294,7 +296,7 @@ class AdminController extends Controller
         $product->is_active = $request->boolean('is_active', true);
 
         if ($request->hasFile('image')) {
-            $product->image_url = $request->file('image')->store('inventory-products', 'public');
+            $product->image_url = $request->file('image')->store('images', 's3');
             $product->image_source = 'uploaded';
         }
 
