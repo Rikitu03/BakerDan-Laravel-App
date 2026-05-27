@@ -127,7 +127,15 @@ class ProductController extends Controller
             return null;
         }
 
-        if (str_starts_with($imagePath, 'http://') || str_starts_with($imagePath, 'https://') || str_starts_with($imagePath, '/')) {
+        if (str_starts_with($imagePath, 'http://') || str_starts_with($imagePath, 'https://')) {
+            return $imagePath;
+        }
+
+        if (str_starts_with($imagePath, '/')) {
+            $awsRoot = rtrim(config('app.aws_url', ''), '/');
+            if ($awsRoot !== '') {
+                return $awsRoot . '/' . ltrim($imagePath, '/');
+            }
             return $imagePath;
         }
 

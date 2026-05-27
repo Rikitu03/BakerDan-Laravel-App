@@ -158,6 +158,22 @@ class ProductOptionService
     {
         $price = round((float) $option['price'], 2);
 
+        // Determine image url source (option value or product)
+        $imageUrl = $option['image_url'] ?? $product->image_url ?? null;
+
+        // If not null and not already a full URL, prefix with AWS_URL
+        if ($imageUrl && ! preg_match('#^https?://#', $imageUrl)) {
+            $path = ltrim($imageUrl, '/'); // ensure no leading slash
+            $awsRoot = rtrim(config('app.aws_url', ''), '/');
+
+            if ($awsRoot !== '') {
+                $imageUrl = $awsRoot . '/' . $path;
+            } else {
+                // fallback to local path with leading slash
+                $imageUrl = '/' . $path;
+            }
+        }
+
         return [
             'id' => (string) $option['id'],
             'label' => (string) $option['label'],
@@ -166,7 +182,7 @@ class ProductOptionService
             'size' => $option['size'] ?? null,
             'flavor' => $option['flavor'] ?? null,
             'minimum_quantity' => (int) ($option['minimum_quantity'] ?? 1),
-            'image_url' => $option['image_url'] ?? $product->image_url,
+            'image_url' => $imageUrl,
         ];
     }
 

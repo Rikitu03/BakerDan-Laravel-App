@@ -437,6 +437,9 @@ class ProductCatalogSeeder extends Seeder
         ?string $flavorsAvailable,
         string $imageUrl,
     ): array {
+        // Normalize and build full cloud URL for the image when possible.
+        $fullUrl = $this->fullImageUrl($imageUrl);
+
         return [
             'category' => $category,
             'product_name' => $productName,
@@ -445,10 +448,39 @@ class ProductCatalogSeeder extends Seeder
             'price' => $price,
             'sizes_available' => $sizesAvailable,
             'flavors_available' => $flavorsAvailable,
-            'image_url' => $imageUrl,
-            'image_source' => 'local',
+            'image_url' => $fullUrl ?? $imageUrl,
+            'image_source' => $fullUrl ? 'cloud' : 'local',
             'is_active' => true,
         ];
+    }
+
+    /**
+     * Build a full image URL using AWS_URL env if provided.
+     * Accepts full URLs (returned as-is), or local paths with or without a leading slash.
+     */
+    private function fullImageUrl(?string $path): ?string
+    {
+        if ($path === null || $path === '') {
+            return null;
+        }
+
+        // If already a full url, return as-is
+        if (preg_match('#^https?://#', $path)) {
+            return $path;
+        }
+
+        // Normalize path (remove leading slash)
+        $trimmed = ltrim($path, '/');
+
+        // Prefer reading from config; config reads env in config files so it's safe when config is cached
+        $root = rtrim(config('app.aws_url', ''), '/');
+
+        if ($root === '') {
+            // No AWS_URL configured - keep local path (preserve leading slash)
+            return '/' . $trimmed;
+        }
+
+        return $root . '/' . $trimmed;
     }
 
     private function productKey(string $category, string $productName): string
