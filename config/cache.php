@@ -17,6 +17,8 @@ return [
 
     'default' => env('CACHE_STORE', 'database'),
 
+    'pending_orders_store' => env('PENDING_ORDER_CACHE_STORE', 'database'),
+
     /*
     |--------------------------------------------------------------------------
     | Cache Stores

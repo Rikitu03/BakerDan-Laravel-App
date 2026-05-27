@@ -27,6 +27,7 @@
     "VIEW_COMPILED_PATH": "/tmp",
     "CACHE_STORE": "array",
     "CACHE_DRIVER": "array",
+    "PENDING_ORDER_CACHE_STORE": "database",
     "LOG_CHANNEL": "stderr",
     "SESSION_DRIVER": "database",
     "SESSION_DOMAIN": "",

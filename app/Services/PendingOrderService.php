@@ -12,7 +12,6 @@ use Illuminate\Support\Str;
 
 class PendingOrderService
 {
-    private const STORE = 'file';
     private const ORDER_PREFIX = 'pending-order:item:';
     private const USER_INDEX_PREFIX = 'pending-order:user:';
     private const SESSION_PREFIX = 'pending-order:session:';
@@ -387,7 +386,7 @@ class PendingOrderService
 
     private function cache(): CacheRepository
     {
-        return Cache::store(self::STORE);
+        return Cache::store(config('cache.pending_orders_store'));
     }
 
     private function touchUserIndex(int $userId, string $pendingOrderId): void

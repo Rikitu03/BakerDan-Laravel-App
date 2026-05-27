@@ -460,54 +460,57 @@ class CartController extends Controller
             $discountAmount = $result['discount_amount'];
         }
 
-        $expiresAt = now()->addHours(2);
-        $pendingOrder = $pendingOrders->create([
-            'user_id' => (int) Auth::id(),
-            'total_amount' => max(0.00, $itemsSubtotal + $shippingFee - $discountAmount),
-            'promo_id' => $promoId,
-            'discount_amount' => $discountAmount,
-            'payment_method' => $validated['payment_method'],
-            'payment_provider' => 'paymongo',
-            'shipping_address' => $this->formatShippingAddress(
-                $fulfillmentMethod,
-                $validated['shipping_address'] ?? null,
-                $validated['shipping_pin_link'] ?? null,
-            ),
-            'expires_at' => $expiresAt,
-            'items' => $items->map(function (CartItem $item): array {
-                return [
-                    'product_id' => $item->product_id,
-                    'item_type' => $item->item_type,
-                    'quantity' => $item->quantity,
-                    'unit_price' => $this->cartItemUnitPrice($item),
-                    'product_name' => $this->cartItemName($item),
-                    'description' => $this->cartItemDescription($item),
-                    'image_url' => $item->item_type === 'custom' ? $item->image_url : $item->product?->image_url,
-                    'design_description' => $item->design_description,
-                    'dedication_message' => $item->dedication_message,
-                    'size' => $item->size,
-                    'flavor' => $item->flavor,
-                ];
-            })->values()->all(),
-        ]);
-
+        $pendingOrder = null;
         try {
+            $expiresAt = now()->addHours(2);
+            $pendingOrder = $pendingOrders->create([
+                'user_id' => (int) Auth::id(),
+                'total_amount' => max(0.00, $itemsSubtotal + $shippingFee - $discountAmount),
+                'promo_id' => $promoId,
+                'discount_amount' => $discountAmount,
+                'payment_method' => $validated['payment_method'],
+                'payment_provider' => 'paymongo',
+                'shipping_address' => $this->formatShippingAddress(
+                    $fulfillmentMethod,
+                    $validated['shipping_address'] ?? null,
+                    $validated['shipping_pin_link'] ?? null,
+                ),
+                'expires_at' => $expiresAt,
+                'items' => $items->map(function (CartItem $item): array {
+                    return [
+                        'product_id' => $item->product_id,
+                        'item_type' => $item->item_type,
+                        'quantity' => $item->quantity,
+                        'unit_price' => $this->cartItemUnitPrice($item),
+                        'product_name' => $this->cartItemName($item),
+                        'description' => $this->cartItemDescription($item),
+                        'image_url' => $item->item_type === 'custom' ? $item->image_url : $item->product?->image_url,
+                        'design_description' => $item->design_description,
+                        'dedication_message' => $item->dedication_message,
+                        'size' => $item->size,
+                        'flavor' => $item->flavor,
+                    ];
+                })->values()->all(),
+            ]);
+
             $checkoutSession = $payMongo->createCheckoutSessionFromPendingOrder($pendingOrder);
+            $pendingOrder = $pendingOrders->syncCheckoutSession($pendingOrder, $checkoutSession);
+
+            DB::transaction(function () use ($items): void {
+                $items->each->delete();
+            });
         } catch (Throwable $exception) {
             report($exception);
-            $pendingOrders->forget((string) $pendingOrder['id']);
+
+            if ($pendingOrder) {
+                $pendingOrders->forget((string) $pendingOrder['id']);
+            }
 
             return response()->json([
                 'success' => false,
-                'message' => $exception->getMessage() ?: 'Unable to start the PayMongo checkout right now.',
+                'message' => 'Unable to start the PayMongo checkout right now.',
             ], 422);
         }
-
-        DB::transaction(function () use ($checkoutSession, $items): void {
-            $items->each->delete();
-        });
-
-        $pendingOrder = $pendingOrders->syncCheckoutSession($pendingOrder, $checkoutSession);
 
         return response()->json([
             'success' => true,
