@@ -27,12 +27,14 @@ Route::get('/categories', [ProductController::class, 'categories']);
 Route::get('/products/{id}/reviews', [ReviewController::class, 'index']);
 
 // Cart (Public/Guest)
-Route::get('/cart', [CartController::class, 'index']);
-Route::post('/cart/add/{productId}', [CartController::class, 'add']);
-Route::post('/cart/custom', [CartController::class, 'addCustom']);
-Route::put('/cart/items/{itemId}', [CartController::class, 'update']);
-Route::delete('/cart/items/{itemId}', [CartController::class, 'remove']);
-Route::delete('/cart/clear', [CartController::class, 'clear']);
+Route::middleware([\Illuminate\Session\Middleware\StartSession::class])->group(function () {
+    Route::get('/cart', [CartController::class, 'index']);
+    Route::post('/cart/add/{productId}', [CartController::class, 'add']);
+    Route::post('/cart/custom', [CartController::class, 'addCustom']);
+    Route::put('/cart/items/{itemId}', [CartController::class, 'update']);
+    Route::delete('/cart/items/{itemId}', [CartController::class, 'remove']);
+    Route::delete('/cart/clear', [CartController::class, 'clear']);
+});
 
 // --- Protected API Routes (All Authenticated Users) ---
 Route::middleware('auth:sanctum')->group(function () {
