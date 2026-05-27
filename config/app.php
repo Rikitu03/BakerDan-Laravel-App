@@ -54,6 +54,9 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    // Supabase / cloud images root (set AWS_URL in .env). Keep empty if not using cloud images.
+    'aws_url' => env('AWS_URL', ''),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

@@ -15,7 +15,7 @@
 <article class="group overflow-hidden rounded-[2rem] border transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_70px_-36px_rgba(38,24,15,0.48)]" style="border-color: rgba(38, 24, 15, 0.1); background: rgba(255, 252, 247, 0.72);">
     <div class="relative overflow-hidden">
         <div class="h-72 overflow-hidden">
-            @if ($imagePath && file_exists(public_path($imagePath)))
+            @if ($imagePath && (str_starts_with($imagePath, 'http') || file_exists(public_path($imagePath))))
                 <img
                     src="{{ asset($imagePath) }}"
                     alt="{{ $title }}"

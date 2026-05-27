@@ -476,7 +476,7 @@
 
                             <div class="relative ml-auto h-[26rem] max-w-xl rounded-[2.25rem] border p-4 shadow-[0_28px_70px_-35px_rgba(38,24,15,0.45)]" style="border-color: rgba(38, 24, 15, 0.12); background: rgba(255,255,255,0.6);">
                                 <div class="h-full overflow-hidden rounded-[1.75rem]">
-                                    @if ($featured['imagePath'] && file_exists(public_path($featured['imagePath'])))
+                                    @if ($featured['imagePath'] && (str_starts_with($featured['imagePath'], 'http') || file_exists(public_path($featured['imagePath']))))
                                         <img src="{{ asset($featured['imagePath']) }}" alt="{{ $featured['title'] }}" class="h-full w-full object-cover">
                                     @else
                                         <div class="photo-fallback grid h-full place-items-center">
@@ -543,7 +543,7 @@
                     @foreach ($galleryShots as $shot)
                         <article class="overflow-hidden rounded-[2rem] border transition duration-300 hover:-translate-y-1" style="border-color: var(--line); background: rgba(255,255,255,0.5); box-shadow: var(--shadow);">
                             <div class="aspect-[4/3]">
-                                @if (file_exists(public_path($shot['path'])))
+                                @if (str_starts_with($shot['path'], 'http') || file_exists(public_path($shot['path'])))
                                     <img src="{{ asset($shot['path']) }}" alt="{{ $shot['title'] }}" class="h-full w-full object-cover">
                                 @else
                                     <div class="photo-fallback h-full w-full"></div>
