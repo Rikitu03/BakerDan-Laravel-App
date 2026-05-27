@@ -8,8 +8,8 @@
   },
   "routes": [
     {
-      "src": "/build/(.*)",
-      "dest": "/public/build/$1"
+      "src": "/(build|images|assets|vendor|fonts|favicon\\.ico|robots\\.txt|.*\\.js)(.*)",
+      "dest": "/public/$1$2"
     },
     {
       "src": "/(.*)",
