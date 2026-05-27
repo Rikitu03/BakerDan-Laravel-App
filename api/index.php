@@ -4,6 +4,9 @@
  * Entry point for Vercel serverless functions
  */
 
+$_SERVER['SCRIPT_NAME'] = '/index.php';
+$_SERVER['PHP_SELF'] = '/index.php';
+
 define('LARAVEL_START', microtime(true));
 
 // Register the Composer autoloader
