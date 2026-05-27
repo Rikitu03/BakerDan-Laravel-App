@@ -213,69 +213,6 @@ Route::get('/customer/{any?}', [CustomerController::class, 'spa'])
 | These endpoints are called by the Vue frontend via Axios
 */
 
-// Public API Routes
-Route::prefix('api')->group(function () {
-    // AI Chat
-    Route::post('/chat', [GeminiChatController::class, 'chat']);
-});
-
-// Public API routes - accessible to guests and customers
-Route::prefix('api')->group(function () {
-    // Products - public for browsing
-    Route::get('/products', [ProductController::class, 'index']);
-    Route::get('/products/{id}', [ProductController::class, 'show']);
-
-    // Categories - public for browsing
-    Route::get('/categories', [ProductController::class, 'categories']);
-
-    // Reviews - public for viewing
-    Route::get('/products/{id}/reviews', [ReviewController::class, 'index']);
-
-    // Cart browsing and edits are session-backed for guests and database-backed for customers.
-    Route::get('/cart', [CartController::class, 'index']);
-    Route::post('/cart/add/{productId}', [CartController::class, 'add']);
-    Route::post('/cart/custom', [CartController::class, 'addCustom']);
-    Route::put('/cart/items/{itemId}', [CartController::class, 'update']);
-    Route::delete('/cart/items/{itemId}', [CartController::class, 'remove']);
-    Route::delete('/cart/clear', [CartController::class, 'clear']);
-});
-
-// Protected API routes - requires authentication for both customers and admins
-Route::prefix('api')->middleware(['auth'])->group(function () {
-    Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::post('/notifications/{notificationId}/read', [NotificationController::class, 'markRead']);
-    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
-    Route::delete('/notifications/{notificationId}', [NotificationController::class, 'destroy']);
-    Route::delete('/notifications', [NotificationController::class, 'destroyAll']);
-});
-
-// Protected API routes - requires authentication and customer role
-Route::prefix('api')->middleware(['auth', 'role:customer'])->group(function () {
-    // Checkout
-    Route::post('/checkout', [CartController::class, 'checkout']);
-    Route::get('/promos/active', [CartController::class, 'getActivePromos']);
-    Route::post('/promos/validate', [CartController::class, 'validatePromoCode']);
-    Route::get('/orders', [CustomerOrderController::class, 'index']);
-    Route::get('/purchases', [CustomerOrderController::class, 'purchaseHistory']);
-    Route::patch('/orders/{order}/cancel', [CustomerOrderController::class, 'cancel']);
-    Route::get('/orders/{order}/payment-status', [OrderPaymentController::class, 'show']);
-    Route::patch('/pending-orders/{pendingOrderId}/cancel', [CustomerOrderController::class, 'cancelPending']);
-    Route::get('/pending-orders/{pendingOrderId}/payment-status', [OrderPaymentController::class, 'showPending']);
-
-    // Custom Orders
-    Route::post('/custom-orders', [CustomOrderController::class, 'store']);
-
-    // Profile
-    Route::get('/profile', [ProfileController::class, 'show']);
-    Route::put('/profile', [ProfileController::class, 'update']);
-    Route::put('/profile/password', [ProfileController::class, 'updatePassword']);
-    Route::post('/profile/verify-password', [ProfileController::class, 'verifyCurrentPassword']);
-
-    // Reviews - authenticated
-    Route::post('/reviews', [ReviewController::class, 'store']);
-    Route::get('/reviews/customer', [ReviewController::class, 'customerReviews']);
-});
-
 /*
 |--------------------------------------------------------------------------
 | Admin Routes (placeholder)
@@ -298,12 +235,4 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::patch('/orders/{order}/status', [AdminController::class, 'updateOrderStatus'])->name('admin.orders.status');
     Route::patch('/orders/{order}/payment-status', [AdminController::class, 'updateOrderPaymentStatus'])->name('admin.orders.payment-status');
     Route::patch('/users/{user}/status', [AdminController::class, 'toggleUserStatus'])->name('admin.users.status');
-});
-
-// Shared Messaging Routes
-Route::prefix('api')->middleware(['auth'])->group(function () {
-    Route::get('/conversations', [MessageController::class, 'getConversations']);
-    Route::get('/conversations/{id}/messages', [MessageController::class, 'getMessages']);
-    Route::post('/conversations/{id}/read', [MessageController::class, 'markAsRead']);
-    Route::post('/messages', [MessageController::class, 'sendMessage']);
 });
