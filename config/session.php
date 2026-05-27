@@ -2,6 +2,11 @@
 
 use Illuminate\Support\Str;
 
+$configuredDomain = env('SESSION_DOMAIN');
+$configuredDomain = in_array($configuredDomain, [null, '', 'null', '(null)'], true)
+    ? null
+    : $configuredDomain;
+
 return [
 
     /*
@@ -156,7 +161,7 @@ return [
     |
     */
 
-    'domain' => env('SESSION_DOMAIN'),
+    'domain' => $configuredDomain,
 
     /*
     |--------------------------------------------------------------------------

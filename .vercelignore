@@ -3,6 +3,9 @@ node_modules/
 vendor/
 
 # Ignore git and local IDE configurations
+.env
+.env.*
+!.env.example
 .git/
 .github/
 .idea/

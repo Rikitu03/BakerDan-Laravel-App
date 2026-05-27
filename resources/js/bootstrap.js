@@ -2,12 +2,19 @@ import axios from 'axios';
 window.axios = axios;
 
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+window.axios.defaults.headers.common['Accept'] = 'application/json';
+window.axios.defaults.withCredentials = true;
+
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || window.Laravel?.csrfToken || '';
+
+if (csrfToken) {
+    window.axios.defaults.headers.common['X-CSRF-TOKEN'] = csrfToken;
+}
 
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
 const reverbKey = import.meta.env.VITE_REVERB_APP_KEY;
-const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
 window.Pusher = Pusher;
 window.Echo = null;
