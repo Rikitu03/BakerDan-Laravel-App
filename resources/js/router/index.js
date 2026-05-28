@@ -1,13 +1,14 @@
-import { computed, markRaw, shallowRef } from 'vue';
+import { computed, defineAsyncComponent, markRaw, shallowRef } from 'vue';
 import HomePage from '../components/pages/HomePage.vue';
-import CartPage from '../components/pages/CartPage.vue';
-import CheckoutPage from '../components/pages/CheckoutPage.vue';
-import CustomizePage from '../components/pages/CustomizePage.vue';
-import OrdersPage from '../components/pages/OrdersPage.vue';
-import MessagesPage from '../components/pages/MessagesPage.vue';
-import NotificationsPage from '../components/pages/NotificationsPage.vue';
-import PurchaseHistoryPage from '../components/pages/PurchaseHistoryPage.vue';
-import SettingsPage from '../components/pages/SettingsPage.vue';
+
+const CartPage = defineAsyncComponent(() => import('../components/pages/CartPage.vue'));
+const CheckoutPage = defineAsyncComponent(() => import('../components/pages/CheckoutPage.vue'));
+const CustomizePage = defineAsyncComponent(() => import('../components/pages/CustomizePage.vue'));
+const OrdersPage = defineAsyncComponent(() => import('../components/pages/OrdersPage.vue'));
+const MessagesPage = defineAsyncComponent(() => import('../components/pages/MessagesPage.vue'));
+const NotificationsPage = defineAsyncComponent(() => import('../components/pages/NotificationsPage.vue'));
+const PurchaseHistoryPage = defineAsyncComponent(() => import('../components/pages/PurchaseHistoryPage.vue'));
+const SettingsPage = defineAsyncComponent(() => import('../components/pages/SettingsPage.vue'));
 
 const baseLayoutProps = {
   hideSidebar: false,

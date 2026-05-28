@@ -76,7 +76,7 @@ class ProductController extends Controller
                 'from' => $paginator->firstItem(),
                 'to' => $paginator->lastItem(),
             ]
-        ])->header('Cache-Control', 'no-store, max-age=0');
+        ])->header('Cache-Control', $this->publicApiCacheHeader());
     }
 
     /**
@@ -94,7 +94,7 @@ class ProductController extends Controller
         return response()->json([
             'success' => true,
             'data' => $this->serializeProduct($product),
-        ]);
+        ])->header('Cache-Control', $this->publicApiCacheHeader());
     }
 
     /**
@@ -118,7 +118,7 @@ class ProductController extends Controller
         return response()->json([
             'success' => true,
             'data' => $categories
-        ]);
+        ])->header('Cache-Control', $this->publicApiCacheHeader());
     }
 
     private function resolveImageUrl(?string $imagePath): ?string
@@ -181,5 +181,10 @@ class ProductController extends Controller
     private function categoryFallbackImage(?string $category): string
     {
         return '/images/logo/BAKERDAN%20LOGO.jpg';
+    }
+
+    private function publicApiCacheHeader(): string
+    {
+        return 'public, max-age=30, s-maxage=120, stale-while-revalidate=300';
     }
 }

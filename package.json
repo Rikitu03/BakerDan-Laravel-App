@@ -4,7 +4,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "vercel-build": "npm run build"
+    "vercel-build": "npm run build && php artisan optimize"
   },
   "devDependencies": {
     "@laravel/echo-vue": "^2.3.4",

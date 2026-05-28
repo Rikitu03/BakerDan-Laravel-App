@@ -11,7 +11,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Urbanist:wght@600;700;800;900&display=swap"
         rel="stylesheet">
-    @vite(['resources/css/app.css', 'resources/js/main.js'])
+    @vite(['resources/css/app.css', 'resources/js/admin-dashboard.js'])
     <style>
         :root {
             --paper: #f8f5f1;

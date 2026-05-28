@@ -823,15 +823,7 @@ class CartController extends Controller
             return asset($publicRelativePath);
         }
 
-        if (Storage::disk('public')->exists($imagePath)) {
-            return asset('storage/' . ltrim($imagePath, '/'));
-        }
-
-        if (Storage::disk('s3')->exists($imagePath)) {
-            return Storage::disk('s3')->url($imagePath);
-        }
-
-        return asset('storage/' . $publicRelativePath);
+        return Storage::disk('s3')->url($imagePath);
     }
 
     private function selectedCartItemOption(CartItem $item): ?array

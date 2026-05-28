@@ -282,8 +282,8 @@ let messagePollTimer = null;
 let conversationsRequest = null;
 let messagesRequest = null;
 
-const ACTIVE_MESSAGE_POLL_MS = 1000;
-const CONVERSATION_POLL_MS = 1500;
+const ACTIVE_MESSAGE_POLL_MS = 5000;
+const CONVERSATION_POLL_MS = 10000;
 const currentUserId = computed(() => Number(props.user.user_id || props.user.id || 0));
 
 // Placeholder for new conversations

@@ -1,5 +1,4 @@
 import './bootstrap';
-import ExcelJS from 'exceljs';
 
 const dashboard = document.querySelector('[data-admin-dashboard]');
 
@@ -109,8 +108,8 @@ if (dashboard) {
     let adminMessagesRequest = null;
     let loadingCount = 0;
     const adminUserId = Number(reportData?.user?.user_id || reportData?.user?.id || 0);
-    const ADMIN_ACTIVE_MESSAGE_POLL_MS = 1000;
-    const ADMIN_CONVERSATION_POLL_MS = 1500;
+    const ADMIN_ACTIVE_MESSAGE_POLL_MS = 5000;
+    const ADMIN_CONVERSATION_POLL_MS = 10000;
 
     const sectionLabels = navButtons.reduce((acc, button) => {
         const key = button.dataset.nav;
@@ -920,6 +919,7 @@ if (dashboard) {
     };
 
     const buildExcelWorkbook = async (target, rows) => {
+        const { default: ExcelJS } = await import('exceljs');
         const datasetLabel = getDatasetLabel(target);
         const generatedAt = formatPdfValue('Generated At', reportData?.summary?.generated_at || new Date().toISOString());
         const sections = getExcelSections(target, rows);

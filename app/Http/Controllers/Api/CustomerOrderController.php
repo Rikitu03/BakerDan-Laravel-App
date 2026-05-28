@@ -448,14 +448,6 @@ class CustomerOrderController extends Controller
             return $imagePath;
         }
 
-        if (Storage::disk('public')->exists($imagePath)) {
-            return asset('storage/' . ltrim($imagePath, '/'));
-        }
-
-        if (Storage::disk('s3')->exists($imagePath)) {
-            return Storage::disk('s3')->url($imagePath);
-        }
-
-        return asset('storage/' . ltrim($imagePath, '/'));
+        return Storage::disk('s3')->url($imagePath);
     }
 }
