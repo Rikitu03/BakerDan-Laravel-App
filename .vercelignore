@@ -17,6 +17,8 @@ phpunit.xml
 README.md
 
 # Ignore local storage caches, logs, and sessions
+bootstrap/cache/*.php
+bootstrap/cache/*.tmp
 storage/framework/cache/*
 storage/framework/sessions/*
 storage/framework/views/*

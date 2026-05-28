@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Support\ServiceProvider;
+
 return [
 
     /*
@@ -125,5 +127,20 @@ return [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Service Providers
+    |--------------------------------------------------------------------------
+    |
+    | Keep the provider list explicit for serverless builds. If Vercel restores
+    | or generates a config cache, Laravel still has the framework providers
+    | that bind core services such as "view".
+    |
+    */
+
+    'providers' => ServiceProvider::defaultProviders()->merge([
+        App\Providers\AppServiceProvider::class,
+    ])->toArray(),
 
 ];
