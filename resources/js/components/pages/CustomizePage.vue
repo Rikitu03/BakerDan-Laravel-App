@@ -163,7 +163,7 @@
             @dragover.prevent="isDragging = true"
             @dragleave.prevent="isDragging = false"
             @drop.prevent="handleDrop"
-            class="flex min-h-[320px] cursor-pointer items-center justify-center rounded-[30px] border-2 border-dashed border-[#D8C7B8] bg-[#FCFAF8] p-6 transition-colors"
+            class="flex min-w-0 min-h-[320px] cursor-pointer items-center justify-center rounded-[30px] border-2 border-dashed border-[#D8C7B8] bg-[#FCFAF8] p-6 transition-colors"
             :class="{ 'border-[#C9876C] bg-[#FBF1E8]': isDragging }"
           >
             <div v-if="!imagePreview" class="text-center">
@@ -197,13 +197,13 @@
             />
           </div>
 
-          <div class="rounded-[30px] border border-[#E7D9CB] bg-[#FCFAF8] p-6">
+          <div class="min-w-0 rounded-[30px] border border-[#E7D9CB] bg-[#FCFAF8] p-6">
             <div v-if="isCakeGuide" class="space-y-5">
               <div class="grid gap-2">
                 <label class="text-sm font-medium text-[#66605B]">Guide section</label>
                 <select
                   v-model="selectedCakeSectionId"
-                  class="h-12 rounded-full border border-[#D8CCC2] bg-white px-5 outline-none focus:border-transparent focus:ring-2 focus:ring-[#C9876C]"
+                  class="h-12 w-full truncate rounded-full border border-[#D8CCC2] bg-white px-5 outline-none focus:border-transparent focus:ring-2 focus:ring-[#C9876C]"
                 >
                   <option v-for="sectionItem in cakeGuideSections" :key="sectionItem.id" :value="sectionItem.id">
                     {{ sectionItem.title }}
@@ -215,7 +215,7 @@
                 <label class="text-sm font-medium text-[#66605B]">Package</label>
                 <select
                   v-model="selectedCakePackageId"
-                  class="h-12 rounded-full border border-[#D8CCC2] bg-white px-5 outline-none focus:border-transparent focus:ring-2 focus:ring-[#C9876C]"
+                  class="h-12 w-full truncate rounded-full border border-[#D8CCC2] bg-white px-5 outline-none focus:border-transparent focus:ring-2 focus:ring-[#C9876C]"
                 >
                   <option v-for="packageItem in activeCakePackages" :key="packageItem.id" :value="packageItem.id">
                     {{ packageItem.label }} - {{ packageItem.priceLabel }}
@@ -280,7 +280,7 @@
                 <label class="text-sm font-medium text-[#66605B]">Flavor</label>
                 <select
                   v-model="formData.flavor"
-                  class="h-12 rounded-full border border-[#D8CCC2] bg-white px-5 outline-none focus:border-transparent focus:ring-2 focus:ring-[#C9876C]"
+                  class="h-12 w-full truncate rounded-full border border-[#D8CCC2] bg-white px-5 outline-none focus:border-transparent focus:ring-2 focus:ring-[#C9876C]"
                 >
                   <option v-for="flavorOption in selectedFlavorOptions" :key="flavorOption" :value="flavorOption">
                     {{ flavorOption }}
@@ -301,7 +301,7 @@
                 <label class="text-sm font-medium text-[#66605B]">Size</label>
                 <select
                   v-model="formData.size"
-                  class="h-12 rounded-full border border-[#D8CCC2] bg-white px-5 outline-none focus:border-transparent focus:ring-2 focus:ring-[#C9876C]"
+                  class="h-12 w-full truncate rounded-full border border-[#D8CCC2] bg-white px-5 outline-none focus:border-transparent focus:ring-2 focus:ring-[#C9876C]"
                 >
                   <option>Small</option>
                   <option>Medium</option>
@@ -343,7 +343,7 @@
                 <label class="text-sm font-medium text-[#66605B]">Flavor</label>
                 <select
                   v-model="formData.flavor"
-                  class="h-12 rounded-full border border-[#D8CCC2] bg-white px-5 outline-none focus:border-transparent focus:ring-2 focus:ring-[#C9876C]"
+                  class="h-12 w-full truncate rounded-full border border-[#D8CCC2] bg-white px-5 outline-none focus:border-transparent focus:ring-2 focus:ring-[#C9876C]"
                 >
                   <option v-for="flavorOption in legacyFlavorOptions" :key="flavorOption" :value="flavorOption">
                     {{ flavorOption }}
