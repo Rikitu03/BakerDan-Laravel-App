@@ -15,12 +15,25 @@
 <article class="group overflow-hidden rounded-[2rem] border transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_70px_-36px_rgba(38,24,15,0.48)]" style="border-color: rgba(38, 24, 15, 0.1); background: rgba(255, 252, 247, 0.72);">
     <div class="relative overflow-hidden">
         <div class="h-72 overflow-hidden">
-            @if ($imagePath && (str_starts_with($imagePath, 'http') || file_exists(public_path($imagePath))))
+            @php
+                $imageSrc = $imagePath
+                    ? (str_starts_with($imagePath, 'http') ? $imagePath : asset($imagePath))
+                    : null;
+            @endphp
+            @if ($imageSrc)
                 <img
-                    src="{{ asset($imagePath) }}"
+                    src="{{ $imageSrc }}"
                     alt="{{ $title }}"
+                    loading="lazy"
                     class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='block';"
                 >
+                <div class="relative h-full w-full overflow-hidden" style="display: none; background: linear-gradient(155deg, #d7b08a, #c37b44 58%, #8f4723);">
+                    <div class="absolute -right-8 -top-8 h-32 w-32 rounded-full" style="background: rgba(255,255,255,0.18);"></div>
+                    <div class="absolute bottom-5 left-5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]" style="border-color: rgba(255,255,255,0.18); background: rgba(38,24,15,0.22); color: white;">
+                        Best seller
+                    </div>
+                </div>
             @else
                 <div class="relative h-full w-full overflow-hidden" style="background: linear-gradient(155deg, #d7b08a, #c37b44 58%, #8f4723);">
                     <div class="absolute -right-8 -top-8 h-32 w-32 rounded-full" style="background: rgba(255,255,255,0.18);"></div>

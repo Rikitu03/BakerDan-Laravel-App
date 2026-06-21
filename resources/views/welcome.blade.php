@@ -378,7 +378,7 @@
                     <div class="hero-grid relative">
                         <div class="mesh-card entrance entrance-delay-2 rounded-[2.25rem] p-4 sm:p-5">
                             <div class="image-card min-h-[24rem]">
-                                <img src="{{ $featured['imagePath'] ? asset($featured['imagePath']) : asset('images/bakerdan/bread/Creme_Cheese_Garlic.png') }}" alt="{{ $featured['title'] }}">
+                                <img src="{{ $featured['imagePath'] ? (str_starts_with($featured['imagePath'], 'http') ? $featured['imagePath'] : asset($featured['imagePath'])) : asset('images/bakerdan/bread/Creme_Cheese_Garlic.png') }}" alt="{{ $featured['title'] }}" onerror="this.onerror=null; this.src='{{ asset('images/bakerdan/bread/Creme_Cheese_Garlic.png') }}';">
                                 <div class="absolute left-4 top-4 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white" style="border-color: rgba(255,255,255,0.22); background: rgba(15, 20, 30, 0.38);">
                                     Top product sales
                                 </div>
@@ -476,8 +476,19 @@
 
                             <div class="relative ml-auto h-[26rem] max-w-xl rounded-[2.25rem] border p-4 shadow-[0_28px_70px_-35px_rgba(38,24,15,0.45)]" style="border-color: rgba(38, 24, 15, 0.12); background: rgba(255,255,255,0.6);">
                                 <div class="h-full overflow-hidden rounded-[1.75rem]">
-                                    @if ($featured['imagePath'] && (str_starts_with($featured['imagePath'], 'http') || file_exists(public_path($featured['imagePath']))))
-                                        <img src="{{ asset($featured['imagePath']) }}" alt="{{ $featured['title'] }}" class="h-full w-full object-cover">
+                                    @php
+                                        $featuredSrc = $featured['imagePath']
+                                            ? (str_starts_with($featured['imagePath'], 'http') ? $featured['imagePath'] : asset($featured['imagePath']))
+                                            : null;
+                                    @endphp
+                                    @if ($featuredSrc)
+                                        <img src="{{ $featuredSrc }}" alt="{{ $featured['title'] }}" loading="lazy" class="h-full w-full object-cover" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='grid';">
+                                        <div class="photo-fallback h-full place-items-center" style="display: none;">
+                                            <div class="rounded-[1.75rem] border px-5 py-4 text-center" style="border-color: rgba(255,255,255,0.18); background: rgba(38, 24, 15, 0.36); color: white;">
+                                                <p class="text-xs font-semibold uppercase tracking-[0.2em]">Featured bake</p>
+                                                <p class="font-display mt-2 text-3xl font-bold">{{ $featured['title'] }}</p>
+                                            </div>
+                                        </div>
                                     @else
                                         <div class="photo-fallback grid h-full place-items-center">
                                             <div class="rounded-[1.75rem] border px-5 py-4 text-center" style="border-color: rgba(255,255,255,0.18); background: rgba(38, 24, 15, 0.36); color: white;">
@@ -543,11 +554,8 @@
                     @foreach ($galleryShots as $shot)
                         <article class="overflow-hidden rounded-[2rem] border transition duration-300 hover:-translate-y-1" style="border-color: var(--line); background: rgba(255,255,255,0.5); box-shadow: var(--shadow);">
                             <div class="aspect-[4/3]">
-                                @if (str_starts_with($shot['path'], 'http') || file_exists(public_path($shot['path'])))
-                                    <img src="{{ asset($shot['path']) }}" alt="{{ $shot['title'] }}" class="h-full w-full object-cover">
-                                @else
-                                    <div class="photo-fallback h-full w-full"></div>
-                                @endif
+                                <img src="{{ str_starts_with($shot['path'], 'http') ? $shot['path'] : asset($shot['path']) }}" alt="{{ $shot['title'] }}" loading="lazy" class="h-full w-full object-cover" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                <div class="photo-fallback h-full w-full" style="display: none;"></div>
                             </div>
 
                             <div class="border-t px-4 py-4" style="border-color: var(--line); background: rgba(255,255,255,0.76);">
@@ -622,7 +630,7 @@
                     <div>
                         <p class="text-sm font-medium uppercase tracking-[0.18em]" style="color: rgba(255,255,255,0.72);">Ready for your next order?</p>
                         <h2 class="font-display mt-3 text-4xl font-extrabold sm:text-5xl">Let's bake for your business</h2>
-                        <p class="mt-4 max-w-xl text-base leading-relaxed" style="color: rgba(255,255,255,0.76);"></p>After exploring, this section gives you a clear final step to order now with BakerDan and submit complete order details.</p>
+                        <p class="mt-4 max-w-xl text-base leading-relaxed" style="color: rgba(255,255,255,0.76);">After exploring, this section gives you a clear final step to order now with BakerDan and submit complete order details.</p>
                         <div class="mt-8 flex flex-wrap gap-3">
                             <a href="mailto:hello@bakerdan.com" class="rounded-full bg-white px-7 py-3 text-sm font-semibold uppercase tracking-[0.14em] transition hover:-translate-y-0.5" style="color: var(--ink);">Email BakerDan</a>
                             <a href="tel:+639000000000" class="rounded-full border px-7 py-3 text-sm font-semibold uppercase tracking-[0.14em] transition hover:bg-white/10" style="border-color: rgba(255,255,255,0.18);">Call for orders</a>
@@ -653,6 +661,7 @@
                         </div>
                         <p class="mt-3 max-w-xl text-sm leading-relaxed" style="color: var(--ink-soft);">
                             Fresh bread, pastries, and custom orders for homes, cafes, and events. Bringing warmth and quality to every bite.
+                        </p>
                         <div class="mt-5 flex flex-wrap gap-3 text-sm font-medium" style="color: var(--ink-soft);">
                             <a href="#about">About</a>
                             <a href="#menu">Menu</a>
