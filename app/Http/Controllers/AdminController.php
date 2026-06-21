@@ -296,7 +296,8 @@ class AdminController extends Controller
         $product->is_active = $request->boolean('is_active', true);
 
         if ($request->hasFile('image')) {
-            $product->image_url = $request->file('image')->store('images', 's3');
+            $path = $request->file('image')->store('images', 's3');
+            $product->image_url = Storage::disk('s3')->url($path);
             $product->image_source = 'uploaded';
         }
 
