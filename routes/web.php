@@ -73,12 +73,28 @@ Route::get('/', function () {
         $topProducts = $topProducts->concat($fallbackProducts)->values();
     }
 
-    $formatProduct = function (Product $product): array {
+    // Bundled catalog images ship with the app under public/images/bakerdan.
+    // Some DB rows store a full (and now unreachable) cloud URL for these, which
+    // breaks rendering. Always serve bundled images from the local path; leave
+    // genuinely remote uploads (e.g. S3) untouched.
+    $normalizeImagePath = function (?string $url): ?string {
+        if ($url === null || $url === '') {
+            return null;
+        }
+
+        if (preg_match('#(images/bakerdan/.+)$#i', $url, $matches)) {
+            return $matches[1];
+        }
+
+        return ltrim($url, '/');
+    };
+
+    $formatProduct = function (Product $product) use ($normalizeImagePath): array {
         return [
             'title' => $product->product_name,
             'description' => $product->description,
             'price' => (float) $product->price,
-            'imagePath' => $product->image_url ? ltrim((string) $product->image_url, '/') : null,
+            'imagePath' => $normalizeImagePath($product->image_url),
             'salesCount' => (int) ($product->quantity_sold ?? 0),
             'revenue' => (float) ($product->revenue ?? 0),
         ];
